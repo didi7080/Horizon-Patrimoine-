@@ -8,9 +8,11 @@ import type { Tables } from "@/lib/types/database";
 export function PrestationCard({
   prestation,
   slug,
+  embed = false,
 }: {
   prestation: Tables<"prestations">;
   slug: string;
+  embed?: boolean;
 }) {
   return (
     <Card className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -33,7 +35,7 @@ export function PrestationCard({
       <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end sm:justify-center">
         <p className="font-semibold text-foreground">{formatPrix(prestation.prix_cents)}</p>
         <Button asChild size="sm">
-          <Link href={`/e/${slug}/reserver/${prestation.id}`}>
+          <Link href={`${embed ? "/embed" : "/e"}/${slug}/reserver/${prestation.id}`}>
             Réserver <ArrowRight className="size-3.5" />
           </Link>
         </Button>

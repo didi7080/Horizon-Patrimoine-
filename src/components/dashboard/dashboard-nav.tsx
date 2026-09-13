@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   CalendarDays,
+  Code2,
   LayoutGrid,
   ListChecks,
   Settings,
@@ -16,10 +18,12 @@ import { cn } from "@/lib/utils";
 const LIENS = [
   { href: "/dashboard", label: "Vue du jour", icon: LayoutGrid, exact: true },
   { href: "/dashboard/rendez-vous", label: "Rendez-vous", icon: CalendarDays },
+  { href: "/dashboard/statistiques", label: "Statistiques", icon: BarChart3 },
   { href: "/dashboard/prestations", label: "Prestations", icon: Wrench },
   { href: "/dashboard/equipe", label: "Équipe", icon: Users },
   { href: "/dashboard/clients", label: "Clients", icon: ListChecks },
   { href: "/dashboard/avis", label: "Avis", icon: Star },
+  { href: "/dashboard/widget", label: "Widget & site web", icon: Code2 },
   { href: "/dashboard/reglages", label: "Réglages", icon: Settings },
 ];
 

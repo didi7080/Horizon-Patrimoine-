@@ -23,6 +23,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/client";
 import { formatDuree, formatPrix, initiales } from "@/lib/utils";
 import type { Tables } from "@/lib/types/database";
+import { reserverRdvAction } from "@/app/e/[slug]/reserver/[prestationId]/actions";
+import { ListeAttenteForm } from "@/components/booking/liste-attente-form";
 
 type Salarie = Pick<Tables<"salaries">, "id" | "nom" | "fonction" | "couleur">;
 type Creneau = { debut: string; fin: string; salarie_id: string; salarie_nom: string };
@@ -33,12 +35,15 @@ export function ReservationStepper({
   entreprise,
   prestation,
   salaries,
+  embed = false,
 }: {
   entreprise: Tables<"entreprises">;
   prestation: Tables<"prestations">;
   salaries: Salarie[];
+  embed?: boolean;
 }) {
   const supabase = useMemo(() => createClient(), []);
+  const [montageA] = useState(() => Date.now());
   const skipSalarieStep = salaries.length <= 1;
   const [step, setStep] = useState(skipSalarieStep ? 1 : 0);
 
@@ -55,6 +60,7 @@ export function ReservationStepper({
   const [adresse, setAdresse] = useState("");
   const [codePostal, setCodePostal] = useState("");
   const [notes, setNotes] = useState("");
+  const [siteWeb, setSiteWeb] = useState(""); // piège anti-bot, doit rester vide
   const [envoi, setEnvoi] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [erreurReservation, setErreurReservation] = useState<string | null>(null);
@@ -112,32 +118,38 @@ export function ReservationStepper({
     if (!creneauChoisi || !nom.trim() || !tel.trim()) return;
     setEnvoi(true);
     setErreurReservation(null);
-    const { data, error } = await supabase.rpc("reserver_rdv", {
-      p_entreprise: entreprise.id,
-      p_prestation: prestation.id,
-      p_salarie: creneauChoisi.salarie_id,
-      p_debut: creneauChoisi.debut,
-      p_nom: nom.trim(),
-      p_email: email.trim() || "",
-      p_tel: tel.trim(),
-      p_notes: notes.trim() || "",
-      p_adresse: adresse.trim() || undefined,
-      p_code_postal: codePostal.trim() || undefined,
-    });
+
+    const formData = new FormData();
+    formData.set("entreprise_id", entreprise.id);
+    formData.set("prestation_id", prestation.id);
+    formData.set("salarie_id", creneauChoisi.salarie_id);
+    formData.set("debut", creneauChoisi.debut);
+    formData.set("nom", nom.trim());
+    formData.set("email", email.trim());
+    formData.set("tel", tel.trim());
+    formData.set("notes", notes.trim());
+    formData.set("adresse", adresse.trim());
+    formData.set("code_postal", codePostal.trim());
+    formData.set("site_web", siteWeb);
+    formData.set("rendu_a", String(montageA));
+
+    const resultat = await reserverRdvAction(null, formData);
     setEnvoi(false);
-    if (error) {
-      setErreurReservation(error.message);
-      toast.error("La réservation a échoué", { description: error.message });
+    if (resultat?.error) {
+      setErreurReservation(resultat.error);
+      toast.error("La réservation a échoué", { description: resultat.error });
       return;
     }
-    setToken(data as string);
+    setToken(resultat!.token!);
     setStep(3);
   }
 
   return (
     <div>
       <Link
-        href={`/e/${entreprise.slug}`}
+        href={`${embed ? "/embed" : "/e"}/${entreprise.slug}`}
+        target={embed ? "_blank" : undefined}
+        rel={embed ? "noopener" : undefined}
         className="inline-flex items-center gap-1 text-sm text-muted hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" /> Retour à {entreprise.nom}
@@ -230,10 +242,13 @@ export function ReservationStepper({
             <p className="py-6 text-sm text-danger">{erreurCreneaux}</p>
           )}
           {!chargementCreneaux && !erreurCreneaux && datesDisponibles.length === 0 && (
-            <p className="py-6 text-sm text-muted">
-              Aucun créneau disponible dans les prochaines semaines. Contactez directement{" "}
-              {entreprise.nom} au {entreprise.telephone ?? "numéro non renseigné"}.
-            </p>
+            <div className="space-y-4 py-6">
+              <p className="text-sm text-muted">
+                Aucun créneau disponible dans les prochaines semaines. Contactez directement{" "}
+                {entreprise.nom} au {entreprise.telephone ?? "numéro non renseigné"}.
+              </p>
+              <ListeAttenteForm entrepriseId={entreprise.id} prestationId={prestation.id} />
+            </div>
           )}
           {!chargementCreneaux && datesDisponibles.length > 0 && (
             <>
@@ -300,6 +315,20 @@ export function ReservationStepper({
               {labelDateComplete(creneauChoisi.debut)} à {labelHeure(creneauChoisi.debut)}
             </span>
           </Card>
+
+          {/* Piège anti-bot : invisible et ignoré par les humains, jamais affiché */}
+          <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+            <label htmlFor="site_web">Ne pas remplir ce champ</label>
+            <input
+              id="site_web"
+              name="site_web"
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={siteWeb}
+              onChange={(e) => setSiteWeb(e.target.value)}
+            />
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -389,13 +418,20 @@ export function ReservationStepper({
 
           <div className="mx-auto mt-6 flex max-w-sm flex-col gap-2">
             <Button asChild>
-              <Link href={`/rdv/${token}`}>Gérer mon rendez-vous</Link>
+              <Link href={`/rdv/${token}`} target={embed ? "_blank" : undefined} rel={embed ? "noopener" : undefined}>
+                Gérer mon rendez-vous
+              </Link>
             </Button>
             <Button
               variant="outline"
-              onClick={() => {
-                navigator.clipboard.writeText(`${window.location.origin}/rdv/${token}`);
-                toast.success("Lien copié");
+              onClick={async () => {
+                const lien = `${window.location.origin}/rdv/${token}`;
+                try {
+                  await navigator.clipboard.writeText(lien);
+                  toast.success("Lien copié");
+                } catch {
+                  toast.info("Voici votre lien de suivi", { description: lien });
+                }
               }}
             >
               <Copy className="size-4" /> Copier le lien de suivi

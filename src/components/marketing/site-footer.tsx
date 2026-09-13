@@ -48,9 +48,18 @@ export function SiteFooter() {
         <div>
           <h3 className="text-sm font-semibold text-foreground">Entreprise</h3>
           <ul className="mt-3 space-y-2 text-sm text-muted">
-            <li className="hover:text-foreground">Mentions légales</li>
-            <li className="hover:text-foreground">Confidentialité</li>
-            <li className="hover:text-foreground">Contact</li>
+            <li>
+              <Link href="/mentions-legales" className="hover:text-foreground">Mentions légales</Link>
+            </li>
+            <li>
+              <Link href="/cgu-cgv" className="hover:text-foreground">CGU / CGV</Link>
+            </li>
+            <li>
+              <Link href="/confidentialite" className="hover:text-foreground">Confidentialité</Link>
+            </li>
+            <li>
+              <a href="mailto:contact@artisanrdv.fr" className="hover:text-foreground">Contact</a>
+            </li>
           </ul>
         </div>
       </div>

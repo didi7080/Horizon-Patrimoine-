@@ -1,5 +1,6 @@
 import { CalendarClock, Inbox } from "lucide-react";
 import { RdvRow, type RdvAvecRelations } from "@/components/dashboard/rdv-row";
+import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist";
 import { Card } from "@/components/ui/card";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
@@ -18,7 +19,12 @@ export default async function DashboardPage() {
   const selectRdv =
     "*, prestations(nom), salaries(nom, couleur), clients(nom, telephone)";
 
-  const [{ data: demandes }, { data: rdvAujourdhui }] = await Promise.all([
+  const [
+    { data: demandes },
+    { data: rdvAujourdhui },
+    { count: nbPrestations },
+    { count: nbHoraires },
+  ] = await Promise.all([
     supabase
       .from("rendez_vous")
       .select(selectRdv)
@@ -33,7 +39,25 @@ export default async function DashboardPage() {
       .gte("debut", debutJour.toISOString())
       .lte("debut", finJour.toISOString())
       .order("debut"),
+    supabase
+      .from("prestations")
+      .select("id", { count: "exact", head: true })
+      .eq("entreprise_id", entreprise.id),
+    supabase
+      .from("horaires")
+      .select("id, salaries!inner(entreprise_id)", { count: "exact", head: true })
+      .eq("salaries.entreprise_id", entreprise.id),
   ]);
+
+  const etapesOnboarding = [
+    { label: "Ajouter au moins une prestation", fait: (nbPrestations ?? 0) > 0, href: "/dashboard/prestations" },
+    { label: "Définir les horaires de votre équipe", fait: (nbHoraires ?? 0) > 0, href: "/dashboard/equipe" },
+    {
+      label: "Personnaliser votre page (description, couleur)",
+      fait: Boolean(entreprise.description),
+      href: "/dashboard/reglages",
+    },
+  ];
 
   const aujourdhui = new Intl.DateTimeFormat("fr-FR", {
     weekday: "long",
@@ -48,6 +72,8 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-semibold capitalize text-foreground">{aujourdhui}</h1>
         <p className="mt-1 text-muted">Vue du jour pour {entreprise.nom}.</p>
       </div>
+
+      <OnboardingChecklist etapes={etapesOnboarding} />
 
       {demandes && demandes.length > 0 && (
         <section>
