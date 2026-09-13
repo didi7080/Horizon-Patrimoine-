@@ -1,0 +1,17 @@
+export const METIERS = [
+  "Plomberie",
+  "Électricité",
+  "Chauffage",
+  "Serrurerie",
+  "Menuiserie",
+  "Peinture",
+  "Maçonnerie",
+  "Couverture",
+  "Carrelage",
+  "Vitrerie",
+  "Climatisation",
+  "Plâtrerie",
+  "Jardinage & paysagisme",
+  "Rénovation générale",
+  "Ramonage",
+] as const;
