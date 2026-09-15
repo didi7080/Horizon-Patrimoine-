@@ -24,11 +24,12 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { StatutBadge } from "@/components/statut-badge";
+import { CalendrierCreneaux, type Creneau } from "@/components/booking/calendrier-creneaux";
 import { createClient } from "@/lib/supabase/client";
 import { formatDateLongue, formatDuree, formatHeure, formatPrix } from "@/lib/utils";
 import type { RdvDetail } from "@/app/rdv/[token]/page";
 
-type Creneau = { debut: string; fin: string; salarie_id: string; salarie_nom: string };
+const FENETRE_REPORT_JOURS = 30;
 
 export function GestionRdv({ token, initial }: { token: string; initial: RdvDetail }) {
   const supabase = useMemo(() => createClient(), []);
@@ -36,9 +37,6 @@ export function GestionRdv({ token, initial }: { token: string; initial: RdvDeta
   const [enCours, setEnCours] = useState(false);
   const [dialogAnnulation, setDialogAnnulation] = useState(false);
   const [dialogReport, setDialogReport] = useState(false);
-
-  const [creneaux, setCreneaux] = useState<Creneau[] | null>(null);
-  const [chargementCreneaux, setChargementCreneaux] = useState(false);
   const [nouveauCreneau, setNouveauCreneau] = useState<Creneau | null>(null);
 
   const [note, setNote] = useState(0);
@@ -58,23 +56,6 @@ export function GestionRdv({ token, initial }: { token: string; initial: RdvDeta
     }
     setRdv((r) => ({ ...r, statut: "annule" }));
     toast.success("Rendez-vous annulé");
-  }
-
-  async function ouvrirReport() {
-    setDialogReport(true);
-    if (creneaux) return;
-    setChargementCreneaux(true);
-    const from = new Date();
-    const to = new Date();
-    to.setDate(to.getDate() + 30);
-    const { data, error } = await supabase.rpc("creneaux_disponibles", {
-      p_prestation: rdv.prestation_id as string,
-      p_salarie: rdv.salarie_id,
-      p_from: from.toISOString().slice(0, 10),
-      p_to: to.toISOString().slice(0, 10),
-    });
-    setChargementCreneaux(false);
-    if (!error) setCreneaux((data ?? []) as Creneau[]);
   }
 
   async function confirmerReport() {
@@ -161,7 +142,7 @@ export function GestionRdv({ token, initial }: { token: string; initial: RdvDeta
       {(rdv.statut === "confirme" || rdv.statut === "demande") && !passe && (
         <div className="flex flex-col gap-2 sm:flex-row">
           {rdv.statut === "confirme" && (
-            <Button variant="outline" className="flex-1" onClick={ouvrirReport}>
+            <Button variant="outline" className="flex-1" onClick={() => setDialogReport(true)}>
               Reporter le rendez-vous
             </Button>
           )}
@@ -224,37 +205,13 @@ export function GestionRdv({ token, initial }: { token: string; initial: RdvDeta
           <DialogHeader>
             <DialogTitle>Choisir un nouveau créneau</DialogTitle>
           </DialogHeader>
-          {chargementCreneaux && (
-            <div className="flex items-center gap-2 py-6 text-sm text-muted">
-              <Loader2 className="size-4 animate-spin" /> Chargement des disponibilités…
-            </div>
-          )}
-          {!chargementCreneaux && creneaux && creneaux.length === 0 && (
-            <p className="py-4 text-sm text-muted">Aucun créneau disponible actuellement.</p>
-          )}
-          {!chargementCreneaux && creneaux && creneaux.length > 0 && (
-            <div className="grid max-h-72 grid-cols-3 gap-2 overflow-y-auto">
-              {creneaux.map((c) => (
-                <button
-                  key={`${c.salarie_id}-${c.debut}`}
-                  onClick={() => setNouveauCreneau(c)}
-                  className={`rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
-                    nouveauCreneau?.debut === c.debut
-                      ? "border-brand bg-brand text-brand-foreground"
-                      : "border-border hover:bg-surface"
-                  }`}
-                >
-                  {new Intl.DateTimeFormat("fr-FR", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    timeZone: "Europe/Paris",
-                  }).format(new Date(c.debut))}
-                </button>
-              ))}
-            </div>
-          )}
+          <CalendrierCreneaux
+            prestationId={rdv.prestation_id as string}
+            salarieId={rdv.salarie_id}
+            fenetreMaxJours={FENETRE_REPORT_JOURS}
+            creneauChoisi={nouveauCreneau}
+            onChoisir={setNouveauCreneau}
+          />
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Annuler</Button>
