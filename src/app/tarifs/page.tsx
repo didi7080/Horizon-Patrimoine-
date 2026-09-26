@@ -8,19 +8,37 @@ import { Card } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Tarifs — ArtisanRDV" };
 
-// Prix indicatif : à ajuster selon votre positionnement avant mise en production.
-const PRIX_MENSUEL = 39;
-
-const INCLUS = [
-  "Page de réservation en ligne illimitée",
-  "Agenda multi-salariés avec horaires personnalisés",
-  "Rappels automatiques par e-mail (SMS en option)",
-  "Widget intégrable sur votre propre site internet",
-  "Avis clients vérifiés",
-  "Gestion des demandes, annulations et reports",
-  "Statistiques et export de vos données",
-  "Assistance par e-mail",
-];
+// Prix indicatifs : à ajuster selon votre positionnement avant mise en production.
+const FORMULES = [
+  {
+    nom: "Solo",
+    description: "Jusqu'à 3 salariés",
+    prix: 39,
+    misEnAvant: false,
+    inclus: [
+      "Page de réservation en ligne illimitée",
+      "Agenda jusqu'à 3 salariés",
+      "Rappels automatiques par e-mail (SMS en option)",
+      "Widget intégrable sur votre propre site internet",
+      "Avis clients vérifiés",
+      "Gestion des demandes, annulations et reports",
+      "Assistance par e-mail",
+    ],
+  },
+  {
+    nom: "Équipe",
+    description: "À partir de 4 salariés",
+    prix: 89,
+    misEnAvant: true,
+    inclus: [
+      "Tout ce qui est inclus dans Solo",
+      "Agenda multi-salariés illimité",
+      "Statistiques et export de vos données",
+      "Invitation de membres avec accès dédié",
+      "Assistance prioritaire",
+    ],
+  },
+] as const;
 
 const QUESTIONS = [
   {
@@ -32,8 +50,8 @@ const QUESTIONS = [
     r: "Oui, l’abonnement est sans engagement : vous pouvez résilier à tout moment depuis votre espace.",
   },
   {
-    q: "Le nombre de salariés est-il limité ?",
-    r: "Non, votre équipe et le nombre de rendez-vous ne sont pas plafonnés.",
+    q: "Comment choisir entre Solo et Équipe ?",
+    r: "La formule s’ajuste automatiquement selon le nombre de salariés que vous ajoutez : Solo jusqu’à 3, Équipe à partir de 4. Le nombre de rendez-vous n’est jamais plafonné.",
   },
   {
     q: "Puis-je utiliser mon propre nom de domaine ?",
@@ -48,35 +66,44 @@ export default function TarifsPage() {
       <main className="flex-1">
         <section className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
           <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">
-            Un tarif simple, pour toute votre équipe
+            Un tarif adapté à la taille de votre équipe
           </h1>
           <p className="mt-3 text-muted">
-            Un seul abonnement, sans surprise, sans engagement. 14 jours d’essai offerts.
+            Sans surprise, sans engagement. La formule s’adapte automatiquement à votre effectif.
+            14 jours d’essai offerts.
           </p>
         </section>
 
-        <section className="mx-auto max-w-md px-4 pb-20 sm:px-6">
-          <Card className="border-brand/30 p-8 text-center shadow-lg shadow-slate-900/5">
-            <p className="text-sm font-semibold uppercase tracking-wide text-brand">Standard</p>
-            <p className="mt-3 flex items-end justify-center gap-1">
-              <span className="text-5xl font-semibold text-foreground">{PRIX_MENSUEL}€</span>
-              <span className="pb-1.5 text-muted">/ mois HT</span>
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">Par entreprise, équipe illimitée</p>
-            <Button asChild size="lg" className="mt-6 w-full">
-              <Link href="/inscription">
-                Démarrer l’essai gratuit <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <ul className="mt-8 space-y-3 text-left text-sm">
-              {INCLUS.map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <Check className="mt-0.5 size-4 shrink-0 text-brand" />
-                  <span className="text-foreground">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
+        <section className="mx-auto grid max-w-3xl gap-6 px-4 pb-20 sm:px-6 md:grid-cols-2">
+          {FORMULES.map((formule) => (
+            <Card
+              key={formule.nom}
+              className={
+                "p-8 text-center" +
+                (formule.misEnAvant ? " border-brand/30 shadow-lg shadow-slate-900/5" : "")
+              }
+            >
+              <p className="text-sm font-semibold uppercase tracking-wide text-brand">{formule.nom}</p>
+              <p className="mt-3 flex items-end justify-center gap-1">
+                <span className="text-5xl font-semibold text-foreground">{formule.prix}€</span>
+                <span className="pb-1.5 text-muted">/ mois HT</span>
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{formule.description}</p>
+              <Button asChild size="lg" className="mt-6 w-full">
+                <Link href="/inscription">
+                  Démarrer l’essai gratuit <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+              <ul className="mt-8 space-y-3 text-left text-sm">
+                {formule.inclus.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <Check className="mt-0.5 size-4 shrink-0 text-brand" />
+                    <span className="text-foreground">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ))}
         </section>
 
         <section className="border-t border-border bg-surface py-16">

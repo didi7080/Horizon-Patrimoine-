@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ReservationsChart, type PointJournalier } from "@/components/dashboard/reservations-chart";
 import { formatDateCourte, formatPrix } from "@/lib/utils";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getPrixAbonnementCents } from "@/lib/stripe";
+import { getPrixAbonnementCents, planPourEffectif } from "@/lib/stripe";
 import type { Enums } from "@/lib/types/database";
 
 export const revalidate = 0;
@@ -62,17 +62,27 @@ export default async function AdminPage() {
   debut30j.setDate(debut30j.getDate() - 29);
   debut30j.setHours(0, 0, 0, 0);
 
-  const [{ data: entreprises }, { data: abonnements }, { data: rdvsMois }, { data: avis }, prixCents] =
-    await Promise.all([
-      supabase.from("entreprises").select("id, nom, slug, created_at").order("created_at", { ascending: false }),
-      supabase.from("abonnements").select("entreprise_id, statut, essai_fin"),
-      supabase
-        .from("rendez_vous")
-        .select("entreprise_id, statut, prestations(prix_cents)")
-        .gte("debut", debutMois.toISOString()),
-      supabase.from("avis").select("entreprise_id, note"),
-      getPrixAbonnementCents(),
-    ]);
+  const [
+    { data: entreprises },
+    { data: abonnements },
+    { data: rdvsMois },
+    { data: avis },
+    prixSoloCents,
+    prixEquipeCents,
+  ] = await Promise.all([
+    supabase
+      .from("entreprises")
+      .select("id, nom, slug, created_at, nb_salaries")
+      .order("created_at", { ascending: false }),
+    supabase.from("abonnements").select("entreprise_id, statut, essai_fin"),
+    supabase
+      .from("rendez_vous")
+      .select("entreprise_id, statut, prestations(prix_cents)")
+      .gte("debut", debutMois.toISOString()),
+    supabase.from("avis").select("entreprise_id, note"),
+    getPrixAbonnementCents("solo"),
+    getPrixAbonnementCents("equipe"),
+  ]);
 
   const listeEntreprises = entreprises ?? [];
   const abonnementParEntreprise = new Map((abonnements ?? []).map((a) => [a.entreprise_id, a]));
@@ -84,7 +94,17 @@ export default async function AdminPage() {
     (e) => new Date(e.created_at) >= debutMois,
   ).length;
 
-  const mrrEstimeCents = prixCents !== null ? parStatut.actif * prixCents : null;
+  const prixParPlan = { solo: prixSoloCents, equipe: prixEquipeCents };
+  let mrrEstimeCents: number | null = 0;
+  for (const e of listeEntreprises) {
+    if (abonnementParEntreprise.get(e.id)?.statut !== "actif") continue;
+    const prix = prixParPlan[planPourEffectif(e.nb_salaries)];
+    if (prix === null) {
+      mrrEstimeCents = null;
+      break;
+    }
+    mrrEstimeCents += prix;
+  }
 
   const caParEntreprise = new Map<string, number>();
   const rdvParEntreprise = new Map<string, number>();
@@ -165,6 +185,7 @@ export default async function AdminPage() {
           <thead className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3">Entreprise</th>
+              <th className="px-4 py-3">Formule</th>
               <th className="px-4 py-3">Abonnement</th>
               <th className="px-4 py-3">Inscrite le</th>
               <th className="px-4 py-3">RDV ce mois</th>
@@ -179,6 +200,9 @@ export default async function AdminPage() {
               return (
                 <tr key={e.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 font-medium text-foreground">{e.nom}</td>
+                  <td className="px-4 py-3 text-muted">
+                    {planPourEffectif(e.nb_salaries) === "equipe" ? "Équipe" : "Solo"}
+                  </td>
                   <td className="px-4 py-3">
                     {abonnement ? (
                       <Badge variant={ABONNEMENT_CONFIG[abonnement.statut].variant}>
@@ -199,7 +223,7 @@ export default async function AdminPage() {
             })}
             {listeEntreprises.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-muted">
+                <td colSpan={7} className="px-4 py-6 text-center text-muted">
                   Aucune entreprise pour le moment.
                 </td>
               </tr>

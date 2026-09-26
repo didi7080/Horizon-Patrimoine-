@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getStripe, facturationConfiguree } from "@/lib/stripe";
+import { getStripe, facturationConfiguree, idPrixPour, planPourEffectif } from "@/lib/stripe";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,8 +18,12 @@ export async function demarrerAbonnement() {
     throw new Error("La facturation en ligne n'est pas encore configurée par ArtisanRDV.");
   }
   const stripe = getStripe()!;
-  const priceId = process.env.STRIPE_PRICE_ID!;
   const { entreprise } = await getEntrepriseContext();
+  const plan = planPourEffectif(entreprise.nb_salaries);
+  const priceId = idPrixPour(plan);
+  if (!priceId) {
+    throw new Error("La facturation en ligne n'est pas encore configurée par ArtisanRDV.");
+  }
   const supabase = await createClient();
   const {
     data: { user },
@@ -39,8 +43,8 @@ export async function demarrerAbonnement() {
     customer: abonnement?.stripe_customer_id ?? undefined,
     customer_email: abonnement?.stripe_customer_id ? undefined : (user?.email ?? undefined),
     client_reference_id: entreprise.id,
-    subscription_data: { metadata: { entreprise_id: entreprise.id } },
-    metadata: { entreprise_id: entreprise.id },
+    subscription_data: { metadata: { entreprise_id: entreprise.id, plan } },
+    metadata: { entreprise_id: entreprise.id, plan },
     success_url: `${base}/dashboard/reglages?abonnement=succes`,
     cancel_url: `${base}/dashboard/reglages?abonnement=annule`,
   });

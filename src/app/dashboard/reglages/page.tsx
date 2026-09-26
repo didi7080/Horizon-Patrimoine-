@@ -6,7 +6,7 @@ import { ReglagesForm } from "@/components/dashboard/reglages-form";
 import { formatDateCourte } from "@/lib/utils";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
-import { facturationConfiguree } from "@/lib/stripe";
+import { facturationConfiguree, planPourEffectif } from "@/lib/stripe";
 import { demarrerAbonnement, ouvrirPortailFacturation } from "@/app/dashboard/facturation/actions";
 
 export const revalidate = 0;
@@ -29,6 +29,7 @@ export default async function ReglagesPage() {
     .maybeSingle();
 
   const facturationPrete = facturationConfiguree();
+  const plan = planPourEffectif(entreprise.nb_salaries);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -45,11 +46,12 @@ export default async function ReglagesPage() {
                 <CreditCard className="size-4 text-brand" /> Abonnement ArtisanRDV
               </p>
               <p className="mt-1 text-sm text-muted">
+                Formule {plan === "equipe" ? "Équipe" : "Solo"}
                 {abonnement.statut === "essai"
-                  ? `Essai jusqu'au ${formatDateCourte(abonnement.essai_fin)}`
+                  ? ` · Essai jusqu'au ${formatDateCourte(abonnement.essai_fin)}`
                   : abonnement.periode_fin
-                    ? `Renouvellement le ${formatDateCourte(abonnement.periode_fin)}`
-                    : null}
+                    ? ` · Renouvellement le ${formatDateCourte(abonnement.periode_fin)}`
+                    : ""}
               </p>
             </div>
             <Badge variant={LABEL_ABONNEMENT[abonnement.statut]?.variant ?? "neutral"}>
