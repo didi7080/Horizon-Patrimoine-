@@ -11,6 +11,20 @@ function statutDepuis(status: Stripe.Subscription.Status): "actif" | "impaye" | 
   return "annule";
 }
 
+async function marquerAcompte(rdvToken: string) {
+  const secret = process.env.SUPABASE_SYNC_SECRET;
+  if (!secret) {
+    console.error("SUPABASE_SYNC_SECRET absent : acompte non synchronisé.");
+    return;
+  }
+  const supabase = createAnonClient();
+  const { error } = await supabase.rpc("marquer_acompte_paye", {
+    p_secret: secret,
+    p_token: rdvToken,
+  });
+  if (error) console.error("marquer_acompte_paye a échoué:", error.message);
+}
+
 async function synchroniser(
   entrepriseId: string,
   statut: string,
@@ -58,6 +72,11 @@ export async function POST(request: Request) {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
+      if (session.mode === "payment") {
+        const rdvToken = session.metadata?.rdv_token;
+        if (rdvToken) await marquerAcompte(rdvToken);
+        break;
+      }
       const entrepriseId = session.metadata?.entreprise_id ?? session.client_reference_id;
       if (entrepriseId) {
         await synchroniser(

@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { SalarieFormDialog } from "@/components/dashboard/salarie-form-dialog";
 import { HorairesEditor } from "@/components/dashboard/horaires-editor";
 import { InviteMembreDialog } from "@/components/dashboard/invite-membre-dialog";
+import { IcalLinkButton } from "@/components/dashboard/ical-link-button";
 import { initiales } from "@/lib/utils";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
@@ -119,6 +120,7 @@ export default async function EquipePage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    <IcalLinkButton token={s.ical_token} />
                     <form action={toggleSalarieActif.bind(null, s.id, !s.actif)}>
                       <Button size="sm" variant="ghost" type="submit">
                         {s.actif ? "Désactiver" : "Réactiver"}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   CalendarDays,
   Clock3,
+  CreditCard,
   Loader2,
   MapPin,
   Phone,
@@ -27,11 +28,20 @@ import { StatutBadge } from "@/components/statut-badge";
 import { CalendrierCreneaux, type Creneau } from "@/components/booking/calendrier-creneaux";
 import { createClient } from "@/lib/supabase/client";
 import { formatDateLongue, formatDuree, formatHeure, formatPrix } from "@/lib/utils";
+import { payerAcompteAction } from "@/app/rdv/[token]/actions";
 import type { RdvDetail } from "@/app/rdv/[token]/page";
 
 const FENETRE_REPORT_JOURS = 30;
 
-export function GestionRdv({ token, initial }: { token: string; initial: RdvDetail }) {
+export function GestionRdv({
+  token,
+  initial,
+  facturationPrete,
+}: {
+  token: string;
+  initial: RdvDetail;
+  facturationPrete: boolean;
+}) {
   const supabase = useMemo(() => createClient(), []);
   const [rdv, setRdv] = useState(initial);
   const [enCours, setEnCours] = useState(false);
@@ -44,6 +54,18 @@ export function GestionRdv({ token, initial }: { token: string; initial: RdvDeta
   const [avisEnvoye, setAvisEnvoye] = useState(rdv.a_un_avis);
 
   const passe = new Date(rdv.debut) < new Date();
+
+  async function payerAcompte() {
+    setEnCours(true);
+    try {
+      await payerAcompteAction(token);
+    } catch (e) {
+      setEnCours(false);
+      toast.error("Impossible de lancer le paiement", {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
+  }
 
   async function annuler() {
     setEnCours(true);
@@ -138,6 +160,22 @@ export function GestionRdv({ token, initial }: { token: string; initial: RdvDeta
           </p>
         ) : null}
       </Card>
+
+      {rdv.acompte_cents && !rdv.acompte_paye && !passe && rdv.statut !== "annule" && (
+        <Card className="p-5">
+          {facturationPrete ? (
+            <Button className="w-full" onClick={payerAcompte} disabled={enCours}>
+              {enCours ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
+              Payer l’acompte de {formatPrix(rdv.acompte_cents)}
+            </Button>
+          ) : (
+            <p className="text-sm text-muted">
+              Le paiement en ligne de l’acompte n’est pas encore disponible. Merci de contacter{" "}
+              {rdv.entreprise_nom} directement.
+            </p>
+          )}
+        </Card>
+      )}
 
       {(rdv.statut === "confirme" || rdv.statut === "demande") && !passe && (
         <div className="flex flex-col gap-2 sm:flex-row">
