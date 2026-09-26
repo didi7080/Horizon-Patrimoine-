@@ -15,3 +15,16 @@ export function getStripe(): Stripe | null {
 export function facturationConfiguree(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID);
 }
+
+/** Récupère le prix (en centimes) de l'abonnement configuré, ou null si non configuré/indisponible. */
+export async function getPrixAbonnementCents(): Promise<number | null> {
+  const stripe = getStripe();
+  const priceId = process.env.STRIPE_PRICE_ID;
+  if (!stripe || !priceId) return null;
+  try {
+    const prix = await stripe.prices.retrieve(priceId);
+    return prix.unit_amount ?? null;
+  } catch {
+    return null;
+  }
+}
