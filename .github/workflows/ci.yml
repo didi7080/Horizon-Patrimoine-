@@ -22,14 +22,11 @@ jobs:
       - name: Installer les dépendances
         run: npm ci
 
-      - name: Vérifier les types
-        run: npx tsc --noEmit -p tsconfig.json
-
       - name: Lint
         run: npx eslint src --max-warnings=0
 
       - name: Tests
         run: npx vitest run
 
-      - name: Build
+      - name: Build (inclut la vérification des types)
         run: npm run build
