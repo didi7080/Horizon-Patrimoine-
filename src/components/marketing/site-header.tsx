@@ -25,6 +25,9 @@ export async function SiteHeader() {
           <Link href="/tarifs" className="transition-colors hover:text-foreground">
             Tarifs
           </Link>
+          <Link href="/groupe" className="transition-colors hover:text-foreground">
+            Le groupe
+          </Link>
         </nav>
         <div className="flex items-center gap-2">
           {user ? (
