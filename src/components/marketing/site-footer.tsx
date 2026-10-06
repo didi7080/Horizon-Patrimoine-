@@ -49,6 +49,12 @@ export function SiteFooter() {
           <h3 className="text-sm font-semibold text-foreground">Entreprise</h3>
           <ul className="mt-3 space-y-2 text-sm text-muted">
             <li>
+              <Link href="/groupe" className="hover:text-foreground">Le groupe Tout Faire Habitat</Link>
+            </li>
+            <li>
+              <Link href="/franchise" className="hover:text-foreground">Rejoindre le réseau</Link>
+            </li>
+            <li>
               <Link href="/mentions-legales" className="hover:text-foreground">Mentions légales</Link>
             </li>
             <li>
