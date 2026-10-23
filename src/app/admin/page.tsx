@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ReservationsChart, type PointJournalier } from "@/components/dashboard/reservations-chart";
 import { formatDateCourte, formatPrix } from "@/lib/utils";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getPrixAbonnementCents, planPourEffectif } from "@/lib/stripe";
+import { getPrixAbonnementCents, planEffectif, nomPlan } from "@/lib/stripe";
 import type { Enums } from "@/lib/types/database";
 
 export const revalidate = 0;
@@ -69,12 +69,13 @@ export default async function AdminPage() {
     { data: avis },
     prixSoloCents,
     prixEquipeCents,
+    prixPremiumCents,
   ] = await Promise.all([
     supabase
       .from("entreprises")
       .select("id, nom, slug, created_at, nb_salaries")
       .order("created_at", { ascending: false }),
-    supabase.from("abonnements").select("entreprise_id, statut, essai_fin"),
+    supabase.from("abonnements").select("entreprise_id, statut, essai_fin, plan"),
     supabase
       .from("rendez_vous")
       .select("entreprise_id, statut, prestations(prix_cents)")
@@ -82,6 +83,7 @@ export default async function AdminPage() {
     supabase.from("avis").select("entreprise_id, note"),
     getPrixAbonnementCents("solo"),
     getPrixAbonnementCents("equipe"),
+    getPrixAbonnementCents("premium"),
   ]);
 
   const listeEntreprises = entreprises ?? [];
@@ -94,11 +96,12 @@ export default async function AdminPage() {
     (e) => new Date(e.created_at) >= debutMois,
   ).length;
 
-  const prixParPlan = { solo: prixSoloCents, equipe: prixEquipeCents };
+  const prixParPlan = { solo: prixSoloCents, equipe: prixEquipeCents, premium: prixPremiumCents };
   let mrrEstimeCents: number | null = 0;
   for (const e of listeEntreprises) {
-    if (abonnementParEntreprise.get(e.id)?.statut !== "actif") continue;
-    const prix = prixParPlan[planPourEffectif(e.nb_salaries)];
+    const abonnement = abonnementParEntreprise.get(e.id);
+    if (abonnement?.statut !== "actif") continue;
+    const prix = prixParPlan[planEffectif(abonnement.plan, e.nb_salaries)];
     if (prix === null) {
       mrrEstimeCents = null;
       break;
@@ -201,7 +204,7 @@ export default async function AdminPage() {
                 <tr key={e.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 font-medium text-foreground">{e.nom}</td>
                   <td className="px-4 py-3 text-muted">
-                    {planPourEffectif(e.nb_salaries) === "equipe" ? "Équipe" : "Solo"}
+                    {nomPlan(planEffectif(abonnement?.plan, e.nb_salaries))}
                   </td>
                   <td className="px-4 py-3">
                     {abonnement ? (

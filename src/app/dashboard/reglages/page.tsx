@@ -1,4 +1,5 @@
-import { CreditCard } from "lucide-react";
+import { Calculator, CreditCard } from "lucide-react";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { ReglagesForm } from "@/components/dashboard/reglages-form";
 import { formatDateCourte } from "@/lib/utils";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
-import { facturationConfiguree, planPourEffectif } from "@/lib/stripe";
+import { facturationConfiguree, planPourEffectif, planEffectif, nomPlan, accesOutilsCalcul } from "@/lib/stripe";
 import { demarrerAbonnement, ouvrirPortailFacturation } from "@/app/dashboard/facturation/actions";
 
 export const revalidate = 0;
@@ -29,7 +30,8 @@ export default async function ReglagesPage() {
     .maybeSingle();
 
   const facturationPrete = facturationConfiguree();
-  const plan = planPourEffectif(entreprise.nb_salaries);
+  const planSuggere = planPourEffectif(entreprise.nb_salaries);
+  const planActuel = planEffectif(abonnement?.plan, entreprise.nb_salaries);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -46,7 +48,7 @@ export default async function ReglagesPage() {
                 <CreditCard className="size-4 text-brand" /> Abonnement ArtisanRDV
               </p>
               <p className="mt-1 text-sm text-muted">
-                Formule {plan === "equipe" ? "Équipe" : "Solo"}
+                Formule {nomPlan(planActuel)}
                 {abonnement.statut === "essai"
                   ? ` · Essai jusqu'au ${formatDateCourte(abonnement.essai_fin)}`
                   : abonnement.periode_fin
@@ -60,19 +62,28 @@ export default async function ReglagesPage() {
           </div>
 
           {facturationPrete ? (
-            <form
-              action={
-                abonnement.statut === "actif" || abonnement.statut === "impaye"
-                  ? ouvrirPortailFacturation
-                  : demarrerAbonnement
-              }
-            >
-              <Button type="submit" size="sm">
-                {abonnement.statut === "actif" || abonnement.statut === "impaye"
-                  ? "Gérer mon abonnement"
-                  : "Passer à l'abonnement payant"}
-              </Button>
-            </form>
+            <div className="flex flex-wrap items-center gap-2">
+              <form
+                action={
+                  abonnement.statut === "actif" || abonnement.statut === "impaye"
+                    ? ouvrirPortailFacturation
+                    : demarrerAbonnement.bind(null, planSuggere)
+                }
+              >
+                <Button type="submit" size="sm">
+                  {abonnement.statut === "actif" || abonnement.statut === "impaye"
+                    ? "Gérer mon abonnement"
+                    : `Passer à la formule ${nomPlan(planSuggere)}`}
+                </Button>
+              </form>
+              {!accesOutilsCalcul(planActuel) && (
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/dashboard/outils-premium">
+                    <Calculator className="size-3.5" /> Passer à Premium (outils de calcul)
+                  </Link>
+                </Button>
+              )}
+            </div>
           ) : (
             <p className="rounded-lg bg-surface px-3 py-2 text-xs text-muted-foreground">
               La facturation en ligne n’est pas encore activée sur cette instance ArtisanRDV.

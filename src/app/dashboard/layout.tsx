@@ -4,10 +4,12 @@ import { Logo } from "@/components/logo";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getEntrepriseContext } from "@/lib/dashboard/context";
+import { getEntrepriseContext, planActuelEntreprise } from "@/lib/dashboard/context";
+import { accesOutilsCalcul } from "@/lib/stripe";
 
 export default async function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
   const { entreprise, role } = await getEntrepriseContext();
+  const plan = await planActuelEntreprise(entreprise.id, entreprise.nb_salaries);
 
   return (
     <div className="min-h-screen bg-surface lg:flex">
@@ -29,7 +31,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
             {role === "owner" ? "Propriétaire" : role === "admin" ? "Administrateur" : "Salarié"}
           </Badge>
         </div>
-        <DashboardNav />
+        <DashboardNav afficherBadgePremium={!accesOutilsCalcul(plan)} />
       </aside>
 
       <div className="flex-1">

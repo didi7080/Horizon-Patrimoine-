@@ -14,6 +14,7 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const LIENS = [
@@ -21,7 +22,7 @@ const LIENS = [
   { href: "/dashboard/rendez-vous", label: "Rendez-vous", icon: CalendarDays },
   { href: "/dashboard/statistiques", label: "Statistiques", icon: BarChart3 },
   { href: "/dashboard/prestations", label: "Prestations", icon: Wrench },
-  { href: "/dashboard/outils", label: "Outils de calcul", icon: Calculator },
+  { href: "/dashboard/outils", label: "Outils de calcul", icon: Calculator, premium: true },
   { href: "/dashboard/equipe", label: "Équipe", icon: Users },
   { href: "/dashboard/clients", label: "Clients", icon: ListChecks },
   { href: "/dashboard/avis", label: "Avis", icon: Star },
@@ -29,7 +30,7 @@ const LIENS = [
   { href: "/dashboard/reglages", label: "Réglages", icon: Settings },
 ];
 
-export function DashboardNav() {
+export function DashboardNav({ afficherBadgePremium = false }: { afficherBadgePremium?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -47,6 +48,11 @@ export function DashboardNav() {
           >
             <lien.icon className="size-4" />
             {lien.label}
+            {lien.premium && afficherBadgePremium && (
+              <Badge variant="info" className="ml-auto">
+                Premium
+              </Badge>
+            )}
           </Link>
         );
       })}

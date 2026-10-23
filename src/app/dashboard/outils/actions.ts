@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getEntrepriseContext } from "@/lib/dashboard/context";
+import { getEntrepriseContext, planActuelEntreprise } from "@/lib/dashboard/context";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { accesOutilsCalcul } from "@/lib/stripe";
 import { modelesPourMetier } from "@/lib/calculs/modeles";
 import { formuleValide } from "@/lib/calculs/evaluateur";
 import type { Champ, DonneesEtude, Formule } from "@/lib/calculs/types";
@@ -11,6 +12,17 @@ function admin() {
   const client = createAdminClient();
   if (!client) throw new Error("La connexion à la base de données n'est pas configurée.");
   return client;
+}
+
+/** Comme getEntrepriseContext(), mais vérifie en plus l'accès à la formule Premium
+ * (les pages sont déjà protégées par le layout, ceci couvre un appel direct de l'action). */
+async function getEntrepriseAvecOutils() {
+  const contexte = await getEntrepriseContext();
+  const plan = await planActuelEntreprise(contexte.entreprise.id, contexte.entreprise.nb_salaries);
+  if (!accesOutilsCalcul(plan)) {
+    throw new Error("Les outils de calcul nécessitent la formule Premium.");
+  }
+  return contexte;
 }
 
 function parserChamps(json: string): Champ[] {
@@ -37,7 +49,7 @@ function parserFormules(json: string): Formule[] {
 // --- Modules de calcul ----------------------------------------------------
 
 export async function creerModuleDepuisModele(nomModele: string) {
-  const { entreprise } = await getEntrepriseContext();
+  const { entreprise } = await getEntrepriseAvecOutils();
   const modeles = modelesPourMetier(entreprise.metier);
   const modele = modeles.find((m) => m.nom === nomModele);
   if (!modele) throw new Error("Modèle introuvable.");
@@ -54,7 +66,7 @@ export async function creerModuleDepuisModele(nomModele: string) {
 }
 
 export async function enregistrerModule(formData: FormData) {
-  const { entreprise } = await getEntrepriseContext();
+  const { entreprise } = await getEntrepriseAvecOutils();
 
   const id = String(formData.get("id") ?? "").trim() || null;
   const nom = String(formData.get("nom") ?? "").trim();
@@ -92,7 +104,7 @@ export async function enregistrerModule(formData: FormData) {
 }
 
 export async function supprimerModule(id: string) {
-  const { entreprise } = await getEntrepriseContext();
+  const { entreprise } = await getEntrepriseAvecOutils();
   const { error } = await admin().from("modules_calcul").delete().eq("id", id).eq("entreprise_id", entreprise.id);
   if (error) throw new Error(error.message);
   revalidatePath("/dashboard/outils");
@@ -101,7 +113,7 @@ export async function supprimerModule(id: string) {
 // --- Études -----------------------------------------------------------
 
 export async function enregistrerEtude(formData: FormData) {
-  const { entreprise, userId } = await getEntrepriseContext();
+  const { entreprise, userId } = await getEntrepriseAvecOutils();
 
   const id = String(formData.get("id") ?? "").trim() || null;
   const titre = String(formData.get("titre") ?? "").trim();
@@ -153,7 +165,7 @@ export async function enregistrerEtude(formData: FormData) {
 }
 
 export async function enregistrerDonneesEtude(etudeId: string, donnees: DonneesEtude) {
-  const { entreprise } = await getEntrepriseContext();
+  const { entreprise } = await getEntrepriseAvecOutils();
   const { error } = await admin()
     .from("etudes")
     .update({ donnees, updated_at: new Date().toISOString() })
@@ -164,7 +176,7 @@ export async function enregistrerDonneesEtude(etudeId: string, donnees: DonneesE
 }
 
 export async function changerStatutEtude(etudeId: string, statut: "brouillon" | "termine") {
-  const { entreprise } = await getEntrepriseContext();
+  const { entreprise } = await getEntrepriseAvecOutils();
   const { error } = await admin()
     .from("etudes")
     .update({ statut, updated_at: new Date().toISOString() })
@@ -176,7 +188,7 @@ export async function changerStatutEtude(etudeId: string, statut: "brouillon" | 
 }
 
 export async function supprimerEtude(etudeId: string) {
-  const { entreprise } = await getEntrepriseContext();
+  const { entreprise } = await getEntrepriseAvecOutils();
   const { error } = await admin().from("etudes").delete().eq("id", etudeId).eq("entreprise_id", entreprise.id);
   if (error) throw new Error(error.message);
   revalidatePath("/dashboard/outils/etudes");
@@ -185,7 +197,7 @@ export async function supprimerEtude(etudeId: string) {
 // --- Catalogue matériel -----------------------------------------------
 
 export async function enregistrerMateriel(formData: FormData) {
-  const { entreprise } = await getEntrepriseContext();
+  const { entreprise } = await getEntrepriseAvecOutils();
 
   const id = String(formData.get("id") ?? "").trim() || null;
   const designation = String(formData.get("designation") ?? "").trim();
@@ -224,7 +236,7 @@ export async function enregistrerMateriel(formData: FormData) {
 }
 
 export async function togglerMaterielActif(id: string, actif: boolean) {
-  const { entreprise } = await getEntrepriseContext();
+  const { entreprise } = await getEntrepriseAvecOutils();
   const { error } = await admin()
     .from("materiel_catalogue")
     .update({ actif })
@@ -235,7 +247,7 @@ export async function togglerMaterielActif(id: string, actif: boolean) {
 }
 
 export async function supprimerMateriel(id: string) {
-  const { entreprise } = await getEntrepriseContext();
+  const { entreprise } = await getEntrepriseAvecOutils();
   const { error } = await admin().from("materiel_catalogue").delete().eq("id", id).eq("entreprise_id", entreprise.id);
   if (error) throw new Error(error.message);
   revalidatePath("/dashboard/outils/materiel");

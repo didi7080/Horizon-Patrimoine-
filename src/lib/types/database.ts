@@ -19,6 +19,7 @@ export type Database = {
           entreprise_id: string
           essai_fin: string
           periode_fin: string | null
+          plan: string | null
           statut: Database["public"]["Enums"]["statut_abonnement"]
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -28,6 +29,7 @@ export type Database = {
           entreprise_id: string
           essai_fin?: string
           periode_fin?: string | null
+          plan?: string | null
           statut?: Database["public"]["Enums"]["statut_abonnement"]
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -37,6 +39,7 @@ export type Database = {
           entreprise_id?: string
           essai_fin?: string
           periode_fin?: string | null
+          plan?: string | null
           statut?: Database["public"]["Enums"]["statut_abonnement"]
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null

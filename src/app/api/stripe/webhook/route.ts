@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { createAnonClient } from "@/lib/supabase/anon";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,7 @@ async function synchroniser(
   customerId?: string | null,
   subscriptionId?: string | null,
   periodeFinUnix?: number | null,
+  plan?: string | null,
 ) {
   const secret = process.env.SUPABASE_SYNC_SECRET;
   if (!secret) {
@@ -47,6 +49,19 @@ async function synchroniser(
     p_periode_fin: periodeFinUnix ? new Date(periodeFinUnix * 1000).toISOString() : undefined,
   });
   if (error) console.error("sync_abonnement a échoué:", error.message);
+
+  // La formule (solo/équipe/premium) n'est pas gérée par sync_abonnement :
+  // on la met à jour séparément via le client service_role.
+  if (plan) {
+    const admin = createAdminClient();
+    if (admin) {
+      const { error: erreurPlan } = await admin
+        .from("abonnements")
+        .update({ plan })
+        .eq("entreprise_id", entrepriseId);
+      if (erreurPlan) console.error("Mise à jour du plan échouée:", erreurPlan.message);
+    }
+  }
 }
 
 export async function POST(request: Request) {
@@ -84,6 +99,8 @@ export async function POST(request: Request) {
           "actif",
           typeof session.customer === "string" ? session.customer : session.customer?.id,
           typeof session.subscription === "string" ? session.subscription : session.subscription?.id,
+          null,
+          session.metadata?.plan,
         );
       }
       break;
@@ -100,6 +117,7 @@ export async function POST(request: Request) {
           typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id,
           subscription.id,
           periodeFin,
+          subscription.metadata?.plan,
         );
       }
       break;

@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { planPourEffectif, idPrixPour, facturationConfiguree, SEUIL_SALARIES_EQUIPE } from "./stripe";
+import {
+  planPourEffectif,
+  planEffectif,
+  accesOutilsCalcul,
+  idPrixPour,
+  facturationConfiguree,
+  SEUIL_SALARIES_EQUIPE,
+} from "./stripe";
 
 const ENV_ORIGINAL = { ...process.env };
 
@@ -20,6 +27,30 @@ describe("planPourEffectif", () => {
   });
 });
 
+describe("planEffectif", () => {
+  it("renvoie la formule choisie explicitement si elle est valide", () => {
+    expect(planEffectif("premium", 1)).toBe("premium");
+    expect(planEffectif("equipe", 1)).toBe("equipe");
+  });
+
+  it("retombe sur la formule suggérée par l'effectif si aucune n'est choisie", () => {
+    expect(planEffectif(null, 1)).toBe("solo");
+    expect(planEffectif(undefined, SEUIL_SALARIES_EQUIPE)).toBe("equipe");
+  });
+
+  it("ignore une valeur de plan invalide en base", () => {
+    expect(planEffectif("autre-chose", 1)).toBe("solo");
+  });
+});
+
+describe("accesOutilsCalcul", () => {
+  it("n'autorise que la formule Premium", () => {
+    expect(accesOutilsCalcul("premium")).toBe(true);
+    expect(accesOutilsCalcul("solo")).toBe(false);
+    expect(accesOutilsCalcul("equipe")).toBe(false);
+  });
+});
+
 describe("idPrixPour", () => {
   it("renvoie le prix Solo configuré pour la formule Solo", () => {
     process.env.STRIPE_PRICE_ID_SOLO = "price_solo";
@@ -37,6 +68,18 @@ describe("idPrixPour", () => {
     process.env.STRIPE_PRICE_ID_SOLO = "price_solo";
     delete process.env.STRIPE_PRICE_ID_EQUIPE;
     expect(idPrixPour("equipe")).toBe("price_solo");
+  });
+
+  it("renvoie le prix Premium quand il est configuré", () => {
+    process.env.STRIPE_PRICE_ID_PREMIUM = "price_premium";
+    expect(idPrixPour("premium")).toBe("price_premium");
+  });
+
+  it("ne replie jamais Premium sur une autre formule (pour ne pas sous-facturer)", () => {
+    delete process.env.STRIPE_PRICE_ID_PREMIUM;
+    process.env.STRIPE_PRICE_ID_SOLO = "price_solo";
+    process.env.STRIPE_PRICE_ID_EQUIPE = "price_equipe";
+    expect(idPrixPour("premium")).toBeNull();
   });
 
   it("renvoie null si aucun prix n'est configuré", () => {

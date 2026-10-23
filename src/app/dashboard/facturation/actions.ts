@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getStripe, facturationConfiguree, idPrixPour, planPourEffectif } from "@/lib/stripe";
+import { getStripe, facturationConfiguree, idPrixPour, planPourEffectif, type Plan } from "@/lib/stripe";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
 
@@ -13,16 +13,20 @@ async function origine(): Promise<string> {
   return `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
 }
 
-export async function demarrerAbonnement() {
+export async function demarrerAbonnement(planChoisi?: Plan) {
   if (!facturationConfiguree()) {
     throw new Error("La facturation en ligne n'est pas encore configurée par ArtisanRDV.");
   }
   const stripe = getStripe()!;
   const { entreprise } = await getEntrepriseContext();
-  const plan = planPourEffectif(entreprise.nb_salaries);
+  const plan = planChoisi ?? planPourEffectif(entreprise.nb_salaries);
   const priceId = idPrixPour(plan);
   if (!priceId) {
-    throw new Error("La facturation en ligne n'est pas encore configurée par ArtisanRDV.");
+    throw new Error(
+      plan === "premium"
+        ? "La formule Premium (outils de calcul) n'est pas encore configurée par ArtisanRDV."
+        : "La facturation en ligne n'est pas encore configurée par ArtisanRDV.",
+    );
   }
   const supabase = await createClient();
   const {

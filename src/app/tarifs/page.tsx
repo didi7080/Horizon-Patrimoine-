@@ -28,7 +28,7 @@ const FORMULES = [
   {
     nom: "Équipe",
     description: "À partir de 4 salariés",
-    prix: 89,
+    prix: 90,
     misEnAvant: true,
     inclus: [
       "Tout ce qui est inclus dans Solo",
@@ -36,6 +36,19 @@ const FORMULES = [
       "Statistiques et export de vos données",
       "Invitation de membres avec accès dédié",
       "Assistance prioritaire",
+    ],
+  },
+  {
+    nom: "Premium",
+    description: "Toute taille d'entreprise",
+    prix: 149,
+    misEnAvant: false,
+    inclus: [
+      "Tout ce qui est inclus dans Équipe",
+      "Outils de calcul adaptés à votre métier",
+      "Modules de calcul personnalisables (vos propres formules)",
+      "Études chantier, catalogue matériel et chiffrage",
+      "Présentations client imprimables",
     ],
   },
 ] as const;
@@ -54,6 +67,10 @@ const QUESTIONS = [
     r: "La formule s’ajuste automatiquement selon le nombre de salariés que vous ajoutez : Solo jusqu’à 3, Équipe à partir de 4. Le nombre de rendez-vous n’est jamais plafonné.",
   },
   {
+    q: "Qu’est-ce que la formule Premium apporte en plus ?",
+    r: "Premium donne accès aux Outils de calcul : vous créez vos propres modules de calcul adaptés à votre métier (vos champs, vos formules), les utilisez pour des études chantier chiffrées avec votre catalogue matériel, puis générez une présentation client imprimable. Disponible quelle que soit la taille de votre entreprise.",
+  },
+  {
     q: "Puis-je utiliser mon propre nom de domaine ?",
     r: "Vous pouvez intégrer la réservation directement sur votre site via le widget, en conservant votre propre domaine et votre référencement.",
   },
@@ -69,12 +86,12 @@ export default function TarifsPage() {
             Un tarif adapté à la taille de votre équipe
           </h1>
           <p className="mt-3 text-muted">
-            Sans surprise, sans engagement. La formule s’adapte automatiquement à votre effectif.
-            14 jours d’essai offerts.
+            Sans surprise, sans engagement. Solo et Équipe s’adaptent automatiquement à votre
+            effectif ; Premium ajoute les outils de calcul pour tous. 14 jours d’essai offerts.
           </p>
         </section>
 
-        <section className="mx-auto grid max-w-3xl gap-6 px-4 pb-20 sm:px-6 md:grid-cols-2">
+        <section className="mx-auto grid max-w-5xl gap-6 px-4 pb-20 sm:px-6 md:grid-cols-3">
           {FORMULES.map((formule) => (
             <Card
               key={formule.nom}

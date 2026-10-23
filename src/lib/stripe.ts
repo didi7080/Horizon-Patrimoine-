@@ -12,21 +12,42 @@ export function getStripe(): Stripe | null {
   return instance;
 }
 
-export type Plan = "solo" | "equipe";
+export type Plan = "solo" | "equipe" | "premium";
 
 /** À partir de ce nombre de salariés, l'entreprise bascule sur la formule Équipe. */
 export const SEUIL_SALARIES_EQUIPE = 4;
 
-export function planPourEffectif(nbSalaries: number): Plan {
+const NOMS_PLAN: Record<Plan, string> = { solo: "Solo", equipe: "Équipe", premium: "Premium" };
+
+export function nomPlan(plan: Plan): string {
+  return NOMS_PLAN[plan];
+}
+
+/** Formule suggérée selon l'effectif (ne renvoie jamais "premium" : c'est toujours un choix explicite). */
+export function planPourEffectif(nbSalaries: number): "solo" | "equipe" {
   return nbSalaries >= SEUIL_SALARIES_EQUIPE ? "equipe" : "solo";
+}
+
+/** Formule effective d'une entreprise : celle choisie explicitement (abonnement), sinon celle suggérée par l'effectif. */
+export function planEffectif(planAbonnement: string | null | undefined, nbSalaries: number): Plan {
+  if (planAbonnement === "solo" || planAbonnement === "equipe" || planAbonnement === "premium") {
+    return planAbonnement;
+  }
+  return planPourEffectif(nbSalaries);
+}
+
+/** Seule la formule Premium donne accès aux outils de calcul. */
+export function accesOutilsCalcul(plan: Plan): boolean {
+  return plan === "premium";
 }
 
 export function facturationConfiguree(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID_SOLO);
 }
 
-/** Renvoie l'ID de prix Stripe pour la formule demandée, avec repli sur Solo si Équipe n'est pas configuré. */
+/** Renvoie l'ID de prix Stripe pour la formule demandée (null si cette formule n'est pas configurée). */
 export function idPrixPour(plan: Plan): string | null {
+  if (plan === "premium") return process.env.STRIPE_PRICE_ID_PREMIUM ?? null;
   if (plan === "equipe" && process.env.STRIPE_PRICE_ID_EQUIPE) {
     return process.env.STRIPE_PRICE_ID_EQUIPE;
   }
