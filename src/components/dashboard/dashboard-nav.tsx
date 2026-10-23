@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   CalendarDays,
+  Calculator,
   Code2,
   LayoutGrid,
   ListChecks,
@@ -20,6 +21,7 @@ const LIENS = [
   { href: "/dashboard/rendez-vous", label: "Rendez-vous", icon: CalendarDays },
   { href: "/dashboard/statistiques", label: "Statistiques", icon: BarChart3 },
   { href: "/dashboard/prestations", label: "Prestations", icon: Wrench },
+  { href: "/dashboard/outils", label: "Outils de calcul", icon: Calculator },
   { href: "/dashboard/equipe", label: "Équipe", icon: Users },
   { href: "/dashboard/clients", label: "Clients", icon: ListChecks },
   { href: "/dashboard/avis", label: "Avis", icon: Star },

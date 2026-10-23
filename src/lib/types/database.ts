@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -271,6 +271,82 @@ export type Database = {
         }
         Relationships: []
       }
+      etudes: {
+        Row: {
+          client_adresse: string | null
+          client_email: string | null
+          client_id: string | null
+          client_nom: string | null
+          client_telephone: string | null
+          created_at: string
+          created_by: string | null
+          donnees: Json
+          entreprise_id: string
+          id: string
+          metier: string
+          module_id: string | null
+          statut: string
+          titre: string
+          updated_at: string
+        }
+        Insert: {
+          client_adresse?: string | null
+          client_email?: string | null
+          client_id?: string | null
+          client_nom?: string | null
+          client_telephone?: string | null
+          created_at?: string
+          created_by?: string | null
+          donnees?: Json
+          entreprise_id: string
+          id?: string
+          metier: string
+          module_id?: string | null
+          statut?: string
+          titre: string
+          updated_at?: string
+        }
+        Update: {
+          client_adresse?: string | null
+          client_email?: string | null
+          client_id?: string | null
+          client_nom?: string | null
+          client_telephone?: string | null
+          created_at?: string
+          created_by?: string | null
+          donnees?: Json
+          entreprise_id?: string
+          id?: string
+          metier?: string
+          module_id?: string | null
+          statut?: string
+          titre?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "etudes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "etudes_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "etudes_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules_calcul"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       horaires: {
         Row: {
           debut: string
@@ -361,6 +437,53 @@ export type Database = {
           },
         ]
       }
+      materiel_catalogue: {
+        Row: {
+          actif: boolean
+          coefficient: number
+          created_at: string
+          designation: string
+          entreprise_id: string
+          famille: string | null
+          id: string
+          prix_achat_cents: number | null
+          reference: string | null
+          unite: string
+        }
+        Insert: {
+          actif?: boolean
+          coefficient?: number
+          created_at?: string
+          designation: string
+          entreprise_id: string
+          famille?: string | null
+          id?: string
+          prix_achat_cents?: number | null
+          reference?: string | null
+          unite?: string
+        }
+        Update: {
+          actif?: boolean
+          coefficient?: number
+          created_at?: string
+          designation?: string
+          entreprise_id?: string
+          famille?: string | null
+          id?: string
+          prix_achat_cents?: number | null
+          reference?: string | null
+          unite?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "materiel_catalogue_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memberships: {
         Row: {
           created_at: string
@@ -396,6 +519,50 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modules_calcul: {
+        Row: {
+          champs: Json
+          created_at: string
+          entreprise_id: string
+          formules: Json
+          id: string
+          metier: string
+          nom: string
+          ordre: number
+          updated_at: string
+        }
+        Insert: {
+          champs?: Json
+          created_at?: string
+          entreprise_id: string
+          formules?: Json
+          id?: string
+          metier: string
+          nom: string
+          ordre?: number
+          updated_at?: string
+        }
+        Update: {
+          champs?: Json
+          created_at?: string
+          entreprise_id?: string
+          formules?: Json
+          id?: string
+          metier?: string
+          nom?: string
+          ordre?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modules_calcul_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
             referencedColumns: ["id"]
           },
         ]
@@ -797,6 +964,8 @@ export type Database = {
         }
         Returns: undefined
       }
+      test_simple: { Args: never; Returns: number }
+      test2: { Args: never; Returns: number }
       valider_demande_rdv: {
         Args: { p_accepter: boolean; p_rdv: string }
         Returns: undefined
