@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -12,6 +12,15 @@ export const metadata: Metadata = {
   title: "ArtisanRDV — La prise de rendez-vous en ligne pour les artisans",
   description:
     "ArtisanRDV donne à chaque artisan une page de réservation en ligne professionnelle : agenda partagé, rappels automatiques, avis clients et paiement d'acompte. Le Doctolib des artisans.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ArtisanRDV",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1d6f5c",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
