@@ -15,10 +15,13 @@ async function origine(): Promise<string> {
 
 /**
  * Crée (si besoin) le compte Stripe connecté de l'entreprise et redirige vers
- * l'onboarding hébergé par Stripe. Compte "standard" : l'artisan garde son
- * propre tableau de bord Stripe et gère lui-même ses remboursements et
- * litiges. Les acomptes clients lui sont versés directement, sans commission
- * ArtisanRDV (voir payerAcompteAction).
+ * l'onboarding hébergé par Stripe. Compte v2 (API Accounts v2, requise par
+ * Stripe pour toute nouvelle plateforme Connect) avec la configuration
+ * "merchant" et le risque géré par Stripe (losses_collector: "stripe") :
+ * l'artisan garde son propre tableau de bord Stripe et gère lui-même ses
+ * remboursements et litiges, sans qu'ArtisanRDV n'ait à accepter de
+ * responsabilité sur les pertes. Les acomptes clients lui sont versés
+ * directement, sans commission ArtisanRDV (voir payerAcompteAction).
  */
 export async function demarrerConnexionStripe() {
   if (!facturationConfiguree()) {
@@ -31,11 +34,17 @@ export async function demarrerConnexionStripe() {
 
   let compteId = entreprise.stripe_connect_account_id;
   if (!compteId) {
-    const compte = await stripe.accounts.create({
-      type: "standard",
-      country: "FR",
-      email: entreprise.email ?? undefined,
-      business_profile: { name: entreprise.nom, url: `${await origine()}/e/${entreprise.slug}` },
+    const compte = await stripe.v2.core.accounts.create({
+      contact_email: entreprise.email ?? undefined,
+      display_name: entreprise.nom,
+      dashboard: "full",
+      identity: { country: "FR" },
+      defaults: {
+        responsibilities: { fees_collector: "stripe", losses_collector: "stripe" },
+      },
+      configuration: {
+        merchant: { capabilities: { card_payments: { requested: true } } },
+      },
     });
     compteId = compte.id;
     const { error } = await admin
@@ -46,11 +55,16 @@ export async function demarrerConnexionStripe() {
   }
 
   const base = await origine();
-  const lien = await stripe.accountLinks.create({
+  const lien = await stripe.v2.core.accountLinks.create({
     account: compteId,
-    refresh_url: `${base}/dashboard/paiements?connect=refresh`,
-    return_url: `${base}/dashboard/paiements?connect=retour`,
-    type: "account_onboarding",
+    use_case: {
+      type: "account_onboarding",
+      account_onboarding: {
+        configurations: ["merchant"],
+        refresh_url: `${base}/dashboard/paiements?connect=refresh`,
+        return_url: `${base}/dashboard/paiements?connect=retour`,
+      },
+    },
   });
 
   redirect(lien.url);
@@ -69,8 +83,11 @@ export async function etatConnexionStripe(): Promise<StatutConnexionStripe> {
   if (!stripe) return { connecte: true, actif: false };
 
   try {
-    const compte = await stripe.accounts.retrieve(entreprise.stripe_connect_account_id);
-    return { connecte: true, actif: Boolean(compte.charges_enabled) };
+    const compte = await stripe.v2.core.accounts.retrieve(entreprise.stripe_connect_account_id, {
+      include: ["configuration.merchant"],
+    });
+    const actif = compte.configuration?.merchant?.capabilities?.card_payments?.status === "active";
+    return { connecte: true, actif };
   } catch {
     return { connecte: true, actif: false };
   }
