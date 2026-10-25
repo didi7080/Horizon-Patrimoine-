@@ -38,13 +38,23 @@ export default async function RdvTokenPage({ params }: PageProps<"/rdv/[token]">
   const { data } = await supabase.rpc("rdv_par_token", { p_token: token });
   const rdv = data as RdvDetail | null;
 
+  let acompteDisponible = false;
+  if (rdv) {
+    const { data: entreprise } = await supabase
+      .from("entreprises")
+      .select("stripe_connect_account_id")
+      .eq("id", rdv.entreprise_id)
+      .maybeSingle();
+    acompteDisponible = facturationConfiguree() && Boolean(entreprise?.stripe_connect_account_id);
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main className="flex-1 bg-surface">
         <div className="mx-auto max-w-xl px-4 py-10 sm:px-6">
           {rdv ? (
-            <GestionRdv token={token} initial={rdv} facturationPrete={facturationConfiguree()} />
+            <GestionRdv token={token} initial={rdv} facturationPrete={acompteDisponible} />
           ) : (
             <div className="rounded-xl border border-dashed border-border bg-background p-10 text-center">
               <p className="font-medium text-foreground">Rendez-vous introuvable</p>

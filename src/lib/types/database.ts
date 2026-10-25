@@ -217,6 +217,7 @@ export type Database = {
           recap_actif: boolean
           slug: string
           sms_actif: boolean
+          stripe_connect_account_id: string | null
           telephone: string | null
           validation_manuelle: boolean
           ville: string | null
@@ -242,6 +243,7 @@ export type Database = {
           recap_actif?: boolean
           slug: string
           sms_actif?: boolean
+          stripe_connect_account_id?: string | null
           telephone?: string | null
           validation_manuelle?: boolean
           ville?: string | null
@@ -267,6 +269,7 @@ export type Database = {
           recap_actif?: boolean
           slug?: string
           sms_actif?: boolean
+          stripe_connect_account_id?: string | null
           telephone?: string | null
           validation_manuelle?: boolean
           ville?: string | null
@@ -873,6 +876,7 @@ export type Database = {
           recap_actif: boolean
           slug: string
           sms_actif: boolean
+          stripe_connect_account_id: string | null
           telephone: string | null
           validation_manuelle: boolean
           ville: string | null
