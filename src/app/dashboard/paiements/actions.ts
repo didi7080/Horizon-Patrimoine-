@@ -35,8 +35,11 @@ export async function demarrerConnexionStripe() {
   let compteId = entreprise.stripe_connect_account_id;
   if (!compteId) {
     const compte = await stripe.v2.core.accounts.create({
+      // display_name (et les autres infos d'identité) ne peuvent pas être
+      // pré-remplis par une plateforme Connect basée en France sans passer
+      // par un "account token" signé : Stripe les collecte directement
+      // auprès de l'artisan pendant l'onboarding hébergé (accountLinks).
       contact_email: entreprise.email ?? undefined,
-      display_name: entreprise.nom,
       dashboard: "full",
       identity: { country: "FR" },
       defaults: {
