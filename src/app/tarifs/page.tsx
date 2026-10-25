@@ -28,7 +28,7 @@ const FORMULES = [
   {
     nom: "Équipe",
     description: "À partir de 4 salariés",
-    prix: 90,
+    prix: 89,
     misEnAvant: true,
     inclus: [
       "Tout ce qui est inclus dans Solo",
@@ -41,7 +41,7 @@ const FORMULES = [
   {
     nom: "Premium",
     description: "Toute taille d'entreprise",
-    prix: 149,
+    prix: 119,
     misEnAvant: false,
     inclus: [
       "Tout ce qui est inclus dans Équipe",
