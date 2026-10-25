@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { createAnonClient } from "@/lib/supabase/anon";
@@ -23,7 +24,10 @@ async function marquerAcompte(rdvToken: string) {
     p_secret: secret,
     p_token: rdvToken,
   });
-  if (error) console.error("marquer_acompte_paye a échoué:", error.message);
+  if (error) {
+    console.error("marquer_acompte_paye a échoué:", error.message);
+    Sentry.captureMessage("marquer_acompte_paye a échoué", { extra: { rdvToken, erreur: error.message } });
+  }
 }
 
 async function synchroniser(
@@ -48,7 +52,10 @@ async function synchroniser(
     p_subscription: subscriptionId ?? undefined,
     p_periode_fin: periodeFinUnix ? new Date(periodeFinUnix * 1000).toISOString() : undefined,
   });
-  if (error) console.error("sync_abonnement a échoué:", error.message);
+  if (error) {
+    console.error("sync_abonnement a échoué:", error.message);
+    Sentry.captureMessage("sync_abonnement a échoué", { extra: { entrepriseId, statut, erreur: error.message } });
+  }
 
   // La formule (solo/équipe/premium) n'est pas gérée par sync_abonnement :
   // on la met à jour séparément via le client service_role.
@@ -59,7 +66,10 @@ async function synchroniser(
         .from("abonnements")
         .update({ plan })
         .eq("entreprise_id", entrepriseId);
-      if (erreurPlan) console.error("Mise à jour du plan échouée:", erreurPlan.message);
+      if (erreurPlan) {
+        console.error("Mise à jour du plan échouée:", erreurPlan.message);
+        Sentry.captureMessage("Mise à jour du plan échouée", { extra: { entrepriseId, plan, erreur: erreurPlan.message } });
+      }
     }
   }
 }
