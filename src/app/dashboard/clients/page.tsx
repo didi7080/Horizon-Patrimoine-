@@ -1,4 +1,6 @@
+import { Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ClientRow } from "@/components/dashboard/client-row";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
@@ -26,9 +28,16 @@ export default async function ClientsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Clients</h1>
-        <p className="mt-1 text-muted">{clients?.length ?? 0} clients enregistrés.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Clients</h1>
+          <p className="mt-1 text-muted">{clients?.length ?? 0} clients enregistrés.</p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <a href="/api/export/clients">
+            <Download className="size-3.5" /> Exporter (CSV)
+          </a>
+        </Button>
       </div>
 
       <div className="space-y-2">

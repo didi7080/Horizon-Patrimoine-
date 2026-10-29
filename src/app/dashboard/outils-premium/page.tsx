@@ -14,6 +14,7 @@ const AVANTAGES = [
   "Des études chantier par client, avec résultats calculés en direct",
   "Un catalogue matériel réutilisable pour chiffrer vos devis",
   "Une présentation client imprimable en un clic",
+  "Un assistant IA : questions admin/juridique/technique et création de devis par simple message",
 ];
 
 export default async function OutilsPremiumPage() {
@@ -27,7 +28,7 @@ export default async function OutilsPremiumPage() {
         <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-brand-light text-brand">
           <Calculator className="size-6" />
         </div>
-        <h1 className="mt-4 text-2xl font-semibold text-foreground">Outils de calcul</h1>
+        <h1 className="mt-4 text-2xl font-semibold text-foreground">Outils de calcul & assistant IA</h1>
         <p className="mt-1 text-muted">
           Réservés à la formule Premium
           {entreprise.metier ? ` — disponibles pour votre métier (${entreprise.metier})` : ""}.
