@@ -23,13 +23,12 @@ export default async function DocumentsPage() {
   const { entreprise } = await getEntrepriseContext();
   const admin = createAdminClient();
 
-  const { data: documents } = admin
-    ? await admin
-        .from("documents")
-        .select("*")
-        .eq("entreprise_id", entreprise.id)
-        .order("created_at", { ascending: false })
-    : { data: null };
+  const [{ data: documents }, { data: clients }] = admin
+    ? await Promise.all([
+        admin.from("documents").select("*").eq("entreprise_id", entreprise.id).order("created_at", { ascending: false }),
+        admin.from("clients").select("id, nom").eq("entreprise_id", entreprise.id).order("nom"),
+      ])
+    : [{ data: null }, { data: null }];
 
   const devis = (documents ?? []).filter((d) => d.type === "devis");
   const factures = (documents ?? []).filter((d) => d.type === "facture");
@@ -46,7 +45,7 @@ export default async function DocumentsPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-medium text-foreground">Devis</h2>
-          <DocumentFormDialog type="devis" />
+          <DocumentFormDialog type="devis" clients={clients ?? []} />
         </div>
         <ListeDocuments documents={devis} />
       </section>
@@ -54,7 +53,7 @@ export default async function DocumentsPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-medium text-foreground">Factures</h2>
-          <DocumentFormDialog type="facture" />
+          <DocumentFormDialog type="facture" clients={clients ?? []} />
         </div>
         <ListeDocuments documents={factures} />
       </section>

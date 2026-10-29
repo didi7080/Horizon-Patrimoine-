@@ -229,6 +229,7 @@ export type Database = {
         Row: {
           client_adresse: string | null
           client_email: string | null
+          client_id: string | null
           client_nom: string
           client_telephone: string | null
           created_at: string
@@ -250,6 +251,7 @@ export type Database = {
         Insert: {
           client_adresse?: string | null
           client_email?: string | null
+          client_id?: string | null
           client_nom: string
           client_telephone?: string | null
           created_at?: string
@@ -271,6 +273,7 @@ export type Database = {
         Update: {
           client_adresse?: string | null
           client_email?: string | null
+          client_id?: string | null
           client_nom?: string
           client_telephone?: string | null
           created_at?: string
@@ -302,6 +305,13 @@ export type Database = {
             columns: ["devis_origine_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]

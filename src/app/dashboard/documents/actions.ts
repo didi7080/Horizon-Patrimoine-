@@ -46,10 +46,45 @@ async function prochainNumero(supabase: AdminClient, entrepriseId: string, type:
 
 export async function creerDocument(type: TypeDocument, formData: FormData): Promise<string> {
   const { entreprise, userId } = await getEntrepriseContext();
-  const clientNom = String(formData.get("clientNom") ?? "").trim();
-  if (!clientNom) throw new Error("Le nom du client est requis.");
-
   const supabase = admin();
+
+  const clientIdChoisi = String(formData.get("clientId") ?? "").trim() || null;
+  let clientId = clientIdChoisi;
+  let clientNom: string;
+  let clientAdresse: string | null;
+  let clientTelephone: string | null;
+  let clientEmail: string | null;
+
+  if (clientIdChoisi) {
+    const { data: client, error } = await supabase
+      .from("clients")
+      .select("nom, adresse, telephone, email")
+      .eq("id", clientIdChoisi)
+      .eq("entreprise_id", entreprise.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!client) throw new Error("Client introuvable.");
+    clientNom = client.nom;
+    clientAdresse = client.adresse;
+    clientTelephone = client.telephone;
+    clientEmail = client.email;
+  } else {
+    clientNom = String(formData.get("clientNom") ?? "").trim();
+    if (!clientNom) throw new Error("Le nom du client est requis.");
+    clientAdresse = String(formData.get("clientAdresse") ?? "").trim() || null;
+    clientTelephone = String(formData.get("clientTelephone") ?? "").trim() || null;
+    clientEmail = String(formData.get("clientEmail") ?? "").trim() || null;
+
+    // Enregistre automatiquement ce nouveau client dans le fichier clients, pour le retrouver la prochaine fois.
+    const { data: nouveauClient, error: erreurClient } = await supabase
+      .from("clients")
+      .insert({ entreprise_id: entreprise.id, nom: clientNom, adresse: clientAdresse, telephone: clientTelephone, email: clientEmail })
+      .select("id")
+      .single();
+    if (erreurClient) throw new Error(erreurClient.message);
+    clientId = nouveauClient.id;
+  }
+
   const numero = await prochainNumero(supabase, entreprise.id, type);
 
   const { data, error } = await supabase
@@ -58,10 +93,11 @@ export async function creerDocument(type: TypeDocument, formData: FormData): Pro
       entreprise_id: entreprise.id,
       type,
       numero,
+      client_id: clientId,
       client_nom: clientNom,
-      client_adresse: String(formData.get("clientAdresse") ?? "").trim() || null,
-      client_telephone: String(formData.get("clientTelephone") ?? "").trim() || null,
-      client_email: String(formData.get("clientEmail") ?? "").trim() || null,
+      client_adresse: clientAdresse,
+      client_telephone: clientTelephone,
+      client_email: clientEmail,
       created_by: userId,
     })
     .select("id")
@@ -69,6 +105,7 @@ export async function creerDocument(type: TypeDocument, formData: FormData): Pro
   if (error) throw new Error(error.message);
 
   revalidatePath("/dashboard/documents");
+  revalidatePath("/dashboard/clients");
   return data.id as string;
 }
 
@@ -145,6 +182,7 @@ export async function convertirDevisEnFacture(devisId: string): Promise<string> 
       entreprise_id: entreprise.id,
       type: "facture",
       numero,
+      client_id: devis.client_id,
       client_nom: devis.client_nom,
       client_adresse: devis.client_adresse,
       client_telephone: devis.client_telephone,

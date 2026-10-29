@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { calculerTotaux, type LigneDocument } from "./types";
 
 function ligne(partial: Partial<LigneDocument>): LigneDocument {
-  return { id: "x", designation: "Test", quantite: 1, prixUnitaireCents: 0, tauxTva: 20, ...partial };
+  return { id: "x", designation: "Test", unite: "u", quantite: 1, prixUnitaireCents: 0, tauxTva: 20, ...partial };
 }
 
 describe("calculerTotaux", () => {

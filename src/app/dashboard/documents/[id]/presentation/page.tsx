@@ -82,6 +82,7 @@ export default async function PresentationDocumentPage({ params }: PageProps<"/d
             <tr className="border-b border-border text-left text-muted">
               <th className="py-1.5">Désignation</th>
               <th className="py-1.5 text-right">Qté</th>
+              <th className="py-1.5 text-right">Unité</th>
               <th className="py-1.5 text-right">Prix unit. HT</th>
               <th className="py-1.5 text-right">TVA</th>
               <th className="py-1.5 text-right">Total HT</th>
@@ -92,6 +93,7 @@ export default async function PresentationDocumentPage({ params }: PageProps<"/d
               <tr key={ligne.id} className="border-b border-border last:border-0">
                 <td className="py-1.5 text-foreground">{ligne.designation}</td>
                 <td className="py-1.5 text-right text-foreground">{ligne.quantite}</td>
+                <td className="py-1.5 text-right text-foreground">{ligne.unite}</td>
                 <td className="py-1.5 text-right text-foreground">{formatPrix(ligne.prixUnitaireCents)}</td>
                 <td className="py-1.5 text-right text-foreground">{ligne.tauxTva}%</td>
                 <td className="py-1.5 text-right text-foreground">{formatPrix(ligne.quantite * ligne.prixUnitaireCents)}</td>

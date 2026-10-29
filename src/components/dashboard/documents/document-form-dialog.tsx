@@ -17,9 +17,15 @@ import {
 import { creerDocument } from "@/app/dashboard/documents/actions";
 import type { TypeDocument } from "@/lib/documents/types";
 
-export function DocumentFormDialog({ type }: { type: TypeDocument }) {
+const classeSelect =
+  "flex h-10 w-full rounded-lg border border-border-strong bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20";
+
+type ClientExistant = { id: string; nom: string };
+
+export function DocumentFormDialog({ type, clients }: { type: TypeDocument; clients: ClientExistant[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [clientId, setClientId] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const libelle = type === "devis" ? "devis" : "facture";
@@ -48,24 +54,50 @@ export function DocumentFormDialog({ type }: { type: TypeDocument }) {
           <DialogTitle>Nouveau {libelle}</DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor={`${type}-client-nom`}>Client</Label>
-            <Input id={`${type}-client-nom`} name="clientNom" required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={`${type}-client-adresse`}>Adresse</Label>
-            <Input id={`${type}-client-adresse`} name="clientAdresse" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+          {clients.length > 0 && (
             <div className="space-y-1.5">
-              <Label htmlFor={`${type}-client-tel`}>Téléphone</Label>
-              <Input id={`${type}-client-tel`} name="clientTelephone" />
+              <Label htmlFor={`${type}-client-existant`}>Client</Label>
+              <select
+                id={`${type}-client-existant`}
+                name="clientId"
+                className={classeSelect}
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+              >
+                <option value="">— Nouveau client —</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nom}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor={`${type}-client-email`}>E-mail</Label>
-              <Input id={`${type}-client-email`} name="clientEmail" type="email" />
-            </div>
-          </div>
+          )}
+          {!clientId && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor={`${type}-client-nom`}>Nom du client</Label>
+                <Input id={`${type}-client-nom`} name="clientNom" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`${type}-client-adresse`}>Adresse</Label>
+                <Input id={`${type}-client-adresse`} name="clientAdresse" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor={`${type}-client-tel`}>Téléphone</Label>
+                  <Input id={`${type}-client-tel`} name="clientTelephone" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor={`${type}-client-email`}>E-mail</Label>
+                  <Input id={`${type}-client-email`} name="clientEmail" type="email" />
+                </div>
+              </div>
+              {clients.length > 0 && (
+                <p className="text-xs text-muted">Ce nouveau client sera automatiquement ajouté à votre fichier clients.</p>
+              )}
+            </>
+          )}
           {erreur && <p className="text-sm text-destructive">{erreur}</p>}
           <DialogFooter>
             <DialogClose asChild>

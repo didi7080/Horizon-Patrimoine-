@@ -8,6 +8,7 @@ export const TAUX_TVA = [0, 5.5, 10, 20] as const;
 export type LigneDocument = {
   id: string;
   designation: string;
+  unite: string;
   quantite: number;
   prixUnitaireCents: number;
   tauxTva: number;

@@ -88,7 +88,7 @@ export function DocumentEditeur({
   const totaux = useMemo(() => calculerTotaux(lignes), [lignes]);
 
   function ajouterLigne() {
-    setLignes((l) => [...l, { id: idAleatoire(), designation: "", quantite: 1, prixUnitaireCents: 0, tauxTva: 20 }]);
+    setLignes((l) => [...l, { id: idAleatoire(), designation: "", unite: "heure", quantite: 1, prixUnitaireCents: 0, tauxTva: 20 }]);
   }
   function modifierLigne(index: number, patch: Partial<LigneDocument>) {
     setLignes((l) => l.map((ligne, i) => (i === index ? { ...ligne, ...patch } : ligne)));
@@ -235,7 +235,7 @@ export function DocumentEditeur({
                 key={ligne.id}
                 className="grid grid-cols-1 gap-2 rounded-lg border border-border p-3 sm:grid-cols-12 sm:items-center"
               >
-                <div className="sm:col-span-5">
+                <div className="sm:col-span-4">
                   <Input
                     value={ligne.designation}
                     onChange={(e) => modifierLigne(index, { designation: e.target.value })}
@@ -243,6 +243,13 @@ export function DocumentEditeur({
                   />
                 </div>
                 <div className="sm:col-span-2">
+                  <Input
+                    value={ligne.unite}
+                    onChange={(e) => modifierLigne(index, { unite: e.target.value })}
+                    placeholder="Unité (h, forfait...)"
+                  />
+                </div>
+                <div className="sm:col-span-1">
                   <Input
                     type="number"
                     min={0}
