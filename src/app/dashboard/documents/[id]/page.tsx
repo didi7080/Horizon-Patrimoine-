@@ -43,6 +43,7 @@ export default async function DocumentPage({ params }: PageProps<"/dashboard/doc
         clientAdresseInitiale={document.client_adresse}
         clientTelephoneInitial={document.client_telephone}
         clientEmailInitial={document.client_email}
+        dateEmission={document.date_emission}
         dateValiditeInitiale={document.date_validite}
         dateEcheanceInitiale={document.date_echeance}
         datePrestationInitiale={document.date_prestation}

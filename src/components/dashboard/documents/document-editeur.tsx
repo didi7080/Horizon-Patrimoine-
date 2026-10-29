@@ -26,6 +26,26 @@ function idAleatoire() {
   return `ligne_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+const DELAIS_PAIEMENT = [
+  { jours: 0, label: "À réception" },
+  { jours: 15, label: "15 jours" },
+  { jours: 30, label: "30 jours" },
+  { jours: 45, label: "45 jours" },
+  { jours: 60, label: "60 jours" },
+];
+
+function ajouterJours(dateIso: string, jours: number): string {
+  const d = new Date(`${dateIso}T00:00:00`);
+  d.setDate(d.getDate() + jours);
+  return d.toISOString().slice(0, 10);
+}
+
+function delaiInitial(dateEmission: string, dateEcheance: string): string {
+  if (!dateEcheance) return "0";
+  const correspondance = DELAIS_PAIEMENT.find((d) => ajouterJours(dateEmission, d.jours) === dateEcheance);
+  return correspondance ? String(correspondance.jours) : "personnalise";
+}
+
 const STATUTS_PAR_TYPE: Record<TypeDocument, { valeur: string; label: string }[]> = {
   devis: [
     { valeur: "brouillon", label: "Brouillon" },
@@ -49,6 +69,7 @@ export function DocumentEditeur({
   clientAdresseInitiale,
   clientTelephoneInitial,
   clientEmailInitial,
+  dateEmission,
   dateValiditeInitiale,
   dateEcheanceInitiale,
   datePrestationInitiale,
@@ -63,6 +84,7 @@ export function DocumentEditeur({
   clientAdresseInitiale: string | null;
   clientTelephoneInitial: string | null;
   clientEmailInitial: string | null;
+  dateEmission: string;
   dateValiditeInitiale: string | null;
   dateEcheanceInitiale: string | null;
   datePrestationInitiale: string | null;
@@ -76,7 +98,10 @@ export function DocumentEditeur({
   const [clientTelephone, setClientTelephone] = useState(clientTelephoneInitial ?? "");
   const [clientEmail, setClientEmail] = useState(clientEmailInitial ?? "");
   const [dateValidite, setDateValidite] = useState(dateValiditeInitiale ?? "");
-  const [dateEcheance, setDateEcheance] = useState(dateEcheanceInitiale ?? "");
+  const [delaiPaiement, setDelaiPaiement] = useState(() => delaiInitial(dateEmission, dateEcheanceInitiale ?? ""));
+  const [dateEcheance, setDateEcheance] = useState(
+    dateEcheanceInitiale ?? (delaiPaiement !== "personnalise" ? ajouterJours(dateEmission, Number(delaiPaiement)) : ""),
+  );
   const [datePrestation, setDatePrestation] = useState(datePrestationInitiale ?? "");
   const [notes, setNotes] = useState(notesInitiales ?? "");
   const [statut, setStatut] = useState(statutInitial);
@@ -86,6 +111,13 @@ export function DocumentEditeur({
   const [erreur, setErreur] = useState<string | null>(null);
 
   const totaux = useMemo(() => calculerTotaux(lignes), [lignes]);
+
+  function changerDelaiPaiement(valeur: string) {
+    setDelaiPaiement(valeur);
+    if (valeur !== "personnalise") {
+      setDateEcheance(ajouterJours(dateEmission, Number(valeur)));
+    }
+  }
 
   function ajouterLigne() {
     setLignes((l) => [...l, { id: idAleatoire(), designation: "", unite: "heure", quantite: 1, prixUnitaireCents: 0, tauxTva: 20 }]);
@@ -313,8 +345,34 @@ export function DocumentEditeur({
             </div>
           ) : (
             <div className="space-y-1.5">
-              <Label htmlFor="date-echeance">Date d’échéance</Label>
-              <Input id="date-echeance" type="date" value={dateEcheance} onChange={(e) => setDateEcheance(e.target.value)} />
+              <Label htmlFor="delai-paiement">Délai de paiement</Label>
+              <select
+                id="delai-paiement"
+                className={classeSelect}
+                value={delaiPaiement}
+                onChange={(e) => changerDelaiPaiement(e.target.value)}
+              >
+                {DELAIS_PAIEMENT.map((d) => (
+                  <option key={d.jours} value={d.jours}>
+                    {d.label}
+                  </option>
+                ))}
+                <option value="personnalise">Date personnalisée</option>
+              </select>
+              {delaiPaiement === "personnalise" ? (
+                <Input
+                  type="date"
+                  value={dateEcheance}
+                  onChange={(e) => setDateEcheance(e.target.value)}
+                  className="mt-2"
+                />
+              ) : (
+                dateEcheance && (
+                  <p className="text-xs text-muted">
+                    Échéance le {new Date(`${dateEcheance}T00:00:00`).toLocaleDateString("fr-FR")}
+                  </p>
+                )
+              )}
             </div>
           )}
           <div className="space-y-1.5">
