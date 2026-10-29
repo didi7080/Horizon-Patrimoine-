@@ -23,17 +23,25 @@ export default async function BilanPage({ searchParams }: PageProps<"/dashboard/
   const admin = createAdminClient();
 
   const { debut, fin } = bornesMois(mois);
-  const { data: documents } = admin
-    ? await admin
-        .from("documents")
-        .select("id, type, numero, client_nom, date_emission, statut, lignes")
-        .eq("entreprise_id", entreprise.id)
-        .gte("date_emission", debut)
-        .lt("date_emission", fin)
-        .order("date_emission")
-    : { data: null };
+  const [{ data: documents }, { data: depenses }] = admin
+    ? await Promise.all([
+        admin
+          .from("documents")
+          .select("id, type, numero, client_nom, date_emission, statut, lignes")
+          .eq("entreprise_id", entreprise.id)
+          .gte("date_emission", debut)
+          .lt("date_emission", fin)
+          .order("date_emission"),
+        admin
+          .from("depenses")
+          .select("montant_cents")
+          .eq("entreprise_id", entreprise.id)
+          .gte("date", debut)
+          .lt("date", fin),
+      ])
+    : [{ data: null }, { data: null }];
 
-  const bilan = calculerBilanMensuel(mois, documents ?? []);
+  const bilan = calculerBilanMensuel(mois, documents ?? [], depenses ?? []);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -64,7 +72,7 @@ export default async function BilanPage({ searchParams }: PageProps<"/dashboard/
           <BoutonImprimer />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="rounded-lg bg-surface p-3">
             <p className="text-xs text-muted">Facturé TTC</p>
             <p className="text-lg font-semibold text-foreground">{formatPrix(bilan.totalFactureTTC)}</p>
@@ -80,6 +88,14 @@ export default async function BilanPage({ searchParams }: PageProps<"/dashboard/
           <div className="rounded-lg bg-surface p-3">
             <p className="text-xs text-muted">Devis émis ({bilan.nbDevisEmis})</p>
             <p className="text-lg font-semibold text-foreground">{formatPrix(bilan.totalDevisTTC)}</p>
+          </div>
+          <div className="rounded-lg bg-surface p-3">
+            <p className="text-xs text-muted">Charges</p>
+            <p className="text-lg font-semibold text-foreground">{formatPrix(bilan.totalCharges)}</p>
+          </div>
+          <div className="rounded-lg bg-brand-light p-3">
+            <p className="text-xs text-muted">Résultat net (encaissé − charges)</p>
+            <p className="text-lg font-semibold text-brand-dark">{formatPrix(bilan.resultatNet)}</p>
           </div>
         </div>
 
@@ -124,12 +140,15 @@ export default async function BilanPage({ searchParams }: PageProps<"/dashboard/
         </div>
 
         <p className="border-t border-border pt-3 text-xs text-muted print:hidden">
-          Ce bilan reprend uniquement le chiffre d’affaires de facturation (devis & factures). Les charges et dépenses
-          ne sont pas encore suivies dans ArtisanRDV.
+          Le résultat net reprend les factures encaissées et les dépenses saisies dans ArtisanRDV pour ce mois — à
+          vérifier avec votre comptable pour toute décision importante.
         </p>
       </div>
 
-      <div className="flex justify-end print:hidden">
+      <div className="flex flex-wrap justify-end gap-2 print:hidden">
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/dashboard/depenses?mois=${mois}`}>Voir le détail des dépenses</Link>
+        </Button>
         <Button asChild variant="outline" size="sm">
           <Link href="/api/export/clients">
             <Download className="size-3.5" /> Exporter mes clients (CSV)

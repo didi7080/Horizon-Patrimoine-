@@ -65,6 +65,20 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
       required: ["client_nom", "lignes"],
     },
   },
+  {
+    name: "enregistrer_depense",
+    description: "Enregistre une nouvelle dépense professionnelle (charge) pour l'entreprise : matériel, carburant, assurance, etc.",
+    input_schema: {
+      type: "object",
+      properties: {
+        categorie: { type: "string", description: "Ex. Matériel & fournitures, Véhicule & carburant, Assurance, Outillage, Autre." },
+        montant_euros: { type: "number", description: "Montant TTC en euros." },
+        date: { type: "string", description: "Date au format AAAA-MM-JJ. Par défaut aujourd'hui." },
+        description: { type: "string" },
+      },
+      required: ["categorie", "montant_euros"],
+    },
+  },
 ];
 
 type ContexteOutils = { entrepriseId: string };
@@ -75,15 +89,19 @@ async function outilBilanMensuel(ctx: ContexteOutils, input: { mois?: string }) 
   const admin = createAdminClient();
   if (!admin) return { erreur: "Base de données non configurée." };
 
-  const { data: documents, error } = await admin
-    .from("documents")
-    .select("id, type, numero, client_nom, date_emission, statut, lignes")
-    .eq("entreprise_id", ctx.entrepriseId)
-    .gte("date_emission", debut)
-    .lt("date_emission", fin);
+  const [{ data: documents, error }, { data: depenses, error: erreurDepenses }] = await Promise.all([
+    admin
+      .from("documents")
+      .select("id, type, numero, client_nom, date_emission, statut, lignes")
+      .eq("entreprise_id", ctx.entrepriseId)
+      .gte("date_emission", debut)
+      .lt("date_emission", fin),
+    admin.from("depenses").select("montant_cents").eq("entreprise_id", ctx.entrepriseId).gte("date", debut).lt("date", fin),
+  ]);
   if (error) return { erreur: error.message };
+  if (erreurDepenses) return { erreur: erreurDepenses.message };
 
-  const bilan = calculerBilanMensuel(mois, documents ?? []);
+  const bilan = calculerBilanMensuel(mois, documents ?? [], depenses ?? []);
   return {
     mois,
     libelle: libelleMois(mois),
@@ -93,6 +111,8 @@ async function outilBilanMensuel(ctx: ContexteOutils, input: { mois?: string }) 
     nombre_factures: bilan.factures.length,
     nombre_devis_emis: bilan.nbDevisEmis,
     total_devis_ttc_euros: bilan.totalDevisTTC / 100,
+    total_charges_euros: bilan.totalCharges / 100,
+    resultat_net_euros: bilan.resultatNet / 100,
     lien_rapport_pdf: `/dashboard/bilan?mois=${mois}`,
   };
 }
@@ -192,6 +212,27 @@ async function outilCreerDevis(
   };
 }
 
+async function outilEnregistrerDepense(
+  ctx: ContexteOutils,
+  input: { categorie: string; montant_euros: number; date?: string; description?: string },
+) {
+  if (!input.categorie?.trim()) return { erreur: "La catégorie est requise." };
+  if (!Number.isFinite(input.montant_euros) || input.montant_euros <= 0) {
+    return { erreur: "Le montant doit être supérieur à 0." };
+  }
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+  const { error } = await admin.from("depenses").insert({
+    entreprise_id: ctx.entrepriseId,
+    categorie: input.categorie.trim(),
+    montant_cents: Math.round(input.montant_euros * 100),
+    date: input.date?.trim() || new Date().toISOString().slice(0, 10),
+    description: input.description?.trim() || null,
+  });
+  if (error) return { erreur: error.message };
+  return { enregistre: true, lien: "/dashboard/depenses" };
+}
+
 export async function executerOutil(ctx: ContexteOutils, nom: string, input: unknown): Promise<unknown> {
   const entree = (input ?? {}) as Record<string, unknown>;
   switch (nom) {
@@ -203,6 +244,8 @@ export async function executerOutil(ctx: ContexteOutils, nom: string, input: unk
       return outilListerDocumentsRecents(ctx, entree as { limite?: number });
     case "creer_devis":
       return outilCreerDevis(ctx, entree as Parameters<typeof outilCreerDevis>[1]);
+    case "enregistrer_depense":
+      return outilEnregistrerDepense(ctx, entree as Parameters<typeof outilEnregistrerDepense>[1]);
     default:
       return { erreur: `Outil inconnu : ${nom}` };
   }

@@ -21,6 +21,8 @@ export type BilanMensuel = {
   totalEnAttenteTTC: number;
   nbDevisEmis: number;
   totalDevisTTC: number;
+  totalCharges: number;
+  resultatNet: number;
 };
 
 /** Première et dernière journée (bornes [debut, fin[) d'un mois au format "YYYY-MM". */
@@ -51,7 +53,11 @@ type DocumentBrut = {
   lignes: unknown;
 };
 
-export function calculerBilanMensuel(mois: string, documents: DocumentBrut[]): BilanMensuel {
+export function calculerBilanMensuel(
+  mois: string,
+  documents: DocumentBrut[],
+  depenses: { montant_cents: number }[] = [],
+): BilanMensuel {
   const factures = documents.filter((d) => d.type === "facture");
   const devis = documents.filter((d) => d.type === "devis");
 
@@ -79,6 +85,8 @@ export function calculerBilanMensuel(mois: string, documents: DocumentBrut[]): B
     0,
   );
 
+  const totalCharges = depenses.reduce((s, d) => s + d.montant_cents, 0);
+
   return {
     mois,
     factures: lignesBilan,
@@ -89,5 +97,7 @@ export function calculerBilanMensuel(mois: string, documents: DocumentBrut[]): B
     totalEnAttenteTTC: totalFactureTTC - totalEncaisseTTC,
     nbDevisEmis: devis.length,
     totalDevisTTC,
+    totalCharges,
+    resultatNet: totalEncaisseTTC - totalCharges,
   };
 }

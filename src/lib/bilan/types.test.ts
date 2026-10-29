@@ -45,7 +45,7 @@ describe("calculerBilanMensuel", () => {
       },
     ];
 
-    const bilan = calculerBilanMensuel("2026-09", documents);
+    const bilan = calculerBilanMensuel("2026-09", documents, [{ montant_cents: 4000 }, { montant_cents: 1000 }]);
 
     expect(bilan.factures).toHaveLength(2);
     expect(bilan.totalFactureHT).toBe(15000);
@@ -55,6 +55,8 @@ describe("calculerBilanMensuel", () => {
     expect(bilan.totalEnAttenteTTC).toBe(6000);
     expect(bilan.nbDevisEmis).toBe(1);
     expect(bilan.totalDevisTTC).toBe(24000);
+    expect(bilan.totalCharges).toBe(5000);
+    expect(bilan.resultatNet).toBe(7000);
   });
 
   it("renvoie un bilan nul sans documents", () => {
@@ -62,5 +64,7 @@ describe("calculerBilanMensuel", () => {
     expect(bilan.totalFactureTTC).toBe(0);
     expect(bilan.totalEncaisseTTC).toBe(0);
     expect(bilan.factures).toEqual([]);
+    expect(bilan.totalCharges).toBe(0);
+    expect(bilan.resultatNet).toBe(0);
   });
 });

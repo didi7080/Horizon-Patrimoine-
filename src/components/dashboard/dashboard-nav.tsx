@@ -16,6 +16,7 @@ import {
   Sparkles,
   Star,
   Users,
+  Wallet,
   Wrench,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ const LIENS = [
   { href: "/dashboard/rendez-vous", label: "Rendez-vous", icon: CalendarDays },
   { href: "/dashboard/statistiques", label: "Statistiques", icon: BarChart3 },
   { href: "/dashboard/bilan", label: "Bilan mensuel", icon: FileSpreadsheet },
+  { href: "/dashboard/depenses", label: "Dépenses", icon: Wallet },
   { href: "/dashboard/prestations", label: "Prestations", icon: Wrench },
   { href: "/dashboard/documents", label: "Devis & factures", icon: FileText },
   { href: "/dashboard/outils", label: "Outils de calcul", icon: Calculator, premium: true },

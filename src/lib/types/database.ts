@@ -225,6 +225,47 @@ export type Database = {
           },
         ]
       }
+      depenses: {
+        Row: {
+          categorie: string
+          created_at: string
+          created_by: string | null
+          date: string
+          description: string | null
+          entreprise_id: string
+          id: string
+          montant_cents: number
+        }
+        Insert: {
+          categorie: string
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          description?: string | null
+          entreprise_id: string
+          id?: string
+          montant_cents: number
+        }
+        Update: {
+          categorie?: string
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          description?: string | null
+          entreprise_id?: string
+          id?: string
+          montant_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "depenses_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           client_adresse: string | null
