@@ -196,9 +196,122 @@ export type Database = {
           },
         ]
       }
+      compteurs_documents: {
+        Row: {
+          annee: number
+          dernier_numero: number
+          entreprise_id: string
+          type: string
+        }
+        Insert: {
+          annee: number
+          dernier_numero?: number
+          entreprise_id: string
+          type: string
+        }
+        Update: {
+          annee?: number
+          dernier_numero?: number
+          entreprise_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compteurs_documents_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          client_adresse: string | null
+          client_email: string | null
+          client_nom: string
+          client_telephone: string | null
+          created_at: string
+          created_by: string | null
+          date_echeance: string | null
+          date_emission: string
+          date_prestation: string | null
+          date_validite: string | null
+          devis_origine_id: string | null
+          entreprise_id: string
+          id: string
+          lignes: Json
+          notes: string | null
+          numero: string
+          statut: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          client_adresse?: string | null
+          client_email?: string | null
+          client_nom: string
+          client_telephone?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_echeance?: string | null
+          date_emission?: string
+          date_prestation?: string | null
+          date_validite?: string | null
+          devis_origine_id?: string | null
+          entreprise_id: string
+          id?: string
+          lignes?: Json
+          notes?: string | null
+          numero: string
+          statut?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          client_adresse?: string | null
+          client_email?: string | null
+          client_nom?: string
+          client_telephone?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_echeance?: string | null
+          date_emission?: string
+          date_prestation?: string | null
+          date_validite?: string | null
+          devis_origine_id?: string | null
+          entreprise_id?: string
+          id?: string
+          lignes?: Json
+          notes?: string | null
+          numero?: string
+          statut?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_devis_origine_id_fkey"
+            columns: ["devis_origine_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entreprises: {
         Row: {
           adresse: string | null
+          assujetti_tva: boolean
+          assurance_nom: string | null
+          assurance_zone: string | null
           avis_actif: boolean
           battement_min: number
           code_postal: string | null
@@ -209,12 +322,16 @@ export type Database = {
           description: string | null
           email: string | null
           fenetre_max_jours: number
+          forme_juridique: string | null
           id: string
           logo_url: string | null
+          mentions_legales: string | null
           metier: string | null
           nb_salaries: number
           nom: string
+          numero_tva: string | null
           recap_actif: boolean
+          siret: string | null
           slug: string
           sms_actif: boolean
           stripe_connect_account_id: string | null
@@ -225,6 +342,9 @@ export type Database = {
         }
         Insert: {
           adresse?: string | null
+          assujetti_tva?: boolean
+          assurance_nom?: string | null
+          assurance_zone?: string | null
           avis_actif?: boolean
           battement_min?: number
           code_postal?: string | null
@@ -235,12 +355,16 @@ export type Database = {
           description?: string | null
           email?: string | null
           fenetre_max_jours?: number
+          forme_juridique?: string | null
           id?: string
           logo_url?: string | null
+          mentions_legales?: string | null
           metier?: string | null
           nb_salaries?: number
           nom: string
+          numero_tva?: string | null
           recap_actif?: boolean
+          siret?: string | null
           slug: string
           sms_actif?: boolean
           stripe_connect_account_id?: string | null
@@ -251,6 +375,9 @@ export type Database = {
         }
         Update: {
           adresse?: string | null
+          assujetti_tva?: boolean
+          assurance_nom?: string | null
+          assurance_zone?: string | null
           avis_actif?: boolean
           battement_min?: number
           code_postal?: string | null
@@ -261,12 +388,16 @@ export type Database = {
           description?: string | null
           email?: string | null
           fenetre_max_jours?: number
+          forme_juridique?: string | null
           id?: string
           logo_url?: string | null
+          mentions_legales?: string | null
           metier?: string | null
           nb_salaries?: number
           nom?: string
+          numero_tva?: string | null
           recap_actif?: boolean
+          siret?: string | null
           slug?: string
           sms_actif?: boolean
           stripe_connect_account_id?: string | null

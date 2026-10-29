@@ -184,6 +184,13 @@ export async function mettreAJourReglages(formData: FormData) {
       avis_actif: formData.get("avisActif") === "on",
       sms_actif: formData.get("smsActif") === "on",
       recap_actif: formData.get("recapActif") === "on",
+      siret: String(formData.get("siret") ?? "").trim() || null,
+      forme_juridique: String(formData.get("formeJuridique") ?? "").trim() || null,
+      assujetti_tva: formData.get("assujettiTva") === "on",
+      numero_tva: String(formData.get("numeroTva") ?? "").trim() || null,
+      assurance_nom: String(formData.get("assuranceNom") ?? "").trim() || null,
+      assurance_zone: String(formData.get("assuranceZone") ?? "").trim() || null,
+      mentions_legales: String(formData.get("mentionsLegales") ?? "").trim() || null,
     })
     .eq("id", entreprise.id);
 

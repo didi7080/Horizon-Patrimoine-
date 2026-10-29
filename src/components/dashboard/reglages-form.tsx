@@ -129,6 +129,63 @@ export function ReglagesForm({ entreprise }: { entreprise: Tables<"entreprises">
 
       <section className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Informations légales
+        </h2>
+        <p className="text-sm text-muted">
+          Reprises automatiquement sur vos devis et factures pour respecter les mentions obligatoires.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="siret">SIRET</Label>
+            <Input id="siret" name="siret" defaultValue={entreprise.siret ?? ""} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="formeJuridique">Forme juridique</Label>
+            <Input
+              id="formeJuridique"
+              name="formeJuridique"
+              placeholder="Ex. Auto-entrepreneur, EURL..."
+              defaultValue={entreprise.forme_juridique ?? ""}
+            />
+          </div>
+        </div>
+        <div className="divide-y divide-border">
+          <Interrupteur
+            name="assujettiTva"
+            label="Assujetti à la TVA"
+            description="Si désactivé, vos documents afficheront la mention « TVA non applicable, art. 293 B du CGI »."
+            defaultChecked={entreprise.assujetti_tva}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="numeroTva">N° de TVA intracommunautaire (si assujetti)</Label>
+          <Input id="numeroTva" name="numeroTva" defaultValue={entreprise.numero_tva ?? ""} />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="assuranceNom">Assureur (garantie décennale / RC pro)</Label>
+            <Input id="assuranceNom" name="assuranceNom" defaultValue={entreprise.assurance_nom ?? ""} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="assuranceZone">Zone de couverture de l’assurance</Label>
+            <Input
+              id="assuranceZone"
+              name="assuranceZone"
+              placeholder="Ex. France métropolitaine"
+              defaultValue={entreprise.assurance_zone ?? ""}
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="mentionsLegales">Autres mentions légales (RCS, capital social...)</Label>
+          <Textarea id="mentionsLegales" name="mentionsLegales" defaultValue={entreprise.mentions_legales ?? ""} />
+        </div>
+      </section>
+
+      <Separator />
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Règles de réservation
         </h2>
         <div className="grid gap-4 sm:grid-cols-3">
