@@ -66,6 +66,36 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "bloquer_creneau",
+    description:
+      "Bloque un créneau de rendez-vous dans le planning, directement confirmé (sans passer par la réservation publique). Si le client n'existe pas encore, il est ajouté au fichier clients. Si plusieurs salariés ou prestations existent et qu'il faut préciser lequel, l'outil renvoie la liste des choix possibles au lieu de deviner.",
+    input_schema: {
+      type: "object",
+      properties: {
+        client_nom: { type: "string", description: "Nom du client pour qui ce rendez-vous est bloqué." },
+        client_adresse: { type: "string" },
+        client_telephone: { type: "string" },
+        client_email: { type: "string" },
+        salarie_nom: {
+          type: "string",
+          description: "Nom de la personne de l'entreprise à qui affecter ce créneau. Optionnel s'il n'y a qu'un seul salarié.",
+        },
+        prestation_nom: {
+          type: "string",
+          description: "Type d'intervention, si elle correspond à une prestation existante de l'entreprise.",
+        },
+        date: { type: "string", description: "Date au format AAAA-MM-JJ." },
+        heure: { type: "string", description: "Heure de début au format HH:MM (24h), heure de Paris." },
+        duree_minutes: {
+          type: "integer",
+          description: "Durée en minutes si aucune prestation ne correspond au type d'intervention. Par défaut 60.",
+        },
+        notes: { type: "string" },
+      },
+      required: ["client_nom", "date", "heure"],
+    },
+  },
+  {
     name: "enregistrer_depense",
     description: "Enregistre une nouvelle dépense professionnelle (charge) pour l'entreprise : matériel, carburant, assurance, etc.",
     input_schema: {
@@ -81,7 +111,7 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
   },
 ];
 
-type ContexteOutils = { entrepriseId: string };
+type ContexteOutils = { entrepriseId: string; userId: string };
 
 async function outilBilanMensuel(ctx: ContexteOutils, input: { mois?: string }) {
   const mois = input.mois?.trim() || moisCourant();
@@ -233,6 +263,157 @@ async function outilEnregistrerDepense(
   return { enregistre: true, lien: "/dashboard/depenses" };
 }
 
+/** Convertit une date+heure locale (Europe/Paris) en ISO avec décalage horaire explicite. */
+export function parisVersIso(date: string, heure: string): string {
+  const reference = new Date(`${date}T${heure}:00Z`);
+  const partieDecalage = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Paris",
+    timeZoneName: "shortOffset",
+  })
+    .formatToParts(reference)
+    .find((p) => p.type === "timeZoneName");
+  const correspondance = partieDecalage?.value.match(/GMT([+-]\d+)/);
+  const decalage = correspondance ? Number(correspondance[1]) : 1;
+  const signe = decalage >= 0 ? "+" : "-";
+  return `${date}T${heure}:00${signe}${String(Math.abs(decalage)).padStart(2, "0")}:00`;
+}
+
+async function outilBloquerCreneau(
+  ctx: ContexteOutils,
+  input: {
+    client_nom: string;
+    client_adresse?: string;
+    client_telephone?: string;
+    client_email?: string;
+    salarie_nom?: string;
+    prestation_nom?: string;
+    date: string;
+    heure: string;
+    duree_minutes?: number;
+    notes?: string;
+  },
+) {
+  if (!input.client_nom?.trim()) return { erreur: "Le nom du client est requis." };
+  if (!input.date || !input.heure) return { erreur: "La date et l'heure sont requises." };
+
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+
+  const { data: salaries } = await admin
+    .from("salaries")
+    .select("id, nom")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .eq("actif", true);
+  let salarieId: string;
+  if (input.salarie_nom?.trim()) {
+    const correspondants = (salaries ?? []).filter((s) => s.nom.toLowerCase().includes(input.salarie_nom!.trim().toLowerCase()));
+    if (correspondants.length === 0) {
+      return { erreur: "Aucun salarié ne correspond à ce nom.", salaries_disponibles: (salaries ?? []).map((s) => s.nom) };
+    }
+    if (correspondants.length > 1) {
+      return { erreur: "Plusieurs salariés correspondent, précise lequel.", salaries_disponibles: correspondants.map((s) => s.nom) };
+    }
+    salarieId = correspondants[0].id;
+  } else if ((salaries ?? []).length === 1) {
+    salarieId = salaries![0].id;
+  } else {
+    return {
+      erreur: "Précise à quel salarié affecter ce créneau.",
+      salaries_disponibles: (salaries ?? []).map((s) => s.nom),
+    };
+  }
+
+  let prestationId: string | null = null;
+  let dureeMinutes = input.duree_minutes ?? 60;
+  if (input.prestation_nom?.trim()) {
+    const { data: prestations } = await admin
+      .from("prestations")
+      .select("id, nom, duree_min")
+      .eq("entreprise_id", ctx.entrepriseId)
+      .eq("actif", true);
+    const correspondantes = (prestations ?? []).filter((p) =>
+      p.nom.toLowerCase().includes(input.prestation_nom!.trim().toLowerCase()),
+    );
+    if (correspondantes.length === 1) {
+      prestationId = correspondantes[0].id;
+      dureeMinutes = correspondantes[0].duree_min;
+    }
+    // Sinon (aucune ou plusieurs correspondances) : on continue sans lier de prestation, avec la durée fournie.
+  }
+
+  const debutIso = parisVersIso(input.date, input.heure);
+  const debut = new Date(debutIso);
+  if (Number.isNaN(debut.getTime())) return { erreur: "Date ou heure invalide." };
+  const fin = new Date(debut.getTime() + dureeMinutes * 60_000);
+
+  const { data: entrepriseRow } = await admin.from("entreprises").select("battement_min").eq("id", ctx.entrepriseId).maybeSingle();
+  const battementMs = (entrepriseRow?.battement_min ?? 0) * 60_000;
+
+  const { data: rdvExistants } = await admin
+    .from("rendez_vous")
+    .select("debut, fin")
+    .eq("salarie_id", salarieId)
+    .in("statut", ["confirme", "demande"]);
+  const chevaucheRdv = (rdvExistants ?? []).some(
+    (r) => new Date(r.debut).getTime() - battementMs < fin.getTime() && new Date(r.fin).getTime() + battementMs > debut.getTime(),
+  );
+  if (chevaucheRdv) return { erreur: "Ce créneau chevauche un rendez-vous déjà prévu pour ce salarié." };
+
+  const { data: absencesExistantes } = await admin.from("absences").select("debut, fin").eq("salarie_id", salarieId);
+  const chevaucheAbsence = (absencesExistantes ?? []).some(
+    (a) => new Date(a.debut).getTime() < fin.getTime() && new Date(a.fin).getTime() > debut.getTime(),
+  );
+  if (chevaucheAbsence) return { erreur: "Le salarié est marqué absent sur ce créneau." };
+
+  let clientId: string | null = null;
+  if (input.client_email?.trim()) {
+    const { data: client } = await admin
+      .from("clients")
+      .select("id")
+      .eq("entreprise_id", ctx.entrepriseId)
+      .ilike("email", input.client_email.trim())
+      .maybeSingle();
+    clientId = client?.id ?? null;
+  }
+  if (!clientId) {
+    const { data: nouveauClient, error: erreurClient } = await admin
+      .from("clients")
+      .insert({
+        entreprise_id: ctx.entrepriseId,
+        nom: input.client_nom.trim(),
+        adresse: input.client_adresse?.trim() || null,
+        telephone: input.client_telephone?.trim() || null,
+        email: input.client_email?.trim() || null,
+      })
+      .select("id")
+      .single();
+    if (erreurClient) return { erreur: erreurClient.message };
+    clientId = nouveauClient.id;
+  }
+
+  const { error } = await admin.from("rendez_vous").insert({
+    entreprise_id: ctx.entrepriseId,
+    salarie_id: salarieId,
+    prestation_id: prestationId,
+    client_id: clientId,
+    debut: debut.toISOString(),
+    fin: fin.toISOString(),
+    statut: "confirme",
+    notes: input.notes?.trim() || null,
+    cree_par: ctx.userId,
+    adresse_client: input.client_adresse?.trim() || null,
+  });
+  if (error) return { erreur: error.message };
+
+  return {
+    bloque: true,
+    debut: debut.toISOString(),
+    fin: fin.toISOString(),
+    duree_minutes: dureeMinutes,
+    lien: "/dashboard/rendez-vous",
+  };
+}
+
 export async function executerOutil(ctx: ContexteOutils, nom: string, input: unknown): Promise<unknown> {
   const entree = (input ?? {}) as Record<string, unknown>;
   switch (nom) {
@@ -246,6 +427,8 @@ export async function executerOutil(ctx: ContexteOutils, nom: string, input: unk
       return outilCreerDevis(ctx, entree as Parameters<typeof outilCreerDevis>[1]);
     case "enregistrer_depense":
       return outilEnregistrerDepense(ctx, entree as Parameters<typeof outilEnregistrerDepense>[1]);
+    case "bloquer_creneau":
+      return outilBloquerCreneau(ctx, entree as Parameters<typeof outilBloquerCreneau>[1]);
     default:
       return { erreur: `Outil inconnu : ${nom}` };
   }
