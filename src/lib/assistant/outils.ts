@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calculerTotaux, type LigneDocument } from "@/lib/documents/types";
 import { calculerBilanMensuel, bornesMois, moisCourant, libelleMois } from "@/lib/bilan/types";
-import { creerDocument, enregistrerLignesDocument } from "@/app/dashboard/documents/actions";
+import { creerDocument, enregistrerLignesDocument, changerStatutDocument } from "@/app/dashboard/documents/actions";
 
 export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
   {
@@ -96,6 +96,82 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "lister_rendez_vous",
+    description:
+      "Liste les rendez-vous du planning sur une période (aujourd'hui, les 7 prochains jours ou les 30 prochains jours), avec leur identifiant exact (nécessaire pour les annuler ou changer leur statut avec modifier_statut_rendez_vous).",
+    input_schema: {
+      type: "object",
+      properties: {
+        periode: {
+          type: "string",
+          enum: ["aujourd_hui", "semaine", "mois"],
+          description: "Période à lister, par défaut 'semaine' (7 prochains jours).",
+        },
+        salarie_nom: { type: "string", description: "Filtre optionnel sur le nom du salarié." },
+        statut: {
+          type: "string",
+          enum: ["confirme", "demande", "annule", "honore", "absent"],
+          description: "Filtre optionnel sur le statut. Par défaut : confirme et demande (rendez-vous actifs).",
+        },
+      },
+    },
+  },
+  {
+    name: "modifier_statut_rendez_vous",
+    description:
+      "Change le statut d'un rendez-vous existant (par exemple pour l'annuler, le marquer honoré ou absent). Nécessite l'identifiant exact du rendez-vous, obtenu via lister_rendez_vous.",
+    input_schema: {
+      type: "object",
+      properties: {
+        rendez_vous_id: { type: "string" },
+        nouveau_statut: { type: "string", enum: ["confirme", "annule", "honore", "absent"] },
+      },
+      required: ["rendez_vous_id", "nouveau_statut"],
+    },
+  },
+  {
+    name: "ajouter_absence",
+    description:
+      "Marque un salarié indisponible sur une période (congé, maladie, rendez-vous personnel...). Les rendez-vous déjà prévus sur cette période ne sont pas annulés automatiquement : l'outil signale ceux en conflit pour que tu puisses les traiter.",
+    input_schema: {
+      type: "object",
+      properties: {
+        salarie_nom: { type: "string", description: "Optionnel s'il n'y a qu'un seul salarié dans l'entreprise." },
+        date_debut: { type: "string", description: "Date de début au format AAAA-MM-JJ." },
+        date_fin: { type: "string", description: "Date de fin (incluse) au format AAAA-MM-JJ." },
+        motif: { type: "string" },
+      },
+      required: ["date_debut", "date_fin"],
+    },
+  },
+  {
+    name: "lister_salaries",
+    description: "Liste les membres de l'équipe (salariés actifs) de l'entreprise.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "lister_prestations",
+    description: "Liste les prestations (types d'intervention) proposées par l'entreprise, avec durée et prix.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "changer_statut_document",
+    description:
+      "Change le statut d'un devis ou d'une facture existant·e (ex. marquer une facture comme payée, un devis comme accepté), en le retrouvant par son numéro (ex. F-2026-0001).",
+    input_schema: {
+      type: "object",
+      properties: {
+        numero: { type: "string", description: "Numéro exact du document, ex. F-2026-0001 ou D-2026-0001." },
+        nouveau_statut: {
+          type: "string",
+          enum: ["brouillon", "envoye", "envoyee", "accepte", "refuse", "payee"],
+          description: "Pour un devis : brouillon/envoye/accepte/refuse. Pour une facture : brouillon/envoyee/payee.",
+        },
+      },
+      required: ["numero", "nouveau_statut"],
+    },
+  },
+  {
     name: "enregistrer_depense",
     description: "Enregistre une nouvelle dépense professionnelle (charge) pour l'entreprise : matériel, carburant, assurance, etc.",
     input_schema: {
@@ -112,6 +188,36 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
 ];
 
 type ContexteOutils = { entrepriseId: string; userId: string };
+type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
+
+/** Retrouve un salarié actif par nom approximatif ; renseigne les choix possibles en cas d'ambiguïté. */
+async function resoudreSalarie(
+  admin: AdminClient,
+  entrepriseId: string,
+  salarieNom: string | undefined,
+): Promise<{ id: string } | { erreur: string; salaries_disponibles: string[] }> {
+  const { data: salaries } = await admin.from("salaries").select("id, nom").eq("entreprise_id", entrepriseId).eq("actif", true);
+  const liste = salaries ?? [];
+  if (salarieNom?.trim()) {
+    const correspondants = liste.filter((s) => s.nom.toLowerCase().includes(salarieNom.trim().toLowerCase()));
+    if (correspondants.length === 0) {
+      return { erreur: "Aucun salarié ne correspond à ce nom.", salaries_disponibles: liste.map((s) => s.nom) };
+    }
+    if (correspondants.length > 1) {
+      return { erreur: "Plusieurs salariés correspondent, précise lequel.", salaries_disponibles: correspondants.map((s) => s.nom) };
+    }
+    return { id: correspondants[0].id };
+  }
+  if (liste.length === 1) return { id: liste[0].id };
+  return { erreur: "Précise à quel salarié te référer.", salaries_disponibles: liste.map((s) => s.nom) };
+}
+
+function estErreurResolution(resultat: { id: string } | { erreur: string; salaries_disponibles: string[] }): resultat is {
+  erreur: string;
+  salaries_disponibles: string[];
+} {
+  return "erreur" in resultat;
+}
 
 async function outilBilanMensuel(ctx: ContexteOutils, input: { mois?: string }) {
   const mois = input.mois?.trim() || moisCourant();
@@ -278,6 +384,173 @@ export function parisVersIso(date: string, heure: string): string {
   return `${date}T${heure}:00${signe}${String(Math.abs(decalage)).padStart(2, "0")}:00`;
 }
 
+async function outilListerRendezVous(ctx: ContexteOutils, input: { periode?: string; salarie_nom?: string; statut?: string }) {
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+
+  let salarieId: string | undefined;
+  if (input.salarie_nom?.trim()) {
+    const resolution = await resoudreSalarie(admin, ctx.entrepriseId, input.salarie_nom);
+    if (estErreurResolution(resolution)) return resolution;
+    salarieId = resolution.id;
+  }
+
+  const maintenant = new Date();
+  const horizonJours = input.periode === "aujourd_hui" ? 1 : input.periode === "mois" ? 30 : 7;
+  const fin = new Date(maintenant.getTime() + horizonJours * 24 * 60 * 60 * 1000);
+
+  let requete = admin
+    .from("rendez_vous")
+    .select("id, debut, fin, statut, adresse_client, clients(nom), salaries(nom), prestations(nom)")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .gte("debut", maintenant.toISOString())
+    .lt("debut", fin.toISOString());
+  if (salarieId) requete = requete.eq("salarie_id", salarieId);
+  requete = input.statut
+    ? requete.eq("statut", input.statut as "confirme" | "demande" | "annule" | "honore" | "absent")
+    : requete.in("statut", ["confirme", "demande"]);
+
+  const { data, error } = await requete.order("debut");
+  if (error) return { erreur: error.message };
+
+  type RdvJoint = {
+    id: string;
+    debut: string;
+    fin: string;
+    statut: string;
+    adresse_client: string | null;
+    clients: { nom: string } | null;
+    salaries: { nom: string } | null;
+    prestations: { nom: string } | null;
+  };
+  return ((data ?? []) as unknown as RdvJoint[]).map((r) => ({
+    id: r.id,
+    debut: r.debut,
+    fin: r.fin,
+    statut: r.statut,
+    client: r.clients?.nom ?? null,
+    salarie: r.salaries?.nom ?? null,
+    prestation: r.prestations?.nom ?? null,
+    adresse: r.adresse_client,
+  }));
+}
+
+const STATUTS_RDV_VALIDES = new Set(["confirme", "annule", "honore", "absent"]);
+
+async function outilModifierStatutRendezVous(ctx: ContexteOutils, input: { rendez_vous_id: string; nouveau_statut: string }) {
+  if (!input.rendez_vous_id) return { erreur: "L'identifiant du rendez-vous est requis." };
+  if (!STATUTS_RDV_VALIDES.has(input.nouveau_statut)) return { erreur: "Statut invalide." };
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+  const { data, error } = await admin
+    .from("rendez_vous")
+    .update({ statut: input.nouveau_statut as "confirme" | "annule" | "honore" | "absent" })
+    .eq("id", input.rendez_vous_id)
+    .eq("entreprise_id", ctx.entrepriseId)
+    .select("id");
+  if (error) return { erreur: error.message };
+  if (!data || data.length === 0) return { erreur: "Rendez-vous introuvable." };
+  return { modifie: true, lien: "/dashboard/rendez-vous" };
+}
+
+async function outilAjouterAbsence(
+  ctx: ContexteOutils,
+  input: { salarie_nom?: string; date_debut: string; date_fin: string; motif?: string },
+) {
+  if (!input.date_debut || !input.date_fin) return { erreur: "Les dates de début et de fin sont requises." };
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+
+  const resolution = await resoudreSalarie(admin, ctx.entrepriseId, input.salarie_nom);
+  if (estErreurResolution(resolution)) return resolution;
+  const salarieId = resolution.id;
+
+  const debut = new Date(parisVersIso(input.date_debut, "00:00"));
+  const fin = new Date(parisVersIso(input.date_fin, "23:59"));
+  if (Number.isNaN(debut.getTime()) || Number.isNaN(fin.getTime()) || fin <= debut) {
+    return { erreur: "Dates invalides." };
+  }
+
+  const { error } = await admin.from("absences").insert({
+    salarie_id: salarieId,
+    debut: debut.toISOString(),
+    fin: fin.toISOString(),
+    motif: input.motif?.trim() || null,
+  });
+  if (error) return { erreur: error.message };
+
+  const { data: rdvConflits } = await admin
+    .from("rendez_vous")
+    .select("id, debut, clients(nom)")
+    .eq("salarie_id", salarieId)
+    .in("statut", ["confirme", "demande"])
+    .gte("debut", debut.toISOString())
+    .lte("debut", fin.toISOString());
+
+  type RdvConflit = { id: string; debut: string; clients: { nom: string } | null };
+  return {
+    enregistre: true,
+    rendez_vous_en_conflit: ((rdvConflits ?? []) as unknown as RdvConflit[]).map((r) => ({
+      id: r.id,
+      debut: r.debut,
+      client: r.clients?.nom ?? null,
+    })),
+    lien: "/dashboard/equipe",
+  };
+}
+
+async function outilListerSalaries(ctx: ContexteOutils) {
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+  const { data, error } = await admin
+    .from("salaries")
+    .select("nom, fonction")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .eq("actif", true)
+    .order("nom");
+  if (error) return { erreur: error.message };
+  return { salaries: data ?? [] };
+}
+
+async function outilListerPrestations(ctx: ContexteOutils) {
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+  const { data, error } = await admin
+    .from("prestations")
+    .select("nom, duree_min, prix_cents")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .eq("actif", true)
+    .order("nom");
+  if (error) return { erreur: error.message };
+  return {
+    prestations: (data ?? []).map((p) => ({
+      nom: p.nom,
+      duree_minutes: p.duree_min,
+      prix_euros: p.prix_cents !== null ? p.prix_cents / 100 : null,
+    })),
+  };
+}
+
+async function outilChangerStatutDocument(ctx: ContexteOutils, input: { numero: string; nouveau_statut: string }) {
+  if (!input.numero?.trim()) return { erreur: "Le numéro du document est requis." };
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+  const { data: document, error } = await admin
+    .from("documents")
+    .select("id")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .eq("numero", input.numero.trim())
+    .maybeSingle();
+  if (error) return { erreur: error.message };
+  if (!document) return { erreur: "Aucun document avec ce numéro." };
+  try {
+    await changerStatutDocument(document.id, input.nouveau_statut);
+  } catch (err) {
+    return { erreur: err instanceof Error ? err.message : "Erreur lors du changement de statut." };
+  }
+  return { modifie: true, lien: `/dashboard/documents/${document.id}` };
+}
+
 async function outilBloquerCreneau(
   ctx: ContexteOutils,
   input: {
@@ -299,29 +572,9 @@ async function outilBloquerCreneau(
   const admin = createAdminClient();
   if (!admin) return { erreur: "Base de données non configurée." };
 
-  const { data: salaries } = await admin
-    .from("salaries")
-    .select("id, nom")
-    .eq("entreprise_id", ctx.entrepriseId)
-    .eq("actif", true);
-  let salarieId: string;
-  if (input.salarie_nom?.trim()) {
-    const correspondants = (salaries ?? []).filter((s) => s.nom.toLowerCase().includes(input.salarie_nom!.trim().toLowerCase()));
-    if (correspondants.length === 0) {
-      return { erreur: "Aucun salarié ne correspond à ce nom.", salaries_disponibles: (salaries ?? []).map((s) => s.nom) };
-    }
-    if (correspondants.length > 1) {
-      return { erreur: "Plusieurs salariés correspondent, précise lequel.", salaries_disponibles: correspondants.map((s) => s.nom) };
-    }
-    salarieId = correspondants[0].id;
-  } else if ((salaries ?? []).length === 1) {
-    salarieId = salaries![0].id;
-  } else {
-    return {
-      erreur: "Précise à quel salarié affecter ce créneau.",
-      salaries_disponibles: (salaries ?? []).map((s) => s.nom),
-    };
-  }
+  const resolutionSalarie = await resoudreSalarie(admin, ctx.entrepriseId, input.salarie_nom);
+  if (estErreurResolution(resolutionSalarie)) return resolutionSalarie;
+  const salarieId = resolutionSalarie.id;
 
   let prestationId: string | null = null;
   let dureeMinutes = input.duree_minutes ?? 60;
@@ -429,6 +682,18 @@ export async function executerOutil(ctx: ContexteOutils, nom: string, input: unk
       return outilEnregistrerDepense(ctx, entree as Parameters<typeof outilEnregistrerDepense>[1]);
     case "bloquer_creneau":
       return outilBloquerCreneau(ctx, entree as Parameters<typeof outilBloquerCreneau>[1]);
+    case "lister_rendez_vous":
+      return outilListerRendezVous(ctx, entree as Parameters<typeof outilListerRendezVous>[1]);
+    case "modifier_statut_rendez_vous":
+      return outilModifierStatutRendezVous(ctx, entree as Parameters<typeof outilModifierStatutRendezVous>[1]);
+    case "ajouter_absence":
+      return outilAjouterAbsence(ctx, entree as Parameters<typeof outilAjouterAbsence>[1]);
+    case "lister_salaries":
+      return outilListerSalaries(ctx);
+    case "lister_prestations":
+      return outilListerPrestations(ctx);
+    case "changer_statut_document":
+      return outilChangerStatutDocument(ctx, entree as Parameters<typeof outilChangerStatutDocument>[1]);
     default:
       return { erreur: `Outil inconnu : ${nom}` };
   }
