@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { ShieldCheck, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,8 @@ import { SalarieFormDialog } from "@/components/dashboard/salarie-form-dialog";
 import { HorairesEditor } from "@/components/dashboard/horaires-editor";
 import { InviteMembreDialog } from "@/components/dashboard/invite-membre-dialog";
 import { IcalLinkButton } from "@/components/dashboard/ical-link-button";
+import { GoogleCalendarButton } from "@/components/dashboard/google-calendar-button";
+import { GoogleCalendarStatut } from "@/components/dashboard/google-calendar-statut";
 import { initiales } from "@/lib/utils";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
@@ -51,6 +54,9 @@ export default async function EquipePage() {
 
   return (
     <div className="space-y-10">
+      <Suspense fallback={null}>
+        <GoogleCalendarStatut />
+      </Suspense>
       <div>
         <h1 className="text-2xl font-semibold text-foreground">Équipe</h1>
         <p className="mt-1 text-muted">Vos salariés, leurs horaires, et l’accès au tableau de bord.</p>
@@ -121,6 +127,7 @@ export default async function EquipePage() {
                   </div>
                   <div className="flex gap-2">
                     <IcalLinkButton token={s.ical_token} />
+                    <GoogleCalendarButton salarieId={s.id} emailConnecte={s.google_email} />
                     <form action={toggleSalarieActif.bind(null, s.id, !s.actif)}>
                       <Button size="sm" variant="ghost" type="submit">
                         {s.actif ? "Désactiver" : "Réactiver"}

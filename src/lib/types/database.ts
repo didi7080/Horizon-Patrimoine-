@@ -887,6 +887,7 @@ export type Database = {
           debut: string
           entreprise_id: string
           fin: string
+          google_event_id: string | null
           id: string
           notes: string | null
           prestation_id: string | null
@@ -908,6 +909,7 @@ export type Database = {
           debut: string
           entreprise_id: string
           fin: string
+          google_event_id?: string | null
           id?: string
           notes?: string | null
           prestation_id?: string | null
@@ -929,6 +931,7 @@ export type Database = {
           debut?: string
           entreprise_id?: string
           fin?: string
+          google_event_id?: string | null
           id?: string
           notes?: string | null
           prestation_id?: string | null
@@ -976,6 +979,8 @@ export type Database = {
           created_at: string
           entreprise_id: string
           fonction: string | null
+          google_email: string | null
+          google_refresh_token: string | null
           ical_token: string
           id: string
           nom: string
@@ -987,6 +992,8 @@ export type Database = {
           created_at?: string
           entreprise_id: string
           fonction?: string | null
+          google_email?: string | null
+          google_refresh_token?: string | null
           ical_token?: string
           id?: string
           nom: string
@@ -998,6 +1005,8 @@ export type Database = {
           created_at?: string
           entreprise_id?: string
           fonction?: string | null
+          google_email?: string | null
+          google_refresh_token?: string | null
           ical_token?: string
           id?: string
           nom?: string

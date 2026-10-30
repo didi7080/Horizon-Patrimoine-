@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { calculerTotaux, type LigneDocument } from "@/lib/documents/types";
 import { calculerBilanMensuel, bornesMois, moisCourant, libelleMois } from "@/lib/bilan/types";
 import { creerDocument, enregistrerLignesDocument, changerStatutDocument } from "@/app/dashboard/documents/actions";
+import { synchroniserRdvGoogle } from "@/lib/google-calendar/sync";
 
 export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
   {
@@ -450,6 +451,7 @@ async function outilModifierStatutRendezVous(ctx: ContexteOutils, input: { rende
     .select("id");
   if (error) return { erreur: error.message };
   if (!data || data.length === 0) return { erreur: "Rendez-vous introuvable." };
+  await synchroniserRdvGoogle(input.rendez_vous_id);
   return { modifie: true, lien: "/dashboard/rendez-vous" };
 }
 
@@ -644,19 +646,24 @@ async function outilBloquerCreneau(
     clientId = nouveauClient.id;
   }
 
-  const { error } = await admin.from("rendez_vous").insert({
-    entreprise_id: ctx.entrepriseId,
-    salarie_id: salarieId,
-    prestation_id: prestationId,
-    client_id: clientId,
-    debut: debut.toISOString(),
-    fin: fin.toISOString(),
-    statut: "confirme",
-    notes: input.notes?.trim() || null,
-    cree_par: ctx.userId,
-    adresse_client: input.client_adresse?.trim() || null,
-  });
+  const { data: nouveauRdv, error } = await admin
+    .from("rendez_vous")
+    .insert({
+      entreprise_id: ctx.entrepriseId,
+      salarie_id: salarieId,
+      prestation_id: prestationId,
+      client_id: clientId,
+      debut: debut.toISOString(),
+      fin: fin.toISOString(),
+      statut: "confirme",
+      notes: input.notes?.trim() || null,
+      cree_par: ctx.userId,
+      adresse_client: input.client_adresse?.trim() || null,
+    })
+    .select("id")
+    .single();
   if (error) return { erreur: error.message };
+  await synchroniserRdvGoogle(nouveauRdv.id);
 
   return {
     bloque: true,

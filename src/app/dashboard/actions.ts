@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
+import { synchroniserRdvGoogle } from "@/lib/google-calendar/sync";
 
 // --- Rendez-vous ---------------------------------------------------------
 
@@ -10,6 +12,7 @@ export async function validerDemande(rdvId: string, accepter: boolean) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("valider_demande_rdv", { p_rdv: rdvId, p_accepter: accepter });
   if (error) throw new Error(error.message);
+  if (accepter) await synchroniserRdvGoogle(rdvId);
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/rendez-vous");
 }
@@ -21,8 +24,24 @@ export async function changerStatutRdv(
   const supabase = await createClient();
   const { error } = await supabase.from("rendez_vous").update({ statut }).eq("id", rdvId);
   if (error) throw new Error(error.message);
+  await synchroniserRdvGoogle(rdvId);
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/rendez-vous");
+}
+
+// --- Google Calendar -------------------------------------------------------
+
+export async function deconnecterGoogleCalendar(salarieId: string) {
+  const { entreprise } = await getEntrepriseContext();
+  const admin = createAdminClient();
+  if (!admin) throw new Error("La connexion à la base de données n'est pas configurée.");
+  const { error } = await admin
+    .from("salaries")
+    .update({ google_refresh_token: null, google_email: null })
+    .eq("id", salarieId)
+    .eq("entreprise_id", entreprise.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard/equipe");
 }
 
 // --- Prestations ----------------------------------------------------------

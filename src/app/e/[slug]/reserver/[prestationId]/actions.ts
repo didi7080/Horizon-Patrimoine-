@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { estBot } from "@/lib/anti-spam";
+import { synchroniserRdvGoogle } from "@/lib/google-calendar/sync";
 
 // Rate limiting partagé via la table Supabase `rate_limits` (RLS activée,
 // aucune policy : seule la clé service_role peut y lire/écrire). Remplace
@@ -82,6 +83,13 @@ export async function reserverRdvAction(
   });
 
   if (error) return { error: error.message };
+
+  const admin = createAdminClient();
+  if (admin) {
+    const { data: rdv } = await admin.from("rendez_vous").select("id").eq("token", data as string).maybeSingle();
+    if (rdv) await synchroniserRdvGoogle(rdv.id);
+  }
+
   return { token: data as string };
 }
 
