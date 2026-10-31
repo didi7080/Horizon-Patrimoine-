@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { rejoindreListeAttenteAction } from "@/app/e/[slug]/reserver/[prestationId]/actions";
+import { TurnstileWidget, turnstileActif } from "@/components/booking/turnstile-widget";
 
 export function ListeAttenteForm({
   entrepriseId,
@@ -20,6 +21,7 @@ export function ListeAttenteForm({
   const [pending, startTransition] = useTransition();
   const [montageA] = useState(() => Date.now());
   const [siteWeb, setSiteWeb] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   if (envoye) {
     return (
@@ -44,6 +46,7 @@ export function ListeAttenteForm({
     formData.set("prestation_id", prestationId);
     formData.set("site_web", siteWeb);
     formData.set("rendu_a", String(montageA));
+    formData.set("cf_turnstile_token", turnstileToken ?? "");
     startTransition(async () => {
       const resultat = await rejoindreListeAttenteAction(null, formData);
       if (resultat?.error) {
@@ -81,8 +84,10 @@ export function ListeAttenteForm({
           <Input id="la-tel" name="tel" type="tel" />
         </div>
       </div>
+      <TurnstileWidget onToken={setTurnstileToken} />
+
       {erreur && <p className="text-sm text-danger">{erreur}</p>}
-      <Button type="submit" size="sm" disabled={pending}>
+      <Button type="submit" size="sm" disabled={pending || (turnstileActif && !turnstileToken)}>
         {pending && <Loader2 className="size-3.5 animate-spin" />}
         M’inscrire sur la liste d’attente
       </Button>

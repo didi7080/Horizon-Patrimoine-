@@ -25,6 +25,7 @@ import type { Tables } from "@/lib/types/database";
 import { reserverRdvAction } from "@/app/e/[slug]/reserver/[prestationId]/actions";
 import { ListeAttenteForm } from "@/components/booking/liste-attente-form";
 import { CalendrierCreneaux, type Creneau } from "@/components/booking/calendrier-creneaux";
+import { TurnstileWidget, turnstileActif } from "@/components/booking/turnstile-widget";
 
 type Salarie = Pick<Tables<"salaries">, "id" | "nom" | "fonction" | "couleur">;
 
@@ -55,6 +56,7 @@ export function ReservationStepper({
   const [codePostal, setCodePostal] = useState("");
   const [notes, setNotes] = useState("");
   const [siteWeb, setSiteWeb] = useState(""); // piège anti-bot, doit rester vide
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [erreurReservation, setErreurReservation] = useState<string | null>(null);
@@ -77,6 +79,7 @@ export function ReservationStepper({
     formData.set("code_postal", codePostal.trim());
     formData.set("site_web", siteWeb);
     formData.set("rendu_a", String(montageA));
+    formData.set("cf_turnstile_token", turnstileToken ?? "");
 
     const resultat = await reserverRdvAction(null, formData);
     setEnvoi(false);
@@ -276,6 +279,8 @@ export function ReservationStepper({
             />
           </div>
 
+          <TurnstileWidget onToken={setTurnstileToken} />
+
           {erreurReservation && <p className="text-sm text-danger">{erreurReservation}</p>}
 
           <div className="flex gap-2">
@@ -284,7 +289,7 @@ export function ReservationStepper({
             </Button>
             <Button
               className="flex-1"
-              disabled={!nom.trim() || !tel.trim() || envoi}
+              disabled={!nom.trim() || !tel.trim() || envoi || (turnstileActif && !turnstileToken)}
               onClick={envoyerReservation}
             >
               {envoi ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}

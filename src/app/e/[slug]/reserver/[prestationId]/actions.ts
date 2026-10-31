@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { estBot } from "@/lib/anti-spam";
+import { verifierTurnstile } from "@/lib/turnstile";
 import { synchroniserRdvGoogle } from "@/lib/google-calendar/sync";
 
 // Rate limiting partagé via la table Supabase `rate_limits` (RLS activée,
@@ -53,6 +54,9 @@ export async function reserverRdvAction(
   }
 
   const ip = await adresseIp();
+  if (!(await verifierTurnstile(String(formData.get("cf_turnstile_token") ?? ""), ip))) {
+    return { error: "Vérification anti-robot échouée, merci de réessayer." };
+  }
   if (await limiteAtteinte(`rdv:${ip}`)) {
     return { error: "Trop de tentatives depuis votre connexion. Réessayez dans quelques minutes." };
   }
@@ -104,6 +108,9 @@ export async function rejoindreListeAttenteAction(
   }
 
   const ip = await adresseIp();
+  if (!(await verifierTurnstile(String(formData.get("cf_turnstile_token") ?? ""), ip))) {
+    return { error: "Vérification anti-robot échouée, merci de réessayer." };
+  }
   if (await limiteAtteinte(`attente:${ip}`)) {
     return { error: "Trop de tentatives. Réessayez plus tard." };
   }
