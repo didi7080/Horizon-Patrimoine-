@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calculerTotaux, type LigneDocument } from "@/lib/documents/types";
 import { calculerBilanMensuel, bornesMois, moisCourant, libelleMois } from "@/lib/bilan/types";
-import { creerDocument, enregistrerLignesDocument, changerStatutDocument } from "@/app/dashboard/documents/actions";
+import { creerDocument, enregistrerLignesDocument, changerStatutDocument, convertirDevisEnFacture } from "@/app/dashboard/documents/actions";
 import { synchroniserRdvGoogle } from "@/lib/google-calendar/sync";
 
 export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
@@ -64,6 +64,79 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
         },
       },
       required: ["client_nom", "lignes"],
+    },
+  },
+  {
+    name: "creer_facture",
+    description:
+      "Crée directement une nouvelle facture (sans passer par un devis) pour un client, avec ses lignes de prestation, et renvoie le lien de la facture créée. Si le client n'existe pas encore, il est automatiquement ajouté au fichier clients. Si un devis a déjà été fait pour ce travail, utilise plutôt convertir_devis_en_facture.",
+    input_schema: {
+      type: "object",
+      properties: {
+        client_nom: { type: "string", description: "Nom du client." },
+        client_adresse: { type: "string" },
+        client_telephone: { type: "string" },
+        client_email: { type: "string" },
+        date_echeance: { type: "string", description: "Date limite de paiement au format AAAA-MM-JJ. Optionnel." },
+        notes: { type: "string", description: "Conditions particulières ou notes pour le client." },
+        lignes: {
+          type: "array",
+          description: "Lignes de la facture.",
+          items: {
+            type: "object",
+            properties: {
+              designation: { type: "string" },
+              unite: { type: "string", description: "Ex. heure, forfait, u, m². Par défaut 'u'." },
+              quantite: { type: "number" },
+              prix_unitaire_euros: { type: "number", description: "Prix unitaire HT en euros (pas en centimes)." },
+              taux_tva: { type: "number", description: "0, 5.5, 10 ou 20. Par défaut 20." },
+            },
+            required: ["designation", "quantite", "prix_unitaire_euros"],
+          },
+        },
+      },
+      required: ["client_nom", "lignes"],
+    },
+  },
+  {
+    name: "convertir_devis_en_facture",
+    description:
+      "Transforme un devis existant en facture : reprend automatiquement les mêmes lignes, le même client, et marque le devis comme accepté. Utilise ceci quand on te demande de facturer un devis déjà fait plutôt que de ressaisir les lignes.",
+    input_schema: {
+      type: "object",
+      properties: {
+        numero_devis: { type: "string", description: "Numéro exact du devis, ex. D-2026-0001." },
+      },
+      required: ["numero_devis"],
+    },
+  },
+  {
+    name: "rechercher_client",
+    description: "Recherche un client par nom (ou partie du nom) et renvoie ses coordonnées (téléphone, e-mail, adresse) et son historique de documents.",
+    input_schema: {
+      type: "object",
+      properties: {
+        nom: { type: "string", description: "Nom ou partie du nom du client à rechercher." },
+      },
+      required: ["nom"],
+    },
+  },
+  {
+    name: "lister_documents_impayes",
+    description:
+      "Liste les factures envoyées mais non payées, avec leur date d'échéance et le nombre de jours de retard éventuel. Utilise ceci pour toute question sur les impayés, les relances à faire, ou les factures en retard.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "relancer_document",
+    description:
+      "Prépare une relance (devis en attente de réponse ou facture impayée) : renvoie un message de relance prêt à l'emploi ainsi que les coordonnées du client, pour que l'artisan puisse l'envoyer par e-mail ou SMS. L'envoi automatique par e-mail n'est pas encore configuré sur cette instance.",
+    input_schema: {
+      type: "object",
+      properties: {
+        numero: { type: "string", description: "Numéro exact du document à relancer, ex. F-2026-0001 ou D-2026-0001." },
+      },
+      required: ["numero"],
     },
   },
   {
@@ -220,6 +293,50 @@ function estErreurResolution(resultat: { id: string } | { erreur: string; salari
   return "erreur" in resultat;
 }
 
+/**
+ * Retrouve un client existant (par e-mail exact, sinon par nom exact unique) ou en crée un nouveau.
+ * Évite de dupliquer un client déjà enregistré à chaque nouvelle demande de l'IA.
+ */
+async function resoudreOuCreerClient(
+  admin: AdminClient,
+  entrepriseId: string,
+  donnees: { nom: string; email?: string; telephone?: string; adresse?: string },
+): Promise<string> {
+  const email = donnees.email?.trim();
+  if (email) {
+    const { data } = await admin
+      .from("clients")
+      .select("id")
+      .eq("entreprise_id", entrepriseId)
+      .ilike("email", email)
+      .maybeSingle();
+    if (data) return data.id;
+  }
+
+  const nom = donnees.nom.trim();
+  const { data: parNom } = await admin
+    .from("clients")
+    .select("id")
+    .eq("entreprise_id", entrepriseId)
+    .ilike("nom", nom)
+    .limit(2);
+  if (parNom && parNom.length === 1) return parNom[0].id;
+
+  const { data: nouveau, error } = await admin
+    .from("clients")
+    .insert({
+      entreprise_id: entrepriseId,
+      nom,
+      adresse: donnees.adresse?.trim() || null,
+      telephone: donnees.telephone?.trim() || null,
+      email: email || null,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  return nouveau.id;
+}
+
 async function outilBilanMensuel(ctx: ContexteOutils, input: { mois?: string }) {
   const mois = input.mois?.trim() || moisCourant();
   const { debut, fin } = bornesMois(mois);
@@ -299,27 +416,39 @@ type LigneEntree = {
   taux_tva?: number;
 };
 
-async function outilCreerDevis(
-  ctx: ContexteOutils,
-  input: {
-    client_nom: string;
-    client_adresse?: string;
-    client_telephone?: string;
-    client_email?: string;
-    notes?: string;
-    lignes: LigneEntree[];
-  },
-) {
+type EntreeDocument = {
+  client_nom: string;
+  client_adresse?: string;
+  client_telephone?: string;
+  client_email?: string;
+  date_echeance?: string;
+  notes?: string;
+  lignes: LigneEntree[];
+};
+
+async function creerDevisOuFacture(ctx: ContexteOutils, type: "devis" | "facture", input: EntreeDocument) {
   if (!input.client_nom?.trim()) return { erreur: "Le nom du client est requis." };
   if (!input.lignes || input.lignes.length === 0) return { erreur: "Au moins une ligne est requise." };
 
-  const formData = new FormData();
-  formData.set("clientNom", input.client_nom);
-  if (input.client_adresse) formData.set("clientAdresse", input.client_adresse);
-  if (input.client_telephone) formData.set("clientTelephone", input.client_telephone);
-  if (input.client_email) formData.set("clientEmail", input.client_email);
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
 
-  const documentId = await creerDocument("devis", formData);
+  let clientId: string;
+  try {
+    clientId = await resoudreOuCreerClient(admin, ctx.entrepriseId, {
+      nom: input.client_nom,
+      email: input.client_email,
+      telephone: input.client_telephone,
+      adresse: input.client_adresse,
+    });
+  } catch (err) {
+    return { erreur: err instanceof Error ? err.message : "Erreur lors de l'enregistrement du client." };
+  }
+
+  const formData = new FormData();
+  formData.set("clientId", clientId);
+
+  const documentId = await creerDocument(type, formData);
 
   const lignes: LigneDocument[] = input.lignes.map((l, i) => ({
     id: `ia_${i}_${Math.random().toString(36).slice(2, 8)}`,
@@ -336,7 +465,7 @@ async function outilCreerDevis(
     clientTelephone: input.client_telephone ?? "",
     clientEmail: input.client_email ?? "",
     dateValidite: "",
-    dateEcheance: "",
+    dateEcheance: input.date_echeance ?? "",
     datePrestation: "",
     notes: input.notes ?? "",
   });
@@ -346,6 +475,131 @@ async function outilCreerDevis(
     cree: true,
     total_ttc_euros: totaux.totalTTC / 100,
     lien: `/dashboard/documents/${documentId}`,
+  };
+}
+
+async function outilCreerDevis(ctx: ContexteOutils, input: EntreeDocument) {
+  return creerDevisOuFacture(ctx, "devis", input);
+}
+
+async function outilCreerFacture(ctx: ContexteOutils, input: EntreeDocument) {
+  return creerDevisOuFacture(ctx, "facture", input);
+}
+
+async function outilConvertirDevisEnFacture(ctx: ContexteOutils, input: { numero_devis: string }) {
+  if (!input.numero_devis?.trim()) return { erreur: "Le numéro du devis est requis." };
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+  const { data: devis, error } = await admin
+    .from("documents")
+    .select("id")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .eq("type", "devis")
+    .eq("numero", input.numero_devis.trim())
+    .maybeSingle();
+  if (error) return { erreur: error.message };
+  if (!devis) return { erreur: "Aucun devis avec ce numéro." };
+  try {
+    const factureId = await convertirDevisEnFacture(devis.id);
+    return { converti: true, lien: `/dashboard/documents/${factureId}` };
+  } catch (err) {
+    return { erreur: err instanceof Error ? err.message : "Erreur lors de la conversion en facture." };
+  }
+}
+
+async function outilRechercherClient(ctx: ContexteOutils, input: { nom: string }) {
+  if (!input.nom?.trim()) return { erreur: "Le nom à rechercher est requis." };
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+  const { data: clients, error } = await admin
+    .from("clients")
+    .select("id, nom, email, telephone, adresse")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .ilike("nom", `%${input.nom.trim()}%`)
+    .limit(10);
+  if (error) return { erreur: error.message };
+  if (!clients || clients.length === 0) return { erreur: "Aucun client ne correspond à ce nom." };
+
+  const resultats = await Promise.all(
+    clients.map(async (c) => {
+      const { data: documents } = await admin
+        .from("documents")
+        .select("type, numero, statut")
+        .eq("client_id", c.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      return {
+        nom: c.nom,
+        email: c.email,
+        telephone: c.telephone,
+        adresse: c.adresse,
+        derniers_documents: documents ?? [],
+      };
+    }),
+  );
+  return { clients: resultats };
+}
+
+async function outilListerDocumentsImpayes(ctx: ContexteOutils) {
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+  const { data, error } = await admin
+    .from("documents")
+    .select("numero, client_nom, date_echeance, lignes")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .eq("type", "facture")
+    .eq("statut", "envoyee")
+    .order("date_echeance", { ascending: true, nullsFirst: true });
+  if (error) return { erreur: error.message };
+
+  const aujourdhui = new Date();
+  return (data ?? []).map((d) => {
+    const totaux = calculerTotaux((d.lignes as LigneDocument[] | null) ?? []);
+    const joursRetard = d.date_echeance
+      ? Math.floor((aujourdhui.getTime() - new Date(d.date_echeance).getTime()) / 86_400_000)
+      : null;
+    return {
+      numero: d.numero,
+      client: d.client_nom,
+      date_echeance: d.date_echeance,
+      total_ttc_euros: totaux.totalTTC / 100,
+      jours_de_retard: joursRetard !== null && joursRetard > 0 ? joursRetard : 0,
+    };
+  });
+}
+
+async function outilRelancerDocument(ctx: ContexteOutils, input: { numero: string }) {
+  if (!input.numero?.trim()) return { erreur: "Le numéro du document est requis." };
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+  const { data: document, error } = await admin
+    .from("documents")
+    .select("type, numero, statut, client_nom, client_email, date_echeance, lignes")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .eq("numero", input.numero.trim())
+    .maybeSingle();
+  if (error) return { erreur: error.message };
+  if (!document) return { erreur: "Aucun document avec ce numéro." };
+  if (!document.client_email) {
+    return { erreur: "Ce client n'a pas d'adresse e-mail enregistrée, impossible de préparer une relance par e-mail." };
+  }
+
+  const totaux = calculerTotaux((document.lignes as LigneDocument[] | null) ?? []);
+  const totalEuros = (totaux.totalTTC / 100).toFixed(2);
+  const estDevis = document.type === "devis";
+  const objet = estDevis
+    ? `Relance : votre devis ${document.numero}`
+    : `Relance : facture ${document.numero} en attente de règlement`;
+  const message = estDevis
+    ? `Bonjour ${document.client_nom},\n\nNous revenons vers vous au sujet du devis ${document.numero} (${totalEuros} € TTC) que nous vous avons transmis. Souhaitez-vous donner suite ? N'hésitez pas à nous contacter pour toute question.\n\nCordialement.`
+    : `Bonjour ${document.client_nom},\n\nNous vous rappelons que la facture ${document.numero} (${totalEuros} € TTC)${document.date_echeance ? ` arrivée à échéance le ${document.date_echeance}` : ""} reste à régler à ce jour. Merci de bien vouloir procéder au paiement dans les meilleurs délais.\n\nCordialement.`;
+
+  return {
+    destinataire: document.client_email,
+    objet,
+    message,
+    envoi_automatique: false,
+    note: "L'envoi automatique par e-mail n'est pas encore configuré sur cette instance : copie ce message pour l'envoyer toi-même.",
   };
 }
 
@@ -620,30 +874,16 @@ async function outilBloquerCreneau(
   );
   if (chevaucheAbsence) return { erreur: "Le salarié est marqué absent sur ce créneau." };
 
-  let clientId: string | null = null;
-  if (input.client_email?.trim()) {
-    const { data: client } = await admin
-      .from("clients")
-      .select("id")
-      .eq("entreprise_id", ctx.entrepriseId)
-      .ilike("email", input.client_email.trim())
-      .maybeSingle();
-    clientId = client?.id ?? null;
-  }
-  if (!clientId) {
-    const { data: nouveauClient, error: erreurClient } = await admin
-      .from("clients")
-      .insert({
-        entreprise_id: ctx.entrepriseId,
-        nom: input.client_nom.trim(),
-        adresse: input.client_adresse?.trim() || null,
-        telephone: input.client_telephone?.trim() || null,
-        email: input.client_email?.trim() || null,
-      })
-      .select("id")
-      .single();
-    if (erreurClient) return { erreur: erreurClient.message };
-    clientId = nouveauClient.id;
+  let clientId: string;
+  try {
+    clientId = await resoudreOuCreerClient(admin, ctx.entrepriseId, {
+      nom: input.client_nom,
+      email: input.client_email,
+      telephone: input.client_telephone,
+      adresse: input.client_adresse,
+    });
+  } catch (err) {
+    return { erreur: err instanceof Error ? err.message : "Erreur lors de l'enregistrement du client." };
   }
 
   const { data: nouveauRdv, error } = await admin
@@ -685,6 +925,16 @@ export async function executerOutil(ctx: ContexteOutils, nom: string, input: unk
       return outilListerDocumentsRecents(ctx, entree as { limite?: number });
     case "creer_devis":
       return outilCreerDevis(ctx, entree as Parameters<typeof outilCreerDevis>[1]);
+    case "creer_facture":
+      return outilCreerFacture(ctx, entree as Parameters<typeof outilCreerFacture>[1]);
+    case "convertir_devis_en_facture":
+      return outilConvertirDevisEnFacture(ctx, entree as Parameters<typeof outilConvertirDevisEnFacture>[1]);
+    case "rechercher_client":
+      return outilRechercherClient(ctx, entree as Parameters<typeof outilRechercherClient>[1]);
+    case "lister_documents_impayes":
+      return outilListerDocumentsImpayes(ctx);
+    case "relancer_document":
+      return outilRelancerDocument(ctx, entree as Parameters<typeof outilRelancerDocument>[1]);
     case "enregistrer_depense":
       return outilEnregistrerDepense(ctx, entree as Parameters<typeof outilEnregistrerDepense>[1]);
     case "bloquer_creneau":
