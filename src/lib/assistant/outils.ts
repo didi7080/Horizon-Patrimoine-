@@ -4,6 +4,7 @@ import { calculerTotaux, type LigneDocument } from "@/lib/documents/types";
 import { calculerBilanMensuel, bornesMois, moisCourant, libelleMois } from "@/lib/bilan/types";
 import { creerDocument, enregistrerLignesDocument, changerStatutDocument, convertirDevisEnFacture } from "@/app/dashboard/documents/actions";
 import { synchroniserRdvGoogle } from "@/lib/google-calendar/sync";
+import { emailConfigure, envoyerEmail } from "@/lib/email/client";
 
 export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
   {
@@ -130,13 +131,27 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
   {
     name: "relancer_document",
     description:
-      "Prépare une relance (devis en attente de réponse ou facture impayée) : renvoie un message de relance prêt à l'emploi ainsi que les coordonnées du client, pour que l'artisan puisse l'envoyer par e-mail ou SMS. L'envoi automatique par e-mail n'est pas encore configuré sur cette instance.",
+      "Relance un client au sujet d'un devis en attente de réponse ou d'une facture impayée : envoie automatiquement un e-mail de relance au client (si l'envoi d'e-mails est configuré sur cette instance), sinon renvoie le message prêt à l'emploi pour que l'artisan l'envoie lui-même.",
     input_schema: {
       type: "object",
       properties: {
         numero: { type: "string", description: "Numéro exact du document à relancer, ex. F-2026-0001 ou D-2026-0001." },
       },
       required: ["numero"],
+    },
+  },
+  {
+    name: "envoyer_email_client",
+    description:
+      "Envoie un e-mail libre à un client déjà enregistré (ex. informer d'un retard, confirmer une intervention, répondre à une question). Retrouve le client par son nom ; s'il y a ambiguïté ou que le client n'a pas d'e-mail enregistré, l'outil le signale au lieu d'envoyer. Pour relancer un devis ou une facture précis·e, utilise plutôt relancer_document qui prépare le texte automatiquement.",
+    input_schema: {
+      type: "object",
+      properties: {
+        client_nom: { type: "string", description: "Nom (ou partie du nom) du client destinataire." },
+        objet: { type: "string", description: "Objet de l'e-mail." },
+        message: { type: "string", description: "Corps du message, rédigé par toi selon la demande de l'artisan." },
+      },
+      required: ["client_nom", "objet", "message"],
     },
   },
   {
@@ -335,6 +350,12 @@ async function resoudreOuCreerClient(
     .single();
   if (error) throw new Error(error.message);
   return nouveau.id;
+}
+
+/** E-mail du compte artisan à l'origine de la demande, utilisé comme adresse de réponse. */
+async function emailArtisan(admin: AdminClient, userId: string): Promise<string | null> {
+  const { data } = await admin.auth.admin.getUserById(userId);
+  return data.user?.email ?? null;
 }
 
 async function outilBilanMensuel(ctx: ContexteOutils, input: { mois?: string }) {
@@ -616,13 +637,51 @@ async function outilRelancerDocument(ctx: ContexteOutils, input: { numero: strin
     ? `Bonjour ${document.client_nom},\n\nNous revenons vers vous au sujet du devis ${document.numero} (${totalEuros} € TTC) que nous vous avons transmis. Souhaitez-vous donner suite ? N'hésitez pas à nous contacter pour toute question.\n\nCordialement.`
     : `Bonjour ${document.client_nom},\n\nNous vous rappelons que la facture ${document.numero} (${totalEuros} € TTC)${document.date_echeance ? ` arrivée à échéance le ${document.date_echeance}` : ""} reste à régler à ce jour. Merci de bien vouloir procéder au paiement dans les meilleurs délais.\n\nCordialement.`;
 
-  return {
-    destinataire: document.client_email,
-    objet,
-    message,
-    envoi_automatique: false,
-    note: "L'envoi automatique par e-mail n'est pas encore configuré sur cette instance : copie ce message pour l'envoyer toi-même.",
-  };
+  if (!emailConfigure()) {
+    return {
+      destinataire: document.client_email,
+      objet,
+      message,
+      envoye: false,
+      note: "L'envoi automatique par e-mail n'est pas encore configuré sur cette instance : copie ce message pour l'envoyer toi-même.",
+    };
+  }
+
+  const replyTo = await emailArtisan(admin, ctx.userId);
+  const resultat = await envoyerEmail({ to: document.client_email, subject: objet, text: message, replyTo });
+  if (!resultat.ok) {
+    return { destinataire: document.client_email, objet, message, envoye: false, erreur: resultat.erreur };
+  }
+  return { destinataire: document.client_email, objet, envoye: true };
+}
+
+async function outilEnvoyerEmailClient(ctx: ContexteOutils, input: { client_nom: string; objet: string; message: string }) {
+  if (!input.client_nom?.trim()) return { erreur: "Le nom du client est requis." };
+  if (!input.objet?.trim()) return { erreur: "L'objet de l'e-mail est requis." };
+  if (!input.message?.trim()) return { erreur: "Le corps du message est requis." };
+  if (!emailConfigure()) return { erreur: "L'envoi automatique par e-mail n'est pas configuré sur cette instance." };
+
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+
+  const { data: clients, error } = await admin
+    .from("clients")
+    .select("nom, email")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .ilike("nom", `%${input.client_nom.trim()}%`)
+    .limit(5);
+  if (error) return { erreur: error.message };
+  if (!clients || clients.length === 0) return { erreur: "Aucun client ne correspond à ce nom." };
+  if (clients.length > 1) {
+    return { erreur: "Plusieurs clients correspondent, précise lequel.", clients_disponibles: clients.map((c) => c.nom) };
+  }
+  const client = clients[0];
+  if (!client.email) return { erreur: `${client.nom} n'a pas d'adresse e-mail enregistrée.` };
+
+  const replyTo = await emailArtisan(admin, ctx.userId);
+  const resultat = await envoyerEmail({ to: client.email, subject: input.objet, text: input.message, replyTo });
+  if (!resultat.ok) return { erreur: resultat.erreur };
+  return { envoye: true, destinataire: client.email };
 }
 
 async function outilEnregistrerDepense(
@@ -960,6 +1019,8 @@ export async function executerOutil(ctx: ContexteOutils, nom: string, input: unk
       return outilListerDocumentsImpayes(ctx);
     case "relancer_document":
       return outilRelancerDocument(ctx, entree as Parameters<typeof outilRelancerDocument>[1]);
+    case "envoyer_email_client":
+      return outilEnvoyerEmailClient(ctx, entree as Parameters<typeof outilEnvoyerEmailClient>[1]);
     case "enregistrer_depense":
       return outilEnregistrerDepense(ctx, entree as Parameters<typeof outilEnregistrerDepense>[1]);
     case "bloquer_creneau":
