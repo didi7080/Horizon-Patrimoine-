@@ -426,9 +426,27 @@ type EntreeDocument = {
   lignes: LigneEntree[];
 };
 
+const TAUX_TVA_VALIDES = new Set([0, 5.5, 10, 20]);
+
+function validerLignes(lignes: LigneEntree[]): string | null {
+  for (const ligne of lignes) {
+    if (!ligne.designation?.trim()) return "Chaque ligne doit avoir une désignation.";
+    if (!Number.isFinite(ligne.quantite) || ligne.quantite <= 0) return `Quantité invalide pour "${ligne.designation}" : elle doit être supérieure à 0.`;
+    if (!Number.isFinite(ligne.prix_unitaire_euros) || ligne.prix_unitaire_euros < 0) {
+      return `Prix unitaire invalide pour "${ligne.designation}" : il ne peut pas être négatif.`;
+    }
+    if (ligne.taux_tva !== undefined && !TAUX_TVA_VALIDES.has(ligne.taux_tva)) {
+      return `Taux de TVA invalide pour "${ligne.designation}" : utilise 0, 5.5, 10 ou 20.`;
+    }
+  }
+  return null;
+}
+
 async function creerDevisOuFacture(ctx: ContexteOutils, type: "devis" | "facture", input: EntreeDocument) {
   if (!input.client_nom?.trim()) return { erreur: "Le nom du client est requis." };
   if (!input.lignes || input.lignes.length === 0) return { erreur: "Au moins une ligne est requise." };
+  const erreurLignes = validerLignes(input.lignes);
+  if (erreurLignes) return { erreur: erreurLignes };
 
   const admin = createAdminClient();
   if (!admin) return { erreur: "Base de données non configurée." };
@@ -445,37 +463,41 @@ async function creerDevisOuFacture(ctx: ContexteOutils, type: "devis" | "facture
     return { erreur: err instanceof Error ? err.message : "Erreur lors de l'enregistrement du client." };
   }
 
-  const formData = new FormData();
-  formData.set("clientId", clientId);
+  try {
+    const formData = new FormData();
+    formData.set("clientId", clientId);
 
-  const documentId = await creerDocument(type, formData);
+    const documentId = await creerDocument(type, formData);
 
-  const lignes: LigneDocument[] = input.lignes.map((l, i) => ({
-    id: `ia_${i}_${Math.random().toString(36).slice(2, 8)}`,
-    designation: l.designation,
-    unite: l.unite?.trim() || "u",
-    quantite: l.quantite,
-    prixUnitaireCents: Math.round(l.prix_unitaire_euros * 100),
-    tauxTva: l.taux_tva ?? 20,
-  }));
+    const lignes: LigneDocument[] = input.lignes.map((l, i) => ({
+      id: `ia_${i}_${Math.random().toString(36).slice(2, 8)}`,
+      designation: l.designation,
+      unite: l.unite?.trim() || "u",
+      quantite: l.quantite,
+      prixUnitaireCents: Math.round(l.prix_unitaire_euros * 100),
+      tauxTva: l.taux_tva ?? 20,
+    }));
 
-  await enregistrerLignesDocument(documentId, JSON.stringify(lignes), {
-    clientNom: input.client_nom,
-    clientAdresse: input.client_adresse ?? "",
-    clientTelephone: input.client_telephone ?? "",
-    clientEmail: input.client_email ?? "",
-    dateValidite: "",
-    dateEcheance: input.date_echeance ?? "",
-    datePrestation: "",
-    notes: input.notes ?? "",
-  });
+    await enregistrerLignesDocument(documentId, JSON.stringify(lignes), {
+      clientNom: input.client_nom,
+      clientAdresse: input.client_adresse ?? "",
+      clientTelephone: input.client_telephone ?? "",
+      clientEmail: input.client_email ?? "",
+      dateValidite: "",
+      dateEcheance: input.date_echeance ?? "",
+      datePrestation: "",
+      notes: input.notes ?? "",
+    });
 
-  const totaux = calculerTotaux(lignes);
-  return {
-    cree: true,
-    total_ttc_euros: totaux.totalTTC / 100,
-    lien: `/dashboard/documents/${documentId}`,
-  };
+    const totaux = calculerTotaux(lignes);
+    return {
+      cree: true,
+      total_ttc_euros: totaux.totalTTC / 100,
+      lien: `/dashboard/documents/${documentId}`,
+    };
+  } catch (err) {
+    return { erreur: err instanceof Error ? err.message : "Erreur lors de la création du document." };
+  }
 }
 
 async function outilCreerDevis(ctx: ContexteOutils, input: EntreeDocument) {
@@ -495,7 +517,7 @@ async function outilConvertirDevisEnFacture(ctx: ContexteOutils, input: { numero
     .select("id")
     .eq("entreprise_id", ctx.entrepriseId)
     .eq("type", "devis")
-    .eq("numero", input.numero_devis.trim())
+    .ilike("numero", input.numero_devis.trim())
     .maybeSingle();
   if (error) return { erreur: error.message };
   if (!devis) return { erreur: "Aucun devis avec ce numéro." };
@@ -576,7 +598,7 @@ async function outilRelancerDocument(ctx: ContexteOutils, input: { numero: strin
     .from("documents")
     .select("type, numero, statut, client_nom, client_email, date_echeance, lignes")
     .eq("entreprise_id", ctx.entrepriseId)
-    .eq("numero", input.numero.trim())
+    .ilike("numero", input.numero.trim())
     .maybeSingle();
   if (error) return { erreur: error.message };
   if (!document) return { erreur: "Aucun document avec ce numéro." };
@@ -795,7 +817,7 @@ async function outilChangerStatutDocument(ctx: ContexteOutils, input: { numero: 
     .from("documents")
     .select("id")
     .eq("entreprise_id", ctx.entrepriseId)
-    .eq("numero", input.numero.trim())
+    .ilike("numero", input.numero.trim())
     .maybeSingle();
   if (error) return { erreur: error.message };
   if (!document) return { erreur: "Aucun document avec ce numéro." };
@@ -824,6 +846,9 @@ async function outilBloquerCreneau(
 ) {
   if (!input.client_nom?.trim()) return { erreur: "Le nom du client est requis." };
   if (!input.date || !input.heure) return { erreur: "La date et l'heure sont requises." };
+  if (input.duree_minutes !== undefined && (!Number.isFinite(input.duree_minutes) || input.duree_minutes <= 0)) {
+    return { erreur: "La durée doit être supérieure à 0 minute." };
+  }
 
   const admin = createAdminClient();
   if (!admin) return { erreur: "Base de données non configurée." };
