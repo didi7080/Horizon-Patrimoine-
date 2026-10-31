@@ -39,8 +39,24 @@ async function contexteRequete() {
   };
 }
 
+function dateDuJourParis(): { iso: string; libelle: string } {
+  const maintenant = new Date();
+  const iso = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(maintenant);
+  const libelle = new Intl.DateTimeFormat("fr-FR", {
+    timeZone: "Europe/Paris",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(maintenant);
+  return { iso, libelle };
+}
+
 function systemPrompt(entreprise: { nom: string; metier: string | null }): string {
+  const { iso, libelle } = dateDuJourParis();
   return `Tu es l'assistant IA d'ArtisanRDV, intégré au tableau de bord de l'entreprise "${entreprise.nom}"${entreprise.metier ? ` (métier : ${entreprise.metier})` : ""}.
+
+Nous sommes le ${libelle} (${iso}, heure de Paris). Utilise cette date comme référence pour "aujourd'hui", "demain", "la semaine prochaine", etc. — ne la demande jamais à l'utilisateur.
 
 Tu aides un artisan indépendant ou une petite entreprise du bâtiment/services en France avec :
 - des questions administratives, juridiques, techniques et réglementaires (TVA et taux applicables, mentions obligatoires sur devis/factures, assurance décennale et RC pro, statut juridique, URSSAF, auto-entrepreneur, RGE, garanties légales, DTU, normes du métier...) ;
