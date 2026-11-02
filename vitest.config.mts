@@ -12,5 +12,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Les specs sous e2e/ utilisent @playwright/test (npm run test:e2e), pas Vitest.
+    exclude: ["**/node_modules/**", "**/e2e/**"],
   },
 });
