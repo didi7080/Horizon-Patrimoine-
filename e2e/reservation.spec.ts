@@ -46,6 +46,6 @@ test.describe("Réservation publique", () => {
     await expect(page).toHaveURL(/\/rdv\//);
     await page.getByRole("button", { name: "Annuler" }).click();
     await page.getByRole("button", { name: "Confirmer l’annulation" }).click();
-    await expect(page.getByText("Annulé")).toBeVisible();
+    await expect(page.getByText("Annulé", { exact: true })).toBeVisible();
   });
 });
