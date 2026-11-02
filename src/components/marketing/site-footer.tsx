@@ -19,12 +19,16 @@ export function SiteFooter() {
               <Link href="/recherche" className="hover:text-foreground">Trouver un artisan</Link>
             </li>
             <li>
-              <Link href="/recherche?metier=Plomberie" className="hover:text-foreground">Plombiers</Link>
+              <Link href="/artisans/plombier" className="hover:text-foreground">Plombiers</Link>
             </li>
             <li>
-              <Link href="/recherche?metier=%C3%89lectricit%C3%A9" className="hover:text-foreground">
-                Électriciens
-              </Link>
+              <Link href="/artisans/electricien" className="hover:text-foreground">Électriciens</Link>
+            </li>
+            <li>
+              <Link href="/artisans/chauffagiste" className="hover:text-foreground">Chauffagistes</Link>
+            </li>
+            <li>
+              <Link href="/artisans/serrurier" className="hover:text-foreground">Serruriers</Link>
             </li>
           </ul>
         </div>
@@ -58,7 +62,7 @@ export function SiteFooter() {
               <Link href="/confidentialite" className="hover:text-foreground">Confidentialité</Link>
             </li>
             <li>
-              <a href="mailto:contact@artisanrdv.fr" className="hover:text-foreground">Contact</a>
+              <a href="mailto:contact@artisanrdv.com" className="hover:text-foreground">Contact</a>
             </li>
           </ul>
         </div>
