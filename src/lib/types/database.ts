@@ -372,6 +372,7 @@ export type Database = {
           delai_min_heures: number
           description: string | null
           email: string | null
+          email_bienvenue_envoye: boolean
           fenetre_max_jours: number
           forme_juridique: string | null
           id: string
@@ -405,6 +406,7 @@ export type Database = {
           delai_min_heures?: number
           description?: string | null
           email?: string | null
+          email_bienvenue_envoye?: boolean
           fenetre_max_jours?: number
           forme_juridique?: string | null
           id?: string
@@ -438,6 +440,7 @@ export type Database = {
           delai_min_heures?: number
           description?: string | null
           email?: string | null
+          email_bienvenue_envoye?: boolean
           fenetre_max_jours?: number
           forme_juridique?: string | null
           id?: string

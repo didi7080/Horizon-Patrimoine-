@@ -4,6 +4,7 @@ import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { createAnonClient } from "@/lib/supabase/anon";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { envoyerBienvenue } from "@/lib/notifications/bienvenue";
 
 export const runtime = "nodejs";
 
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
           null,
           session.metadata?.plan,
         );
+        await envoyerBienvenue(entrepriseId);
       }
       break;
     }

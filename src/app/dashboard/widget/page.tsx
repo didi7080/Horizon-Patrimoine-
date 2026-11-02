@@ -7,6 +7,7 @@ import { WidgetEnvoyerEmail } from "@/components/dashboard/widget-envoyer-email"
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { genererQrCodeDataUrl } from "@/lib/qrcode";
 import { emailConfigure } from "@/lib/email/client";
+import { codeBoutonWidget, lienReservation } from "@/lib/widget";
 
 export const revalidate = 0;
 
@@ -15,11 +16,11 @@ export default async function WidgetPage() {
   const h = await headers();
   const origine = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
 
-  const lien = `${origine}/e/${entreprise.slug}`;
+  const lien = lienReservation(origine, entreprise.slug);
   const qrCode = await genererQrCodeDataUrl(lien);
   const peutEnvoyerParEmail = emailConfigure();
 
-  const codeBouton = `<script src="${origine}/widget.js" data-artisanrdv="${entreprise.slug}" data-color="${entreprise.couleur}" data-label="Prendre rendez-vous" async></script>`;
+  const codeBouton = codeBoutonWidget(origine, entreprise.slug, entreprise.couleur);
   const codeInline = `<div data-artisanrdv-inline="${entreprise.slug}"></div>\n<script src="${origine}/widget.js" async></script>`;
   const codeIframe = `<iframe src="${origine}/embed/${entreprise.slug}" style="width:100%;border:0;min-height:480px" title="Prendre rendez-vous"></iframe>`;
 
