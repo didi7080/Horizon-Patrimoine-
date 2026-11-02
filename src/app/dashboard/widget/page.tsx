@@ -125,13 +125,18 @@ export default async function WidgetPage() {
       {peutDomainePersonnalise && (
         <Card className="space-y-3 p-6">
           <div>
-            <h3 className="font-semibold text-foreground">Domaine personnalisé (fusion totale)</h3>
+            <h3 className="font-semibold text-foreground">Aller plus loin : votre propre nom de domaine</h3>
             <p className="mt-1 text-sm text-muted">
-              Affichez votre page de réservation sous votre propre nom de domaine (ex.
-              rdv.mon-site.fr) au lieu d&apos;artisanrdv.com — vos clients ne voient jamais notre nom.
+              Totalement optionnel — les options ci-dessus suffisent largement pour la plupart des
+              artisans. Celle-ci affiche votre page de réservation sous votre propre nom de domaine
+              (ex. rdv.mon-site.fr) au lieu d&apos;artisanrdv.com. Elle demande une petite
+              manipulation technique (DNS), qu&apos;on peut transférer à qui gère votre site.
             </p>
           </div>
-          <WidgetDomainePersonnalise domaineActuel={entreprise.domaine_personnalise} />
+          <WidgetDomainePersonnalise
+            domaineActuel={entreprise.domaine_personnalise}
+            peutEnvoyerParEmail={peutEnvoyerParEmail}
+          />
         </Card>
       )}
     </div>

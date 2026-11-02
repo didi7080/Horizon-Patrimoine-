@@ -5,13 +5,21 @@ import { CheckCircle2, Globe, Loader2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { WidgetCodeBlock } from "@/components/dashboard/widget-code-block";
+import { WidgetEnvoyerEmail } from "@/components/dashboard/widget-envoyer-email";
 import {
   connecterDomainePersonnalise,
   deconnecterDomainePersonnalise,
   verifierDomainePersonnalise,
 } from "@/app/dashboard/widget/domaine-actions";
 
-export function WidgetDomainePersonnalise({ domaineActuel }: { domaineActuel: string | null }) {
+export function WidgetDomainePersonnalise({
+  domaineActuel,
+  peutEnvoyerParEmail,
+}: {
+  domaineActuel: string | null;
+  peutEnvoyerParEmail: boolean;
+}) {
   const [domaine, setDomaine] = useState("");
   const [pending, startTransition] = useTransition();
   const [statut, setStatut] = useState<"inconnu" | "verifie" | "en_attente">("inconnu");
@@ -95,13 +103,21 @@ export function WidgetDomainePersonnalise({ domaineActuel }: { domaineActuel: st
         )}
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-3 text-sm">
-        <p className="text-muted-foreground">
-          Chez votre hébergeur de domaine, ajoutez un enregistrement :
+      <div className="space-y-2 rounded-lg border border-border bg-surface p-3">
+        <p className="text-sm text-muted-foreground">
+          Dernière étape, chez votre hébergeur de domaine : ajoutez cet enregistrement DNS
+          (si vous ne savez pas comment faire, transférez-le à qui gère votre nom de domaine,
+          avec le bouton ci-dessous).
         </p>
-        <p className="mt-1.5 font-mono text-xs">
-          CNAME&nbsp;&nbsp;{domaineActuel.split(".")[0]}&nbsp;&nbsp;→&nbsp;&nbsp;cname.vercel-dns.com
-        </p>
+        <WidgetCodeBlock
+          code={`Type : CNAME\nNom : ${domaineActuel.split(".")[0]}\nValeur : cname.vercel-dns.com`}
+        />
+        {peutEnvoyerParEmail && (
+          <WidgetEnvoyerEmail
+            titre={`Enregistrement DNS pour ${domaineActuel}`}
+            code={`Type : CNAME\nNom : ${domaineActuel.split(".")[0]}\nValeur : cname.vercel-dns.com`}
+          />
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
