@@ -101,6 +101,24 @@ export function PrestationFormDialog({
               />
             </div>
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="acompte">Acompte demandé à la réservation (€, vide = aucun)</Label>
+            <Input
+              id="acompte"
+              name="acompte"
+              type="number"
+              min={0}
+              step="0.01"
+              defaultValue={
+                prestation?.acompte_cents !== null && prestation?.acompte_cents !== undefined
+                  ? prestation.acompte_cents / 100
+                  : ""
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Le client pourra le régler en ligne depuis sa page de suivi de rendez-vous (nécessite Stripe connecté).
+            </p>
+          </div>
           {salaries.length > 0 && (
             <div className="space-y-1.5">
               <Label>Réalisée par</Label>

@@ -854,7 +854,7 @@ async function outilListerPrestations(ctx: ContexteOutils) {
   if (!admin) return { erreur: "Base de données non configurée." };
   const { data, error } = await admin
     .from("prestations")
-    .select("nom, duree_min, prix_cents")
+    .select("nom, duree_min, prix_cents, acompte_cents")
     .eq("entreprise_id", ctx.entrepriseId)
     .eq("actif", true)
     .order("nom");
@@ -864,6 +864,7 @@ async function outilListerPrestations(ctx: ContexteOutils) {
       nom: p.nom,
       duree_minutes: p.duree_min,
       prix_euros: p.prix_cents !== null ? p.prix_cents / 100 : null,
+      acompte_euros: p.acompte_cents !== null ? p.acompte_cents / 100 : null,
     })),
   };
 }

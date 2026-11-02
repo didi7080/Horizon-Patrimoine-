@@ -59,15 +59,23 @@ export async function enregistrerPrestation(formData: FormData) {
     prixEuros === null || String(prixEuros).trim() === ""
       ? null
       : Math.round(Number(prixEuros) * 100);
+  const acompteEuros = formData.get("acompte");
+  const acompteCents =
+    acompteEuros === null || String(acompteEuros).trim() === ""
+      ? null
+      : Math.round(Number(acompteEuros) * 100);
   const salarieIds = formData.getAll("salarieIds").map(String);
 
   if (!nom) throw new Error("Le nom de la prestation est requis.");
+  if (acompteCents !== null && prixCents !== null && acompteCents > prixCents) {
+    throw new Error("L'acompte ne peut pas dépasser le prix de la prestation.");
+  }
 
   let prestationId = id;
   if (id) {
     const { error } = await supabase
       .from("prestations")
-      .update({ nom, description: description || null, duree_min: dureeMin, prix_cents: prixCents })
+      .update({ nom, description: description || null, duree_min: dureeMin, prix_cents: prixCents, acompte_cents: acompteCents })
       .eq("id", id)
       .eq("entreprise_id", entreprise.id);
     if (error) throw new Error(error.message);
@@ -80,6 +88,7 @@ export async function enregistrerPrestation(formData: FormData) {
         description: description || null,
         duree_min: dureeMin,
         prix_cents: prixCents,
+        acompte_cents: acompteCents,
       })
       .select("id")
       .single();
