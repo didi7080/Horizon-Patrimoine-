@@ -4,10 +4,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { WidgetCodeBlock } from "@/components/dashboard/widget-code-block";
 import { WidgetEnvoyerEmail } from "@/components/dashboard/widget-envoyer-email";
+import { WidgetDomainePersonnalise } from "@/components/dashboard/widget-domaine-personnalise";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { genererQrCodeDataUrl } from "@/lib/qrcode";
 import { emailConfigure } from "@/lib/email/client";
 import { codeBoutonWidget, lienReservation } from "@/lib/widget";
+import { vercelConfigure } from "@/lib/vercel-domains";
 
 export const revalidate = 0;
 
@@ -19,6 +21,7 @@ export default async function WidgetPage() {
   const lien = lienReservation(origine, entreprise.slug);
   const qrCode = await genererQrCodeDataUrl(lien);
   const peutEnvoyerParEmail = emailConfigure();
+  const peutDomainePersonnalise = vercelConfigure();
 
   const codeBouton = codeBoutonWidget(origine, entreprise.slug, entreprise.couleur);
   const codeInline = `<div data-artisanrdv-inline="${entreprise.slug}"></div>\n<script src="${origine}/widget.js" async></script>`;
@@ -118,6 +121,19 @@ export default async function WidgetPage() {
         <WidgetCodeBlock code={codeIframe} />
         {peutEnvoyerParEmail && <WidgetEnvoyerEmail titre="Iframe ArtisanRDV" code={codeIframe} />}
       </Card>
+
+      {peutDomainePersonnalise && (
+        <Card className="space-y-3 p-6">
+          <div>
+            <h3 className="font-semibold text-foreground">Domaine personnalisé (fusion totale)</h3>
+            <p className="mt-1 text-sm text-muted">
+              Affichez votre page de réservation sous votre propre nom de domaine (ex.
+              rdv.mon-site.fr) au lieu d&apos;artisanrdv.com — vos clients ne voient jamais notre nom.
+            </p>
+          </div>
+          <WidgetDomainePersonnalise domaineActuel={entreprise.domaine_personnalise} />
+        </Card>
+      )}
     </div>
   );
 }

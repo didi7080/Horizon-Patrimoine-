@@ -371,6 +371,7 @@ export type Database = {
           created_by: string | null
           delai_min_heures: number
           description: string | null
+          domaine_personnalise: string | null
           email: string | null
           email_bienvenue_envoye: boolean
           fenetre_max_jours: number
@@ -405,6 +406,7 @@ export type Database = {
           created_by?: string | null
           delai_min_heures?: number
           description?: string | null
+          domaine_personnalise?: string | null
           email?: string | null
           email_bienvenue_envoye?: boolean
           fenetre_max_jours?: number
@@ -439,6 +441,7 @@ export type Database = {
           created_by?: string | null
           delai_min_heures?: number
           description?: string | null
+          domaine_personnalise?: string | null
           email?: string | null
           email_bienvenue_envoye?: boolean
           fenetre_max_jours?: number
