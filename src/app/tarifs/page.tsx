@@ -12,12 +12,12 @@ export const metadata: Metadata = { title: "Tarifs — ArtisanRDV" };
 const FORMULES = [
   {
     nom: "Solo",
-    description: "Jusqu'à 3 salariés",
+    description: "Jusqu'à 1 salarié",
     prix: 39,
     misEnAvant: false,
     inclus: [
       "Page de réservation en ligne illimitée",
-      "Agenda jusqu'à 3 salariés",
+      "Agenda jusqu'à 1 salarié",
       "Rappels automatiques par e-mail (SMS en option)",
       "Widget intégrable sur votre propre site internet",
       "Avis clients vérifiés",
@@ -27,7 +27,7 @@ const FORMULES = [
   },
   {
     nom: "Équipe",
-    description: "À partir de 4 salariés",
+    description: "À partir de 2 salariés",
     prix: 89,
     misEnAvant: true,
     inclus: [
@@ -64,7 +64,7 @@ const QUESTIONS = [
   },
   {
     q: "Comment choisir entre Solo et Équipe ?",
-    r: "La formule s’ajuste automatiquement selon le nombre de salariés que vous ajoutez : Solo jusqu’à 3, Équipe à partir de 4. Le nombre de rendez-vous n’est jamais plafonné.",
+    r: "La formule s’ajuste automatiquement selon le nombre de salariés que vous ajoutez : Solo jusqu’à 1, Équipe à partir de 2. Le nombre de rendez-vous n’est jamais plafonné.",
   },
   {
     q: "Qu’est-ce que la formule Premium apporte en plus ?",

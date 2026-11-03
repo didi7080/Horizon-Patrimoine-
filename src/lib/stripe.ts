@@ -15,7 +15,7 @@ export function getStripe(): Stripe | null {
 export type Plan = "solo" | "equipe" | "premium";
 
 /** À partir de ce nombre de salariés, l'entreprise bascule sur la formule Équipe. */
-export const SEUIL_SALARIES_EQUIPE = 4;
+export const SEUIL_SALARIES_EQUIPE = 2;
 
 const NOMS_PLAN: Record<Plan, string> = { solo: "Solo", equipe: "Équipe", premium: "Premium" };
 
