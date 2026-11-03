@@ -13,6 +13,11 @@ import {
   verifierDomainePersonnalise,
 } from "@/app/dashboard/widget/domaine-actions";
 
+/** Un domaine racine (ex. "ppc.fr") n'a pas droit au CNAME affiché ci-dessous (interdit par le DNS). */
+function estDomaineRacine(domaine: string): boolean {
+  return domaine.split(".").length === 2;
+}
+
 export function WidgetDomainePersonnalise({
   domaineActuel,
   peutEnvoyerParEmail,
@@ -63,6 +68,19 @@ export function WidgetDomainePersonnalise({
     });
   }
 
+  function utiliserWww() {
+    if (!domaineActuel) return;
+    startTransition(async () => {
+      try {
+        await deconnecterDomainePersonnalise();
+        await connecterDomainePersonnalise(`www.${domaineActuel}`);
+        toast.success("Basculé sur www. Configurez le DNS indiqué ci-dessous.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      }
+    });
+  }
+
   if (!domaineActuel) {
     return (
       <div className="flex flex-wrap items-end gap-2">
@@ -103,22 +121,49 @@ export function WidgetDomainePersonnalise({
         )}
       </div>
 
-      <div className="space-y-2 rounded-lg border border-border bg-surface p-3">
-        <p className="text-sm text-muted-foreground">
-          Dernière étape, chez votre hébergeur de domaine : ajoutez cet enregistrement DNS
-          (si vous ne savez pas comment faire, transférez-le à qui gère votre nom de domaine,
-          avec le bouton ci-dessous).
-        </p>
-        <WidgetCodeBlock
-          code={`Type : CNAME\nNom : ${domaineActuel.split(".")[0]}\nValeur : cname.vercel-dns.com`}
-        />
-        {peutEnvoyerParEmail && (
-          <WidgetEnvoyerEmail
-            titre={`Enregistrement DNS pour ${domaineActuel}`}
+      {estDomaineRacine(domaineActuel) ? (
+        <div className="space-y-2 rounded-lg border border-border bg-surface p-3">
+          <p className="text-sm text-muted-foreground">
+            {domaineActuel} est un domaine racine (sans sous-domaine). On vous recommande
+            d&apos;utiliser <strong>www.{domaineActuel}</strong> à la place — c&apos;est toujours votre
+            domaine, juste avec « www. » devant, et c&apos;est beaucoup plus simple et fiable à
+            configurer chez votre hébergeur.
+          </p>
+          <Button type="button" size="sm" onClick={utiliserWww} disabled={pending}>
+            {pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            Utiliser www.{domaineActuel} à la place
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Vous tenez à garder {domaineActuel} sans « www. » ? Ajoutez plutôt un enregistrement{" "}
+            <strong>ALIAS</strong> (ou <strong>ANAME</strong>) chez votre hébergeur, avec la même
+            valeur ci-dessous — tous les hébergeurs ne le permettent pas pour un domaine racine.
+          </p>
+          <WidgetCodeBlock code={`Type : ALIAS (ou ANAME)\nNom : @\nValeur : cname.vercel-dns.com`} />
+          {peutEnvoyerParEmail && (
+            <WidgetEnvoyerEmail
+              titre={`Enregistrement DNS pour ${domaineActuel}`}
+              code={`Type : ALIAS (ou ANAME)\nNom : @\nValeur : cname.vercel-dns.com`}
+            />
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2 rounded-lg border border-border bg-surface p-3">
+          <p className="text-sm text-muted-foreground">
+            Dernière étape, chez votre hébergeur de domaine : ajoutez cet enregistrement DNS
+            (si vous ne savez pas comment faire, transférez-le à qui gère votre nom de domaine,
+            avec le bouton ci-dessous).
+          </p>
+          <WidgetCodeBlock
             code={`Type : CNAME\nNom : ${domaineActuel.split(".")[0]}\nValeur : cname.vercel-dns.com`}
           />
-        )}
-      </div>
+          {peutEnvoyerParEmail && (
+            <WidgetEnvoyerEmail
+              titre={`Enregistrement DNS pour ${domaineActuel}`}
+              code={`Type : CNAME\nNom : ${domaineActuel.split(".")[0]}\nValeur : cname.vercel-dns.com`}
+            />
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" size="sm" onClick={verifier} disabled={pending}>
