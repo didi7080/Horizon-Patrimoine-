@@ -1,7 +1,6 @@
 "use server";
 
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { getStripe, facturationConfiguree, idPrixPour, planPourEffectif, type Plan } from "@/lib/stripe";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
@@ -13,7 +12,7 @@ async function origine(): Promise<string> {
   return `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
 }
 
-export async function demarrerAbonnement(planChoisi?: Plan) {
+export async function demarrerAbonnement(planChoisi?: Plan): Promise<{ url: string }> {
   if (!facturationConfiguree()) {
     throw new Error("La facturation en ligne n'est pas encore configurée par ArtisanRDV.");
   }
@@ -54,10 +53,10 @@ export async function demarrerAbonnement(planChoisi?: Plan) {
   });
 
   if (!session.url) throw new Error("Impossible de créer la session de paiement.");
-  redirect(session.url);
+  return { url: session.url };
 }
 
-export async function ouvrirPortailFacturation() {
+export async function ouvrirPortailFacturation(): Promise<{ url: string }> {
   if (!facturationConfiguree()) {
     throw new Error("La facturation en ligne n'est pas encore configurée par ArtisanRDV.");
   }
@@ -80,5 +79,5 @@ export async function ouvrirPortailFacturation() {
     return_url: `${base}/dashboard/reglages`,
   });
 
-  redirect(session.url);
+  return { url: session.url };
 }

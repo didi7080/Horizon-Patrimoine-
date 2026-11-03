@@ -1,10 +1,9 @@
 import { Calculator, Check, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { facturationConfiguree, getPrixAbonnementCents } from "@/lib/stripe";
 import { formatPrix } from "@/lib/utils";
-import { demarrerAbonnement } from "@/app/dashboard/facturation/actions";
+import { AbonnementBouton } from "@/components/dashboard/abonnement-bouton";
 
 export const revalidate = 0;
 
@@ -55,11 +54,9 @@ export default async function OutilsPremiumPage() {
         ) : null}
 
         {facturationPrete && prixCents !== null ? (
-          <form action={demarrerAbonnement.bind(null, "premium")}>
-            <Button type="submit" size="lg" className="w-full">
-              <Sparkles className="size-4" /> Passer à Premium
-            </Button>
-          </form>
+          <AbonnementBouton action="demarrer" plan="premium" size="lg" className="w-full">
+            <Sparkles className="size-4" /> Passer à Premium
+          </AbonnementBouton>
         ) : (
           <p className="rounded-lg bg-surface px-3 py-2 text-center text-xs text-muted-foreground">
             La formule Premium n’est pas encore activée sur cette instance ArtisanRDV.

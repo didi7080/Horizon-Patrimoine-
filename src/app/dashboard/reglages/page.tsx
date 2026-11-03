@@ -4,12 +4,11 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReglagesForm } from "@/components/dashboard/reglages-form";
+import { AbonnementBouton } from "@/components/dashboard/abonnement-bouton";
 import { formatDateCourte } from "@/lib/utils";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
 import { facturationConfiguree, planPourEffectif, planEffectif, nomPlan, accesOutilsCalcul } from "@/lib/stripe";
-import { demarrerAbonnement, ouvrirPortailFacturation } from "@/app/dashboard/facturation/actions";
-
 export const revalidate = 0;
 
 const LABEL_ABONNEMENT: Record<string, { label: string; variant: "success" | "warning" | "danger" | "neutral" }> = {
@@ -63,19 +62,15 @@ export default async function ReglagesPage() {
 
           {facturationPrete ? (
             <div className="flex flex-wrap items-center gap-2">
-              <form
-                action={
-                  abonnement.statut === "actif" || abonnement.statut === "impaye"
-                    ? ouvrirPortailFacturation
-                    : demarrerAbonnement.bind(null, planSuggere)
-                }
-              >
-                <Button type="submit" size="sm">
-                  {abonnement.statut === "actif" || abonnement.statut === "impaye"
-                    ? "Gérer mon abonnement"
-                    : `Passer à la formule ${nomPlan(planSuggere)}`}
-                </Button>
-              </form>
+              {abonnement.statut === "actif" || abonnement.statut === "impaye" ? (
+                <AbonnementBouton action="portail" size="sm">
+                  Gérer mon abonnement
+                </AbonnementBouton>
+              ) : (
+                <AbonnementBouton action="demarrer" plan={planSuggere} size="sm">
+                  Passer à la formule {nomPlan(planSuggere)}
+                </AbonnementBouton>
+              )}
               {!accesOutilsCalcul(planActuel) && (
                 <Button asChild size="sm" variant="outline">
                   <Link href="/dashboard/outils-premium">
