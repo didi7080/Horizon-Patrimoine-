@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { estBot } from "@/lib/anti-spam";
 import { verifierTurnstile } from "@/lib/turnstile";
 import { synchroniserRdvGoogle } from "@/lib/google-calendar/sync";
-import { notifierNouveauRdv } from "@/lib/notifications/rdv";
+import { notifierNouveauRdv, notifierConfirmationClient } from "@/lib/notifications/rdv";
 
 // Rate limiting partagé via la table Supabase `rate_limits` (RLS activée,
 // aucune policy : seule la clé service_role peut y lire/écrire). Remplace
@@ -95,6 +95,7 @@ export async function reserverRdvAction(
     if (rdv) {
       await synchroniserRdvGoogle(rdv.id);
       await notifierNouveauRdv(rdv.id);
+      await notifierConfirmationClient(rdv.id);
     }
   }
 

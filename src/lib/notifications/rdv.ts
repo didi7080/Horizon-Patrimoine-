@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emailConfigure, envoyerEmail } from "@/lib/email/client";
+import { baseUrl } from "@/lib/widget";
 
 type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
 
@@ -76,4 +77,45 @@ export async function notifierNouveauRdv(rdvId: string): Promise<void> {
   for (const email of destinataires) {
     await envoyerEmail({ to: email, subject: sujet, text: message });
   }
+}
+
+/** Confirme au client, par e-mail, que sa demande de rendez-vous a bien été prise en compte. */
+export async function notifierConfirmationClient(rdvId: string): Promise<void> {
+  if (!emailConfigure()) return;
+  const admin = createAdminClient();
+  if (!admin) return;
+
+  const { data: rdv } = await admin
+    .from("rendez_vous")
+    .select(
+      "token, debut, statut, adresse_client, entreprise:entreprises(nom, telephone), salarie:salaries(nom), prestation:prestations(nom), client:clients(nom, email)",
+    )
+    .eq("id", rdvId)
+    .maybeSingle();
+  if (!rdv) return;
+
+  const entreprise = rdv.entreprise as unknown as { nom: string; telephone: string | null } | null;
+  const salarie = rdv.salarie as unknown as { nom: string } | null;
+  const prestation = rdv.prestation as unknown as { nom: string } | null;
+  const client = rdv.client as unknown as { nom: string; email: string | null } | null;
+  if (!entreprise || !client?.email) return;
+
+  const demandeValidation = rdv.statut === "demande";
+  const lien = `${baseUrl()}/rdv/${rdv.token}`;
+  const sujet = `${demandeValidation ? "Votre demande de rendez-vous est bien reçue" : "Votre rendez-vous est confirmé"} — ${entreprise.nom}`;
+  const message = [
+    `Bonjour ${client.nom},`,
+    "",
+    demandeValidation
+      ? `Votre demande de rendez-vous avec ${entreprise.nom}${prestation ? ` pour "${prestation.nom}"` : ""} a bien été reçue et est en attente de confirmation.`
+      : `Votre rendez-vous avec ${entreprise.nom}${prestation ? ` pour "${prestation.nom}"` : ""} est confirmé.`,
+    `Quand : ${labelDateHeure(rdv.debut)}`,
+    ...(salarie ? [`Avec : ${salarie.nom}`] : []),
+    ...(rdv.adresse_client ? [`Adresse : ${rdv.adresse_client}`] : []),
+    ...(entreprise.telephone ? [`Pour toute question : ${entreprise.telephone}`] : []),
+    "",
+    `Vous pouvez consulter ou annuler ce rendez-vous à tout moment ici : ${lien}`,
+  ].join("\n");
+
+  await envoyerEmail({ to: client.email, subject: sujet, text: message });
 }
