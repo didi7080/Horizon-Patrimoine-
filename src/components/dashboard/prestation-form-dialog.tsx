@@ -93,6 +93,7 @@ export function PrestationFormDialog({
                 type="number"
                 min={0}
                 step="0.01"
+                className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 defaultValue={
                   prestation?.prix_cents !== null && prestation?.prix_cents !== undefined
                     ? prestation.prix_cents / 100
@@ -109,6 +110,7 @@ export function PrestationFormDialog({
               type="number"
               min={0}
               step="0.01"
+              className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               defaultValue={
                 prestation?.acompte_cents !== null && prestation?.acompte_cents !== undefined
                   ? prestation.acompte_cents / 100
