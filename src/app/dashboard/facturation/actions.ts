@@ -19,7 +19,7 @@ export async function demarrerAbonnement(planChoisi?: Plan): Promise<{ url: stri
   const stripe = getStripe()!;
   const { entreprise } = await getEntrepriseContext();
   const plan = planChoisi ?? planPourEffectif(entreprise.nb_salaries);
-  const priceId = idPrixPour(plan);
+  const priceId = idPrixPour(plan, entreprise.nb_salaries);
   if (!priceId) {
     throw new Error(
       plan === "premium"

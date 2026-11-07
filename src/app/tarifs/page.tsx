@@ -40,12 +40,12 @@ const FORMULES = [
   },
   {
     nom: "Premium",
-    description: "Toute taille d'entreprise",
-    prix: 119,
+    description: "Option ajoutée à Solo (69€) ou Équipe (119€)",
+    prix: 30,
+    option: true,
     misEnAvant: false,
     inclus: [
-      "Tout ce qui est inclus dans Équipe",
-      "Outils de calcul adaptés à votre métier",
+      "Les outils de calcul, en plus de votre formule Solo ou Équipe",
       "Modules de calcul personnalisables (vos propres formules)",
       "Études chantier, catalogue matériel et chiffrage",
       "Présentations client imprimables",
@@ -68,7 +68,7 @@ const QUESTIONS = [
   },
   {
     q: "Qu’est-ce que la formule Premium apporte en plus ?",
-    r: "Premium donne accès aux Outils de calcul : vous créez vos propres modules de calcul adaptés à votre métier (vos champs, vos formules), les utilisez pour des études chantier chiffrées avec votre catalogue matériel, puis générez une présentation client imprimable. Disponible quelle que soit la taille de votre entreprise.",
+    r: "Premium ajoute les Outils de calcul à votre formule Solo ou Équipe pour 30€/mois de plus : vous créez vos propres modules de calcul adaptés à votre métier (vos champs, vos formules), les utilisez pour des études chantier chiffrées avec votre catalogue matériel, puis générez une présentation client imprimable.",
   },
   {
     q: "Puis-je utiliser mon propre nom de domaine ?",
@@ -102,7 +102,10 @@ export default function TarifsPage() {
             >
               <p className="text-sm font-semibold uppercase tracking-wide text-brand">{formule.nom}</p>
               <p className="mt-3 flex items-end justify-center gap-1">
-                <span className="text-5xl font-semibold text-foreground">{formule.prix}€</span>
+                <span className="text-5xl font-semibold text-foreground">
+                  {"option" in formule && formule.option ? "+" : ""}
+                  {formule.prix}€
+                </span>
                 <span className="pb-1.5 text-muted">/ mois HT</span>
               </p>
               <p className="mt-1 text-sm text-muted-foreground">{formule.description}</p>

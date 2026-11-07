@@ -45,9 +45,18 @@ export function facturationConfiguree(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID_SOLO);
 }
 
-/** Renvoie l'ID de prix Stripe pour la formule demandée (null si cette formule n'est pas configurée). */
-export function idPrixPour(plan: Plan): string | null {
-  if (plan === "premium") return process.env.STRIPE_PRICE_ID_PREMIUM ?? null;
+/**
+ * Renvoie l'ID de prix Stripe pour la formule demandée (null si cette formule
+ * n'est pas configurée). Premium est une option ajoutée à Solo ou Équipe : son
+ * prix dépend donc aussi de l'effectif (STRIPE_PRICE_ID_PREMIUM_SOLO ou
+ * STRIPE_PRICE_ID_PREMIUM selon le seuil), exactement comme Solo/Équipe.
+ */
+export function idPrixPour(plan: Plan, nbSalaries: number): string | null {
+  if (plan === "premium") {
+    const variable =
+      nbSalaries >= SEUIL_SALARIES_EQUIPE ? "STRIPE_PRICE_ID_PREMIUM" : "STRIPE_PRICE_ID_PREMIUM_SOLO";
+    return process.env[variable] ?? null;
+  }
   if (plan === "equipe" && process.env.STRIPE_PRICE_ID_EQUIPE) {
     return process.env.STRIPE_PRICE_ID_EQUIPE;
   }
@@ -55,9 +64,9 @@ export function idPrixPour(plan: Plan): string | null {
 }
 
 /** Récupère le prix (en centimes) de la formule demandée, ou null si non configuré/indisponible. */
-export async function getPrixAbonnementCents(plan: Plan): Promise<number | null> {
+export async function getPrixAbonnementCents(plan: Plan, nbSalaries: number): Promise<number | null> {
   const stripe = getStripe();
-  const priceId = idPrixPour(plan);
+  const priceId = idPrixPour(plan, nbSalaries);
   if (!stripe || !priceId) return null;
   try {
     const prix = await stripe.prices.retrieve(priceId);

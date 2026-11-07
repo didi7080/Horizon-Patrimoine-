@@ -1,7 +1,7 @@
 import { Calculator, Check, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
-import { facturationConfiguree, getPrixAbonnementCents } from "@/lib/stripe";
+import { facturationConfiguree, getPrixAbonnementCents, planPourEffectif, nomPlan } from "@/lib/stripe";
 import { formatPrix } from "@/lib/utils";
 import { AbonnementBouton } from "@/components/dashboard/abonnement-bouton";
 
@@ -19,7 +19,7 @@ const AVANTAGES = [
 export default async function OutilsPremiumPage() {
   const { entreprise } = await getEntrepriseContext();
   const facturationPrete = facturationConfiguree();
-  const prixCents = await getPrixAbonnementCents("premium");
+  const prixCents = await getPrixAbonnementCents("premium", entreprise.nb_salaries);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -49,7 +49,9 @@ export default async function OutilsPremiumPage() {
             <p className="text-3xl font-semibold text-foreground">
               {formatPrix(prixCents)} <span className="text-base font-normal text-muted">/ mois HT</span>
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Quelle que soit la taille de votre entreprise.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              En plus de votre formule {nomPlan(planPourEffectif(entreprise.nb_salaries))} actuelle.
+            </p>
           </div>
         ) : null}
 

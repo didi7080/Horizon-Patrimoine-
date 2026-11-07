@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ReservationsChart, type PointJournalier } from "@/components/dashboard/reservations-chart";
 import { formatDateCourte, formatPrix } from "@/lib/utils";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getPrixAbonnementCents, planEffectif, nomPlan } from "@/lib/stripe";
+import { getPrixAbonnementCents, planEffectif, nomPlan, SEUIL_SALARIES_EQUIPE } from "@/lib/stripe";
 import type { Enums } from "@/lib/types/database";
 
 export const revalidate = 0;
@@ -69,7 +69,8 @@ export default async function AdminPage() {
     { data: avis },
     prixSoloCents,
     prixEquipeCents,
-    prixPremiumCents,
+    prixPremiumSoloCents,
+    prixPremiumEquipeCents,
   ] = await Promise.all([
     supabase
       .from("entreprises")
@@ -81,9 +82,12 @@ export default async function AdminPage() {
       .select("entreprise_id, statut, prestations(prix_cents)")
       .gte("debut", debutMois.toISOString()),
     supabase.from("avis").select("entreprise_id, note"),
-    getPrixAbonnementCents("solo"),
-    getPrixAbonnementCents("equipe"),
-    getPrixAbonnementCents("premium"),
+    getPrixAbonnementCents("solo", 0),
+    getPrixAbonnementCents("equipe", SEUIL_SALARIES_EQUIPE),
+    // Premium est une option ajoutée à Solo ou Équipe : son prix dépend de
+    // l'effectif, donc on récupère les deux variantes pour le calcul du MRR.
+    getPrixAbonnementCents("premium", 0),
+    getPrixAbonnementCents("premium", SEUIL_SALARIES_EQUIPE),
   ]);
 
   const listeEntreprises = entreprises ?? [];
@@ -96,12 +100,19 @@ export default async function AdminPage() {
     (e) => new Date(e.created_at) >= debutMois,
   ).length;
 
-  const prixParPlan = { solo: prixSoloCents, equipe: prixEquipeCents, premium: prixPremiumCents };
   let mrrEstimeCents: number | null = 0;
   for (const e of listeEntreprises) {
     const abonnement = abonnementParEntreprise.get(e.id);
     if (abonnement?.statut !== "actif") continue;
-    const prix = prixParPlan[planEffectif(abonnement.plan, e.nb_salaries)];
+    const plan = planEffectif(abonnement.plan, e.nb_salaries);
+    const prix =
+      plan === "premium"
+        ? e.nb_salaries >= SEUIL_SALARIES_EQUIPE
+          ? prixPremiumEquipeCents
+          : prixPremiumSoloCents
+        : plan === "equipe"
+          ? prixEquipeCents
+          : prixSoloCents;
     if (prix === null) {
       mrrEstimeCents = null;
       break;

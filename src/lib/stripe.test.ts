@@ -55,37 +55,44 @@ describe("idPrixPour", () => {
   it("renvoie le prix Solo configuré pour la formule Solo", () => {
     process.env.STRIPE_PRICE_ID_SOLO = "price_solo";
     process.env.STRIPE_PRICE_ID_EQUIPE = "price_equipe";
-    expect(idPrixPour("solo")).toBe("price_solo");
+    expect(idPrixPour("solo", 0)).toBe("price_solo");
   });
 
   it("renvoie le prix Équipe quand il est configuré", () => {
     process.env.STRIPE_PRICE_ID_SOLO = "price_solo";
     process.env.STRIPE_PRICE_ID_EQUIPE = "price_equipe";
-    expect(idPrixPour("equipe")).toBe("price_equipe");
+    expect(idPrixPour("equipe", SEUIL_SALARIES_EQUIPE)).toBe("price_equipe");
   });
 
   it("replie sur Solo si le prix Équipe n'est pas configuré", () => {
     process.env.STRIPE_PRICE_ID_SOLO = "price_solo";
     delete process.env.STRIPE_PRICE_ID_EQUIPE;
-    expect(idPrixPour("equipe")).toBe("price_solo");
+    expect(idPrixPour("equipe", SEUIL_SALARIES_EQUIPE)).toBe("price_solo");
   });
 
-  it("renvoie le prix Premium quand il est configuré", () => {
-    process.env.STRIPE_PRICE_ID_PREMIUM = "price_premium";
-    expect(idPrixPour("premium")).toBe("price_premium");
+  it("renvoie le prix Premium Équipe pour un effectif en Équipe", () => {
+    process.env.STRIPE_PRICE_ID_PREMIUM = "price_premium_equipe";
+    expect(idPrixPour("premium", SEUIL_SALARIES_EQUIPE)).toBe("price_premium_equipe");
+  });
+
+  it("renvoie le prix Premium Solo pour un effectif en Solo (option ajoutée à la formule de base)", () => {
+    process.env.STRIPE_PRICE_ID_PREMIUM_SOLO = "price_premium_solo";
+    expect(idPrixPour("premium", 0)).toBe("price_premium_solo");
   });
 
   it("ne replie jamais Premium sur une autre formule (pour ne pas sous-facturer)", () => {
     delete process.env.STRIPE_PRICE_ID_PREMIUM;
+    delete process.env.STRIPE_PRICE_ID_PREMIUM_SOLO;
     process.env.STRIPE_PRICE_ID_SOLO = "price_solo";
     process.env.STRIPE_PRICE_ID_EQUIPE = "price_equipe";
-    expect(idPrixPour("premium")).toBeNull();
+    expect(idPrixPour("premium", SEUIL_SALARIES_EQUIPE)).toBeNull();
+    expect(idPrixPour("premium", 0)).toBeNull();
   });
 
   it("renvoie null si aucun prix n'est configuré", () => {
     delete process.env.STRIPE_PRICE_ID_SOLO;
     delete process.env.STRIPE_PRICE_ID_EQUIPE;
-    expect(idPrixPour("solo")).toBeNull();
+    expect(idPrixPour("solo", 0)).toBeNull();
   });
 });
 
