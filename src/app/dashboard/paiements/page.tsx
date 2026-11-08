@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { facturationConfiguree } from "@/lib/stripe";
-import { demarrerConnexionStripe, etatConnexionStripe } from "@/app/dashboard/paiements/actions";
+import { etatConnexionStripe } from "@/app/dashboard/paiements/actions";
+import { ConnecterStripeBouton } from "@/components/dashboard/connecter-stripe-bouton";
 
 export const revalidate = 0;
 
@@ -64,12 +65,9 @@ export default async function PaiementsPage() {
             </Link>
           </Button>
         ) : (
-          <form action={demarrerConnexionStripe}>
-            <Button type="submit">
-              <Landmark className="size-4" />
-              {statut.connecte ? "Continuer la vérification" : "Connecter mon compte bancaire"}
-            </Button>
-          </form>
+          <ConnecterStripeBouton>
+            {statut.connecte ? "Continuer la vérification" : "Connecter mon compte bancaire"}
+          </ConnecterStripeBouton>
         )}
       </Card>
     </div>

@@ -1,7 +1,6 @@
 "use server";
 
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { getStripe, facturationConfiguree } from "@/lib/stripe";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -23,7 +22,7 @@ async function origine(): Promise<string> {
  * responsabilité sur les pertes. Les acomptes clients lui sont versés
  * directement, sans commission ArtisanRDV (voir payerAcompteAction).
  */
-export async function demarrerConnexionStripe() {
+export async function demarrerConnexionStripe(): Promise<{ url: string }> {
   if (!facturationConfiguree()) {
     throw new Error("Le paiement en ligne n'est pas encore configuré par ArtisanRDV.");
   }
@@ -70,7 +69,7 @@ export async function demarrerConnexionStripe() {
     },
   });
 
-  redirect(lien.url);
+  return { url: lien.url };
 }
 
 export type StatutConnexionStripe = {
