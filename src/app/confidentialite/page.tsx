@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageLegale } from "@/components/marketing/page-legale";
 import { AvertissementModele } from "@/components/marketing/avertissement-modele";
 
@@ -6,15 +7,19 @@ export const metadata: Metadata = { title: "Confidentialité — ArtisanRDV" };
 
 export default function ConfidentialitePage() {
   return (
-    <PageLegale titre="Politique de confidentialité" maj="à compléter">
-      <AvertissementModele />
+    <PageLegale titre="Politique de confidentialité" maj="8 novembre 2026">
+      <AvertissementModele>
+        L’identité complète de l’éditeur (SIRET, adresse) doit encore être complétée sur la page
+        des mentions légales — à faire valider par un professionnel du droit avant un usage
+        commercial à grande échelle.
+      </AvertissementModele>
 
       <h2>Responsable du traitement</h2>
       <p>
-        [Raison sociale], éditrice du service ArtisanRDV, est responsable du traitement des
+        ArtisanRDV (voir l’identité complète sur les{" "}
+        <Link href="/mentions-legales">mentions légales</Link>) est responsable du traitement des
         données personnelles décrites ci-dessous, au sens du Règlement général sur la protection
-        des données (RGPD). Pour toute question, contactez [adresse e-mail dédiée à la
-        confidentialité].
+        des données (RGPD). Pour toute question, contactez contact@artisanrdv.com.
       </p>
 
       <h2>Données collectées</h2>
@@ -28,14 +33,20 @@ export default function ConfidentialitePage() {
           adresse d’intervention du client final, saisis lors d’une réservation.
         </li>
         <li>
+          <strong>Assistant IA</strong> (formule Premium) : les questions posées et les documents
+          générés via l’assistant sont transmis à Anthropic, fournisseur du modèle d’intelligence
+          artificielle, pour produire la réponse.
+        </li>
+        <li>
           <strong>Facturation</strong> : les informations de paiement sont traitées directement
           par Stripe, qui agit en tant que sous-traitant ; ArtisanRDV ne stocke aucune donnée de
           carte bancaire.
         </li>
         <li>
           <strong>Cookies</strong> : uniquement des cookies strictement nécessaires au
-          fonctionnement du service (maintien de la session de connexion). Aucun cookie
-          publicitaire ou de mesure d’audience tiers n’est déposé à ce jour.
+          fonctionnement du service (maintien de la session de connexion, protection anti-robot
+          Cloudflare Turnstile). Aucun cookie publicitaire ou de mesure d’audience tiers n’est
+          déposé à ce jour.
         </li>
       </ul>
 
@@ -51,9 +62,11 @@ export default function ConfidentialitePage() {
       <h2>Sous-traitants</h2>
       <p>
         Les données sont hébergées et traitées par les prestataires suivants, chacun lié par un
-        contrat de sous-traitance conforme au RGPD : Supabase (hébergement de la base de données
-        et authentification), Vercel (hébergement de l’application), Resend (envoi des e-mails
-        transactionnels), Brevo (envoi des SMS, si activé), Stripe (paiement et facturation).
+        contrat de sous-traitance conforme au RGPD : Supabase (base de données et authentification,
+        hébergées à Paris, France), Vercel (hébergement de l’application), Resend (envoi des
+        e-mails transactionnels), Stripe (paiement et facturation), Cloudflare (protection
+        anti-robot Turnstile), Google (synchronisation d’agenda, uniquement si l’artisan l’active),
+        et Anthropic (assistant IA, formule Premium uniquement).
       </p>
 
       <h2>Durée de conservation</h2>
@@ -67,8 +80,8 @@ export default function ConfidentialitePage() {
       <p>
         Conformément au RGPD, vous disposez d’un droit d’accès, de rectification, d’effacement,
         de limitation, d’opposition et de portabilité sur vos données. Pour l’exercer, contactez
-        [adresse e-mail]. Vous disposez également du droit d’introduire une réclamation auprès de
-        la CNIL (www.cnil.fr).
+        contact@artisanrdv.com. Vous disposez également du droit d’introduire une réclamation
+        auprès de la CNIL (www.cnil.fr).
       </p>
     </PageLegale>
   );

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageLegale } from "@/components/marketing/page-legale";
 import { AvertissementModele } from "@/components/marketing/avertissement-modele";
 
@@ -6,13 +7,18 @@ export const metadata: Metadata = { title: "CGU / CGV — ArtisanRDV" };
 
 export default function CguCgvPage() {
   return (
-    <PageLegale titre="Conditions générales d’utilisation et de vente" maj="à compléter">
-      <AvertissementModele />
+    <PageLegale titre="Conditions générales d’utilisation et de vente" maj="8 novembre 2026">
+      <AvertissementModele>
+        L’identité complète de l’éditeur (SIRET, adresse) doit encore être complétée sur la page
+        des mentions légales — à faire valider par un professionnel du droit avant un usage
+        commercial à grande échelle.
+      </AvertissementModele>
 
       <h2>Objet</h2>
       <p>
         Les présentes conditions régissent l’accès et l’utilisation du service ArtisanRDV, une
-        plateforme de prise de rendez-vous en ligne éditée par [Raison sociale], à destination des
+        plateforme de prise de rendez-vous en ligne éditée par l’entreprise individuelle décrite
+        dans les <Link href="/mentions-legales">mentions légales</Link>, à destination des
         artisans et entreprises de services (ci-après « le Client »).
       </p>
 
@@ -32,10 +38,11 @@ export default function CguCgvPage() {
 
       <h2>Tarifs et paiement</h2>
       <p>
-        Les tarifs en vigueur sont ceux affichés sur la page [artisanrdv.com/tarifs] au moment de
-        la souscription. L’abonnement est mensuel, sans engagement de durée, résiliable à tout
-        moment depuis l’espace client. Le paiement est traité par Stripe ; le Client autorise le
-        prélèvement récurrent du montant de son abonnement.
+        Les tarifs en vigueur sont ceux affichés sur la page{" "}
+        <Link href="/tarifs">artisanrdv.com/tarifs</Link> au moment de la souscription.
+        L’abonnement est mensuel, sans engagement de durée, résiliable à tout moment depuis
+        l’espace client. Le paiement est traité par Stripe ; le Client autorise le prélèvement
+        récurrent du montant de son abonnement.
       </p>
 
       <h2>Obligations du Client</h2>
@@ -47,24 +54,23 @@ export default function CguCgvPage() {
 
       <h2>Disponibilité et responsabilité</h2>
       <p>
-        [Raison sociale] met en œuvre les moyens raisonnables pour assurer la disponibilité du
-        service, sans garantie de continuité absolue. La responsabilité de [Raison sociale] ne
-        saurait être engagée en cas de dommage indirect résultant de l’utilisation du service.
+        ArtisanRDV met en œuvre les moyens raisonnables pour assurer la disponibilité du service,
+        sans garantie de continuité absolue. La responsabilité d’ArtisanRDV ne saurait être
+        engagée en cas de dommage indirect résultant de l’utilisation du service.
       </p>
 
       <h2>Résiliation</h2>
       <p>
         Le Client peut résilier son abonnement à tout moment depuis son espace de gestion. La
-        résiliation prend effet à la fin de la période de facturation en cours. [Raison sociale]
-        peut suspendre ou résilier un compte en cas de manquement grave aux présentes conditions.
+        résiliation prend effet à la fin de la période de facturation en cours. ArtisanRDV peut
+        suspendre ou résilier un compte en cas de manquement grave aux présentes conditions.
       </p>
 
       <h2>Droit applicable</h2>
       <p>
         Les présentes conditions sont soumises au droit français. Tout litige relatif à leur
-        interprétation ou leur exécution relève de la compétence exclusive des tribunaux du
-        ressort de [ville du siège social], sauf disposition légale contraire applicable aux
-        consommateurs.
+        interprétation ou leur exécution relève de la compétence des tribunaux compétents selon
+        les règles de droit commun, sauf disposition légale contraire applicable aux consommateurs.
       </p>
     </PageLegale>
   );
