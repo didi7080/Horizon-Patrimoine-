@@ -9,9 +9,9 @@ export default function CguCgvPage() {
   return (
     <PageLegale titre="Conditions générales d’utilisation et de vente" maj="8 novembre 2026">
       <AvertissementModele>
-        L’identité complète de l’éditeur (SIRET, adresse) doit encore être complétée sur la page
-        des mentions légales — à faire valider par un professionnel du droit avant un usage
-        commercial à grande échelle.
+        L’adresse de l’éditeur et son régime de TVA doivent encore être complétés sur la page des
+        mentions légales — à faire valider par un professionnel du droit avant un usage commercial
+        à grande échelle.
       </AvertissementModele>
 
       <h2>Objet</h2>

@@ -8,24 +8,23 @@ export default function MentionsLegalesPage() {
   return (
     <PageLegale titre="Mentions légales" maj="8 novembre 2026">
       <AvertissementModele>
-        Il manque encore votre SIRET, l’adresse de l’entreprise, un numéro de téléphone de contact
-        et le nom du responsable de la publication (indiqués entre crochets ci-dessous) — à
-        compléter, puis à faire valider par un professionnel du droit avant un usage commercial à
-        grande échelle.
+        Il manque encore l’adresse de l’entreprise et votre régime de TVA (indiqués entre
+        crochets ci-dessous) — à compléter, puis à faire valider par un professionnel du droit
+        avant un usage commercial à grande échelle.
       </AvertissementModele>
 
       <h2>Éditeur du site</h2>
       <p>
-        Le site ArtisanRDV est édité par [nom et prénom], entrepreneur individuel exerçant sous le
+        Le site ArtisanRDV est édité par Dimitri Pelcy, entrepreneur individuel exerçant sous le
         nom commercial « ArtisanRDV », immatriculé au Registre National des Entreprises (RNE) sous
-        le numéro SIRET [à compléter], domicilié [adresse à compléter].
+        le numéro SIRET 993400811, domicilié [adresse à compléter].
         <br />
         Régime de TVA : [à préciser — par exemple « TVA non applicable, article 293 B du Code
         général des impôts » si vous êtes en franchise en base].
         <br />
-        Directeur de la publication : [nom, prénom].
+        Directeur de la publication : Dimitri Pelcy.
         <br />
-        Contact : contact@artisanrdv.com — [numéro de téléphone à compléter].
+        Contact : contact@artisanrdv.com — 07 70 05 84 16.
       </p>
 
       <h2>Hébergement</h2>
