@@ -5,6 +5,7 @@ import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist
 import { Card } from "@/components/ui/card";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { calculerTotaux, type LigneDocument } from "@/lib/documents/types";
 import { formatPrix, formatDateCourte } from "@/lib/utils";
 
@@ -23,13 +24,9 @@ export default async function DashboardPage() {
   const selectRdv =
     "*, prestations(nom), salaries(nom, couleur), clients(nom, telephone)";
 
-  const [
-    { data: demandes },
-    { data: rdvAujourdhui },
-    { count: nbPrestations },
-    { count: nbHoraires },
-    { data: facturesEnRetard },
-  ] = await Promise.all([
+  const admin = createAdminClient();
+
+  const [{ data: demandes }, { data: rdvAujourdhui }, { count: nbPrestations }, { count: nbHoraires }] = await Promise.all([
     supabase
       .from("rendez_vous")
       .select(selectRdv)
@@ -52,15 +49,18 @@ export default async function DashboardPage() {
       .from("horaires")
       .select("id, salaries!inner(entreprise_id)", { count: "exact", head: true })
       .eq("salaries.entreprise_id", entreprise.id),
-    supabase
-      .from("documents")
-      .select("id, numero, client_nom, date_echeance, lignes")
-      .eq("entreprise_id", entreprise.id)
-      .eq("type", "facture")
-      .eq("statut", "envoyee")
-      .lt("date_echeance", maintenant.toISOString().slice(0, 10))
-      .order("date_echeance"),
   ]);
+
+  const { data: facturesEnRetard } = admin
+    ? await admin
+        .from("documents")
+        .select("id, numero, client_nom, date_echeance, lignes")
+        .eq("entreprise_id", entreprise.id)
+        .eq("type", "facture")
+        .eq("statut", "envoyee")
+        .lt("date_echeance", maintenant.toISOString().slice(0, 10))
+        .order("date_echeance")
+    : { data: null };
 
   const etapesOnboarding = [
     { label: "Ajouter au moins une prestation", fait: (nbPrestations ?? 0) > 0, href: "/dashboard/prestations" },
