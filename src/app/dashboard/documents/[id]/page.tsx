@@ -14,12 +14,10 @@ export default async function DocumentPage({ params }: PageProps<"/dashboard/doc
   const admin = createAdminClient();
   if (!admin) notFound();
 
-  const { data: document } = await admin
-    .from("documents")
-    .select("*")
-    .eq("id", id)
-    .eq("entreprise_id", entreprise.id)
-    .maybeSingle();
+  const [{ data: document }, { data: bibliotheque }] = await Promise.all([
+    admin.from("documents").select("*").eq("id", id).eq("entreprise_id", entreprise.id).maybeSingle(),
+    admin.from("lignes_bibliotheque").select("*").eq("entreprise_id", entreprise.id).order("designation"),
+  ]);
   if (!document) notFound();
 
   return (
@@ -49,6 +47,7 @@ export default async function DocumentPage({ params }: PageProps<"/dashboard/doc
         datePrestationInitiale={document.date_prestation}
         notesInitiales={document.notes}
         devisOrigineId={document.devis_origine_id}
+        bibliotheque={bibliotheque ?? []}
       />
     </div>
   );

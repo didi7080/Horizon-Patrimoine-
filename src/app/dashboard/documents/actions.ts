@@ -5,6 +5,7 @@ import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { LigneDocument, TypeDocument } from "@/lib/documents/types";
 import { resoudreOuCreerClient } from "@/lib/clients/resoudre";
+import type { Tables } from "@/lib/types/database";
 
 type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
 
@@ -286,4 +287,40 @@ export async function supprimerDocument(documentId: string) {
   const { error } = await admin().from("documents").delete().eq("id", documentId).eq("entreprise_id", entreprise.id);
   if (error) throw new Error(error.message);
   revalidatePath("/dashboard/documents");
+}
+
+/** Liste des lignes réutilisables (désignation/prix/unité/TVA habituels) qu'un artisan peut piocher dans un devis ou une facture au lieu de tout retaper. */
+export async function listerLignesBibliotheque(): Promise<Tables<"lignes_bibliotheque">[]> {
+  const { entreprise } = await getEntrepriseContext();
+  const { data, error } = await admin()
+    .from("lignes_bibliotheque")
+    .select("*")
+    .eq("entreprise_id", entreprise.id)
+    .order("designation");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function creerLigneBibliotheque(ligne: { designation: string; unite: string; prixUnitaireCents: number; tauxTva: number }) {
+  const { entreprise } = await getEntrepriseContext();
+  const designation = ligne.designation.trim();
+  if (!designation) throw new Error("La désignation est requise.");
+  const { error } = await admin()
+    .from("lignes_bibliotheque")
+    .insert({
+      entreprise_id: entreprise.id,
+      designation,
+      unite: ligne.unite.trim() || "heure",
+      prix_unitaire_cents: ligne.prixUnitaireCents,
+      taux_tva: ligne.tauxTva,
+    });
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard/documents/bibliotheque");
+}
+
+export async function supprimerLigneBibliotheque(id: string) {
+  const { entreprise } = await getEntrepriseContext();
+  const { error } = await admin().from("lignes_bibliotheque").delete().eq("id", id).eq("entreprise_id", entreprise.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard/documents/bibliotheque");
 }

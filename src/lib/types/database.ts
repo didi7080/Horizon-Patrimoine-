@@ -585,6 +585,44 @@ export type Database = {
           },
         ]
       }
+      lignes_bibliotheque: {
+        Row: {
+          created_at: string
+          designation: string
+          entreprise_id: string
+          id: string
+          prix_unitaire_cents: number
+          taux_tva: number
+          unite: string
+        }
+        Insert: {
+          created_at?: string
+          designation: string
+          entreprise_id: string
+          id?: string
+          prix_unitaire_cents?: number
+          taux_tva?: number
+          unite?: string
+        }
+        Update: {
+          created_at?: string
+          designation?: string
+          entreprise_id?: string
+          id?: string
+          prix_unitaire_cents?: number
+          taux_tva?: number
+          unite?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lignes_bibliotheque_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       liste_attente: {
         Row: {
           client_email: string | null

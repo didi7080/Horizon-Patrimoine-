@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Copy, ExternalLink, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { BookmarkPlus, Copy, ExternalLink, Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,8 +17,10 @@ import {
   convertirDevisEnFacture,
   dupliquerDocument,
   supprimerDocument,
+  creerLigneBibliotheque,
 } from "@/app/dashboard/documents/actions";
 import { calculerTotaux, TAUX_TVA, type LigneDocument, type TypeDocument } from "@/lib/documents/types";
+import type { Tables } from "@/lib/types/database";
 
 const classeSelect =
   "flex h-10 w-full rounded-lg border border-border-strong bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20";
@@ -76,6 +78,7 @@ export function DocumentEditeur({
   datePrestationInitiale,
   notesInitiales,
   devisOrigineId,
+  bibliotheque,
 }: {
   documentId: string;
   type: TypeDocument;
@@ -91,6 +94,7 @@ export function DocumentEditeur({
   datePrestationInitiale: string | null;
   notesInitiales: string | null;
   devisOrigineId: string | null;
+  bibliotheque: Tables<"lignes_bibliotheque">[];
 }) {
   const router = useRouter();
   const [lignes, setLignes] = useState<LigneDocument[]>(lignesInitiales);
@@ -110,6 +114,8 @@ export function DocumentEditeur({
   const [pendingStatut, startTransitionStatut] = useTransition();
   const [pendingConversion, startTransitionConversion] = useTransition();
   const [pendingDuplication, startTransitionDuplication] = useTransition();
+  const [pendingBibliotheque, startTransitionBibliotheque] = useTransition();
+  const [choixBibliotheque, setChoixBibliotheque] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
 
   const totaux = useMemo(() => calculerTotaux(lignes), [lignes]);
@@ -129,6 +135,44 @@ export function DocumentEditeur({
   }
   function supprimerLigne(index: number) {
     setLignes((l) => l.filter((_, i) => i !== index));
+  }
+
+  function ajouterDepuisBibliotheque(id: string) {
+    const entree = bibliotheque.find((b) => b.id === id);
+    if (!entree) return;
+    setLignes((l) => [
+      ...l,
+      {
+        id: idAleatoire(),
+        designation: entree.designation,
+        unite: entree.unite,
+        quantite: 1,
+        prixUnitaireCents: entree.prix_unitaire_cents,
+        tauxTva: entree.taux_tva,
+      },
+    ]);
+    setChoixBibliotheque("");
+  }
+
+  function enregistrerDansBibliotheque(ligne: LigneDocument) {
+    if (!ligne.designation.trim()) {
+      toast.error("Ajoute une désignation à cette ligne avant de l'enregistrer dans la bibliothèque.");
+      return;
+    }
+    startTransitionBibliotheque(async () => {
+      try {
+        await creerLigneBibliotheque({
+          designation: ligne.designation,
+          unite: ligne.unite,
+          prixUnitaireCents: ligne.prixUnitaireCents,
+          tauxTva: ligne.tauxTva,
+        });
+        toast.success("Ligne enregistrée dans la bibliothèque");
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      }
+    });
   }
 
   function enregistrer() {
@@ -271,11 +315,27 @@ export function DocumentEditeur({
       </Card>
 
       <Card className="space-y-4 p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-medium text-foreground">Lignes</h2>
-          <Button type="button" variant="outline" size="sm" onClick={ajouterLigne}>
-            <Plus className="size-3.5" /> Ajouter une ligne
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {bibliotheque.length > 0 && (
+              <select
+                value={choixBibliotheque}
+                onChange={(e) => ajouterDepuisBibliotheque(e.target.value)}
+                className="h-10 w-full rounded-lg border border-border-strong bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20 sm:w-64"
+              >
+                <option value="">+ Depuis ma bibliothèque…</option>
+                {bibliotheque.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.designation} · {formatPrix(b.prix_unitaire_cents)}
+                  </option>
+                ))}
+              </select>
+            )}
+            <Button type="button" variant="outline" size="sm" onClick={ajouterLigne}>
+              <Plus className="size-3.5" /> Ajouter une ligne
+            </Button>
+          </div>
         </div>
 
         {lignes.length > 0 ? (
@@ -285,7 +345,7 @@ export function DocumentEditeur({
                 key={ligne.id}
                 className="grid grid-cols-1 gap-2 rounded-lg border border-border p-3 sm:grid-cols-12 sm:items-center"
               >
-                <div className="sm:col-span-4">
+                <div className="sm:col-span-3">
                   <Input
                     value={ligne.designation}
                     onChange={(e) => modifierLigne(index, { designation: e.target.value })}
@@ -331,8 +391,18 @@ export function DocumentEditeur({
                     ))}
                   </select>
                 </div>
-                <div className="flex items-center justify-end gap-2 sm:col-span-1">
-                  <Button type="button" variant="ghost" size="sm" onClick={() => supprimerLigne(index)}>
+                <div className="flex items-center justify-end gap-1 sm:col-span-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => enregistrerDansBibliotheque(ligne)}
+                    disabled={pendingBibliotheque}
+                    title="Enregistrer dans ma bibliothèque"
+                  >
+                    {pendingBibliotheque ? <Loader2 className="size-4 animate-spin" /> : <BookmarkPlus className="size-4 text-muted" />}
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => supprimerLigne(index)} title="Supprimer cette ligne">
                     <Trash2 className="size-4 text-destructive" />
                   </Button>
                 </div>

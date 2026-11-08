@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { FileText, Receipt } from "lucide-react";
+import { BookmarkPlus, FileText, Receipt } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DocumentFormDialog } from "@/components/dashboard/documents/document-form-dialog";
@@ -35,11 +36,18 @@ export default async function DocumentsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Devis & factures</h1>
-        <p className="mt-1 text-muted">
-          Vos documents commerciaux, avec les mentions légales obligatoires et une numérotation continue.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Devis & factures</h1>
+          <p className="mt-1 text-muted">
+            Vos documents commerciaux, avec les mentions légales obligatoires et une numérotation continue.
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/dashboard/documents/bibliotheque">
+            <BookmarkPlus className="size-3.5" /> Bibliothèque de lignes
+          </Link>
+        </Button>
       </div>
 
       <section className="space-y-3">
