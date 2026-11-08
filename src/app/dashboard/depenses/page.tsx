@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { BoutonImprimer } from "@/components/dashboard/outils/bouton-imprimer";
 import { BoutonSupprimer } from "@/components/dashboard/outils/bouton-supprimer";
 import { DepenseFormDialog } from "@/components/dashboard/depenses/depense-form-dialog";
 import { ValidationDepenseBoutons } from "@/components/dashboard/depenses/validation-depense-boutons";
@@ -142,7 +143,7 @@ export default async function DepensesPage({ searchParams }: PageProps<"/dashboa
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Dépenses</h1>
           <p className="mt-1 text-muted">Vos charges et frais professionnels, mois par mois.</p>
@@ -151,7 +152,7 @@ export default async function DepensesPage({ searchParams }: PageProps<"/dashboa
       </div>
 
       {attente.length > 0 && (
-        <Card className="space-y-3 border-warning/30 bg-warning-light p-5">
+        <Card className="space-y-3 border-warning/30 bg-warning-light p-5 print:hidden">
           <p className="font-medium text-foreground">
             {attente.length} note{attente.length > 1 ? "s" : ""} de frais à valider
           </p>
@@ -185,7 +186,7 @@ export default async function DepensesPage({ searchParams }: PageProps<"/dashboa
         </Card>
       )}
 
-      <form method="get" className="flex items-center gap-2">
+      <form method="get" className="flex items-center gap-2 print:hidden">
         <input
           type="month"
           name="mois"
@@ -198,6 +199,15 @@ export default async function DepensesPage({ searchParams }: PageProps<"/dashboa
       </form>
 
       <Card className="space-y-4 p-5">
+        <div className="flex items-center justify-between border-b border-border pb-3 print:border-none">
+          <div>
+            <p className="font-medium capitalize text-foreground">Dépenses — {libelleMois(mois)}</p>
+            <p className="text-sm text-muted">{entreprise.nom}</p>
+          </div>
+          <div className="print:hidden">
+            <BoutonImprimer />
+          </div>
+        </div>
         <div className="flex items-center justify-between">
           <p className="font-medium capitalize text-foreground">{libelleMois(mois)}</p>
           <p className="text-lg font-semibold text-foreground">Total : {formatPrix(total)}</p>
@@ -237,7 +247,9 @@ export default async function DepensesPage({ searchParams }: PageProps<"/dashboa
                   </p>
                 </div>
               </div>
-              <BoutonSupprimer confirmation="Supprimer cette dépense ?" action={supprimerDepense.bind(null, d.id)} />
+              <div className="print:hidden">
+                <BoutonSupprimer confirmation="Supprimer cette dépense ?" action={supprimerDepense.bind(null, d.id)} />
+              </div>
             </Card>
           ))
         ) : (

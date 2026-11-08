@@ -274,6 +274,17 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
       required: ["categorie", "montant_euros"],
     },
   },
+  {
+    name: "lister_depenses",
+    description:
+      "Résume les dépenses d'un mois donné (total, détail par catégorie, liste des dépenses validées) et signale les notes de frais envoyées par les salariés qui attendent encore une validation. Utilise ceci pour toute question sur les charges, les dépenses, ou pour préparer le point à envoyer au comptable.",
+    input_schema: {
+      type: "object",
+      properties: {
+        mois: { type: "string", description: "Mois au format AAAA-MM (ex. 2026-09). Si absent, utilise le mois en cours." },
+      },
+    },
+  },
 ];
 
 type ContexteOutils = { entrepriseId: string; userId: string };
@@ -705,6 +716,53 @@ async function outilEnregistrerDepense(
   return { enregistre: true, lien: "/dashboard/depenses" };
 }
 
+async function outilListerDepenses(ctx: ContexteOutils, input: { mois?: string }) {
+  const mois = input.mois?.trim() || moisCourant();
+  const { debut, fin } = bornesMois(mois);
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+
+  const [{ data: validees, error }, { data: enAttente, error: erreurAttente }] = await Promise.all([
+    admin
+      .from("depenses")
+      .select("categorie, montant_cents, date, description")
+      .eq("entreprise_id", ctx.entrepriseId)
+      .eq("statut", "validee")
+      .gte("date", debut)
+      .lt("date", fin)
+      .order("date", { ascending: false }),
+    admin.from("depenses").select("montant_cents").eq("entreprise_id", ctx.entrepriseId).eq("statut", "en_attente"),
+  ]);
+  if (error) return { erreur: error.message };
+  if (erreurAttente) return { erreur: erreurAttente.message };
+
+  const liste = validees ?? [];
+  const parCategorie = new Map<string, number>();
+  for (const d of liste) parCategorie.set(d.categorie, (parCategorie.get(d.categorie) ?? 0) + d.montant_cents);
+
+  const attente = enAttente ?? [];
+
+  return {
+    mois,
+    libelle: libelleMois(mois),
+    total_valide_euros: liste.reduce((s, d) => s + d.montant_cents, 0) / 100,
+    nombre_depenses_validees: liste.length,
+    par_categorie: [...parCategorie.entries()].map(([categorie, montant_cents]) => ({
+      categorie,
+      montant_euros: montant_cents / 100,
+    })),
+    depenses: liste.map((d) => ({
+      date: d.date,
+      categorie: d.categorie,
+      description: d.description,
+      montant_euros: d.montant_cents / 100,
+    })),
+    notes_de_frais_en_attente_de_validation: attente.length,
+    total_en_attente_euros: attente.reduce((s, d) => s + d.montant_cents, 0) / 100,
+    lien: `/dashboard/depenses?mois=${mois}`,
+  };
+}
+
 /** Convertit une date+heure locale (Europe/Paris) en ISO avec décalage horaire explicite. */
 export function parisVersIso(date: string, heure: string): string {
   const reference = new Date(`${date}T${heure}:00Z`);
@@ -1024,6 +1082,8 @@ export async function executerOutil(ctx: ContexteOutils, nom: string, input: unk
       return outilEnvoyerEmailClient(ctx, entree as Parameters<typeof outilEnvoyerEmailClient>[1]);
     case "enregistrer_depense":
       return outilEnregistrerDepense(ctx, entree as Parameters<typeof outilEnregistrerDepense>[1]);
+    case "lister_depenses":
+      return outilListerDepenses(ctx, entree as Parameters<typeof outilListerDepenses>[1]);
     case "bloquer_creneau":
       return outilBloquerCreneau(ctx, entree as Parameters<typeof outilBloquerCreneau>[1]);
     case "lister_rendez_vous":
