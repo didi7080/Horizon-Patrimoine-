@@ -1,15 +1,40 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Mail, Phone, MapPin, Loader2, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ClientNotes } from "@/components/dashboard/client-notes";
+import { supprimerOuAnonymiserClient } from "@/app/dashboard/clients/actions";
 import type { Tables } from "@/lib/types/database";
 
 export function ClientRow({ client, nbRdv }: { client: Tables<"clients">; nbRdv: number }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  function supprimer() {
+    if (
+      !window.confirm(
+        `Supprimer ${client.nom} ? S'il a des rendez-vous ou documents liés, ses coordonnées seront anonymisées plutôt que supprimées — l'historique de facturation est conservé.`,
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const { action } = await supprimerOuAnonymiserClient(client.id);
+        toast.success(action === "supprime" ? "Client supprimé." : "Client anonymisé (il avait un historique conservé).");
+        setOpen(false);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      }
+    });
+  }
 
   return (
     <>
@@ -66,6 +91,12 @@ export function ClientRow({ client, nbRdv }: { client: Tables<"clients">; nbRdv:
               Notes internes
             </p>
             <ClientNotes clientId={client.id} notes={client.notes} />
+          </div>
+          <div className="border-t border-border pt-3">
+            <Button type="button" variant="ghost" size="sm" onClick={supprimer} disabled={pending}>
+              {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5 text-destructive" />}
+              Supprimer ce client
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
