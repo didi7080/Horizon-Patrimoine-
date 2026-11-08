@@ -1,7 +1,8 @@
+import { redirect } from "next/navigation";
 import { Calculator, Check, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { getEntrepriseContext } from "@/lib/dashboard/context";
-import { facturationConfiguree, getPrixAbonnementCents, planPourEffectif, nomPlan } from "@/lib/stripe";
+import { getEntrepriseContext, planActuelEntreprise } from "@/lib/dashboard/context";
+import { accesOutilsCalcul, facturationConfiguree, getPrixAbonnementCents, planPourEffectif, nomPlan } from "@/lib/stripe";
 import { formatPrix } from "@/lib/utils";
 import { AbonnementBouton } from "@/components/dashboard/abonnement-bouton";
 
@@ -18,6 +19,9 @@ const AVANTAGES = [
 
 export default async function OutilsPremiumPage() {
   const { entreprise } = await getEntrepriseContext();
+  const plan = await planActuelEntreprise(entreprise.id, entreprise.nb_salaries);
+  if (accesOutilsCalcul(plan)) redirect("/dashboard/outils");
+
   const facturationPrete = facturationConfiguree();
   const prixCents = await getPrixAbonnementCents("premium", entreprise.nb_salaries);
 

@@ -34,11 +34,26 @@ export async function demarrerAbonnement(planChoisi?: Plan): Promise<{ url: stri
 
   const { data: abonnement } = await supabase
     .from("abonnements")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id, stripe_subscription_id")
     .eq("entreprise_id", entreprise.id)
     .maybeSingle();
 
   const base = await origine();
+
+  // Un changement de formule met à jour l'abonnement Stripe existant au lieu
+  // d'en créer un second en parallèle, qui facturerait les deux à la fois.
+  if (abonnement?.stripe_subscription_id) {
+    const abonnementStripe = await stripe.subscriptions
+      .retrieve(abonnement.stripe_subscription_id)
+      .catch(() => null);
+    if (abonnementStripe && abonnementStripe.status !== "canceled") {
+      await stripe.subscriptions.update(abonnement.stripe_subscription_id, {
+        items: [{ id: abonnementStripe.items.data[0].id, price: priceId }],
+        metadata: { entreprise_id: entreprise.id, plan },
+      });
+      return { url: `${base}/dashboard/reglages?abonnement=succes` };
+    }
+  }
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
