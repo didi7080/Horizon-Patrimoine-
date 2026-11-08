@@ -821,7 +821,7 @@ type FormuleEntree = { id: string; label: string; expression: string; unite?: st
  * ça détecte un identifiant inconnu ou une formule qui référence une autre
  * formule placée après elle, avant d'enregistrer quoi que ce soit.
  */
-function validerChampsEtFormules(
+export function validerChampsEtFormules(
   champsEntree: ChampEntree[],
   formulesEntree: FormuleEntree[],
 ): { champs: Champ[]; formules: Formule[] } | { erreur: string } {
