@@ -262,7 +262,8 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
   },
   {
     name: "enregistrer_depense",
-    description: "Enregistre une nouvelle dépense professionnelle (charge) pour l'entreprise : matériel, carburant, assurance, etc.",
+    description:
+      "Enregistre une nouvelle dépense professionnelle (charge) pour l'entreprise : matériel, carburant, assurance, etc. Si c'est un salarié (pas le gérant) qui demande, la dépense est mise en attente de validation par le gérant — dis-le-lui si le résultat renvoie en_attente_de_validation.",
     input_schema: {
       type: "object",
       properties: {
@@ -287,7 +288,7 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
   },
 ];
 
-type ContexteOutils = { entrepriseId: string; userId: string };
+type ContexteOutils = { entrepriseId: string; userId: string; role: "owner" | "admin" | "salarie" };
 type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
 
 /** Retrouve un salarié actif par nom approximatif ; renseigne les choix possibles en cas d'ambiguïté. */
@@ -382,7 +383,13 @@ async function outilBilanMensuel(ctx: ContexteOutils, input: { mois?: string }) 
       .eq("entreprise_id", ctx.entrepriseId)
       .gte("date_emission", debut)
       .lt("date_emission", fin),
-    admin.from("depenses").select("montant_cents").eq("entreprise_id", ctx.entrepriseId).gte("date", debut).lt("date", fin),
+    admin
+      .from("depenses")
+      .select("montant_cents")
+      .eq("entreprise_id", ctx.entrepriseId)
+      .eq("statut", "validee")
+      .gte("date", debut)
+      .lt("date", fin),
   ]);
   if (error) return { erreur: error.message };
   if (erreurDepenses) return { erreur: erreurDepenses.message };
@@ -705,15 +712,22 @@ async function outilEnregistrerDepense(
   }
   const admin = createAdminClient();
   if (!admin) return { erreur: "Base de données non configurée." };
+  // Un salarié passe par la même validation que le formulaire : la dépense
+  // reste "en attente" jusqu'à ce que le gérant la valide.
+  const statut = ctx.role === "salarie" ? "en_attente" : "validee";
   const { error } = await admin.from("depenses").insert({
     entreprise_id: ctx.entrepriseId,
     categorie: input.categorie.trim(),
     montant_cents: Math.round(input.montant_euros * 100),
     date: input.date?.trim() || new Date().toISOString().slice(0, 10),
     description: input.description?.trim() || null,
+    created_by: ctx.userId,
+    statut,
   });
   if (error) return { erreur: error.message };
-  return { enregistre: true, lien: "/dashboard/depenses" };
+  return statut === "en_attente"
+    ? { enregistre: true, en_attente_de_validation: true, lien: "/dashboard/depenses" }
+    : { enregistre: true, lien: "/dashboard/depenses" };
 }
 
 async function outilListerDepenses(ctx: ContexteOutils, input: { mois?: string }) {

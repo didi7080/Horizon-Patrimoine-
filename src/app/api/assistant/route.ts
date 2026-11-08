@@ -20,7 +20,7 @@ async function contexteRequete() {
 
   const { data: membership } = await supabase
     .from("memberships")
-    .select("entreprise:entreprises(id, nom, metier, nb_salaries)")
+    .select("role, entreprise:entreprises(id, nom, metier, nb_salaries)")
     .eq("profile_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -34,6 +34,7 @@ async function contexteRequete() {
 
   return {
     userId: user.id,
+    role: membership.role,
     entreprise: membership.entreprise,
     plan: planEffectif(abonnement?.plan, membership.entreprise.nb_salaries),
   };
@@ -111,7 +112,7 @@ export async function POST(request: Request) {
   messagesEntrants = messagesEntrants.slice(-MAX_MESSAGES_HISTORIQUE);
 
   const messages: Anthropic.MessageParam[] = messagesEntrants.map((m) => ({ role: m.role, content: m.content }));
-  const ctxOutils = { entrepriseId: contexte.entreprise.id as string, userId: contexte.userId };
+  const ctxOutils = { entrepriseId: contexte.entreprise.id as string, userId: contexte.userId, role: contexte.role };
 
   try {
     for (let tour = 0; tour < MAX_TOURS_OUTILS; tour++) {

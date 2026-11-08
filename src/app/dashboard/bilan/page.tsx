@@ -36,6 +36,7 @@ export default async function BilanPage({ searchParams }: PageProps<"/dashboard/
           .from("depenses")
           .select("montant_cents")
           .eq("entreprise_id", entreprise.id)
+          .eq("statut", "validee")
           .gte("date", debut)
           .lt("date", fin),
       ])
