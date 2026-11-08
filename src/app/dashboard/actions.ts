@@ -182,6 +182,19 @@ export async function togglePublieAvis(id: string, publie: boolean) {
   revalidatePath("/dashboard/avis");
 }
 
+export async function repondreAvis(id: string, reponse: string) {
+  const { entreprise } = await getEntrepriseContext();
+  const supabase = await createClient();
+  const texte = reponse.trim();
+  const { error } = await supabase
+    .from("avis")
+    .update({ reponse_artisan: texte || null, reponse_le: texte ? new Date().toISOString() : null })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard/avis");
+  revalidatePath(`/e/${entreprise.slug}`);
+}
+
 // --- Réglages ---------------------------------------------------------
 
 export async function mettreAJourReglages(formData: FormData) {

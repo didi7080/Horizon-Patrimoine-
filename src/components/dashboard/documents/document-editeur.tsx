@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ExternalLink, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import {
   enregistrerLignesDocument,
   changerStatutDocument,
   convertirDevisEnFacture,
+  dupliquerDocument,
   supprimerDocument,
 } from "@/app/dashboard/documents/actions";
 import { calculerTotaux, TAUX_TVA, type LigneDocument, type TypeDocument } from "@/lib/documents/types";
@@ -108,6 +109,7 @@ export function DocumentEditeur({
   const [pending, startTransition] = useTransition();
   const [pendingStatut, startTransitionStatut] = useTransition();
   const [pendingConversion, startTransitionConversion] = useTransition();
+  const [pendingDuplication, startTransitionDuplication] = useTransition();
   const [erreur, setErreur] = useState<string | null>(null);
 
   const totaux = useMemo(() => calculerTotaux(lignes), [lignes]);
@@ -175,6 +177,18 @@ export function DocumentEditeur({
     });
   }
 
+  function dupliquer() {
+    startTransitionDuplication(async () => {
+      try {
+        const copieId = await dupliquerDocument(documentId);
+        toast.success(type === "devis" ? "Devis dupliqué" : "Facture dupliquée");
+        router.push(`/dashboard/documents/${copieId}`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      }
+    });
+  }
+
   function supprimer() {
     if (!confirm("Supprimer ce document ? Cette action est irréversible.")) return;
     startTransition(async () => {
@@ -210,6 +224,10 @@ export function DocumentEditeur({
             <Link href={`/dashboard/documents/${documentId}/presentation`} target="_blank">
               <ExternalLink className="size-3.5" /> Aperçu / Imprimer
             </Link>
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={dupliquer} disabled={pendingDuplication}>
+            {pendingDuplication ? <Loader2 className="size-3.5 animate-spin" /> : <Copy className="size-3.5" />}
+            Dupliquer
           </Button>
           {type === "devis" && (
             <Button type="button" size="sm" onClick={convertir} disabled={pendingConversion}>

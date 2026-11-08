@@ -36,7 +36,11 @@ export async function EntrepriseProfil({ slug, embed = false }: { slug: string; 
   ]);
 
   const avis = avisData as
-    | { moyenne: number | null; nombre: number; liste: { note: number; commentaire: string | null; auteur: string | null; date: string }[] }
+    | {
+        moyenne: number | null;
+        nombre: number;
+        liste: { note: number; commentaire: string | null; auteur: string | null; date: string; reponse: string | null }[];
+      }
     | null;
 
   return (
@@ -137,6 +141,12 @@ export async function EntrepriseProfil({ slug, embed = false }: { slug: string; 
                     </span>
                   </div>
                   {a.commentaire && <p className="mt-1.5 text-sm text-muted">{a.commentaire}</p>}
+                  {a.reponse && (
+                    <div className="mt-2 rounded-lg bg-surface p-3">
+                      <p className="text-xs font-medium text-muted-foreground">Réponse de {entreprise.nom}</p>
+                      <p className="mt-1 text-sm text-foreground">{a.reponse}</p>
+                    </div>
+                  )}
                 </Card>
               ))
             ) : (

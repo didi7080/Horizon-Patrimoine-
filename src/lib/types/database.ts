@@ -97,6 +97,8 @@ export type Database = {
           note: number
           publie: boolean
           rdv_id: string | null
+          reponse_artisan: string | null
+          reponse_le: string | null
           salarie_id: string | null
         }
         Insert: {
@@ -108,6 +110,8 @@ export type Database = {
           note: number
           publie?: boolean
           rdv_id?: string | null
+          reponse_artisan?: string | null
+          reponse_le?: string | null
           salarie_id?: string | null
         }
         Update: {
@@ -119,6 +123,8 @@ export type Database = {
           note?: number
           publie?: boolean
           rdv_id?: string | null
+          reponse_artisan?: string | null
+          reponse_le?: string | null
           salarie_id?: string | null
         }
         Relationships: [

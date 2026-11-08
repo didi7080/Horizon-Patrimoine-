@@ -205,6 +205,47 @@ export async function convertirDevisEnFacture(devisId: string): Promise<string> 
   return facture.id as string;
 }
 
+/** Copie un devis ou une facture existant·e (client, lignes, notes) en un nouveau
+ * document brouillon avec son propre numéro, pour refaire rapidement un travail
+ * similaire sans tout ressaisir. */
+export async function dupliquerDocument(documentId: string): Promise<string> {
+  const { entreprise, userId } = await getEntrepriseContext();
+  const supabase = admin();
+
+  const { data: source, error: erreurSource } = await supabase
+    .from("documents")
+    .select("*")
+    .eq("id", documentId)
+    .eq("entreprise_id", entreprise.id)
+    .maybeSingle();
+  if (erreurSource) throw new Error(erreurSource.message);
+  if (!source) throw new Error("Document introuvable.");
+
+  const numero = await prochainNumero(supabase, entreprise.id, source.type as TypeDocument);
+  const { data: copie, error } = await supabase
+    .from("documents")
+    .insert({
+      entreprise_id: entreprise.id,
+      type: source.type,
+      numero,
+      client_id: source.client_id,
+      client_nom: source.client_nom,
+      client_adresse: source.client_adresse,
+      client_telephone: source.client_telephone,
+      client_email: source.client_email,
+      lignes: source.lignes,
+      date_prestation: source.date_prestation,
+      notes: source.notes,
+      created_by: userId,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/dashboard/documents");
+  return copie.id as string;
+}
+
 export async function supprimerDocument(documentId: string) {
   const { entreprise } = await getEntrepriseContext();
   const { error } = await admin().from("documents").delete().eq("id", documentId).eq("entreprise_id", entreprise.id);

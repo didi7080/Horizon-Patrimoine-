@@ -6,6 +6,7 @@ import { formatDateCourte } from "@/lib/utils";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
 import { togglePublieAvis } from "@/app/dashboard/actions";
+import { AvisReponse } from "@/components/dashboard/avis-reponse";
 
 export const revalidate = 0;
 
@@ -62,6 +63,7 @@ export default async function AvisPage() {
                 </form>
               </div>
               {a.commentaire && <p className="mt-2 text-sm text-muted">{a.commentaire}</p>}
+              <AvisReponse avisId={a.id} reponse={a.reponse_artisan} />
             </Card>
           ))
         ) : (
