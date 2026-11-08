@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { LigneDocument, TypeDocument } from "@/lib/documents/types";
+import { resoudreOuCreerClient } from "@/lib/clients/resoudre";
 
 type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
 
@@ -122,17 +123,34 @@ export type DonneesDocument = {
 
 export async function enregistrerLignesDocument(documentId: string, lignesJson: string, donnees: DonneesDocument) {
   const { entreprise } = await getEntrepriseContext();
+  const supabase = admin();
   const lignes = parserLignes(lignesJson);
   const clientNom = donnees.clientNom.trim();
   if (!clientNom) throw new Error("Le nom du client est requis.");
-  const { error } = await admin()
+  const clientAdresse = donnees.clientAdresse.trim() || null;
+  const clientTelephone = donnees.clientTelephone.trim() || null;
+  const clientEmail = donnees.clientEmail.trim() || null;
+
+  // Si le nom du client a été changé (ex. après une duplication de devis pour un
+  // autre client), on retrouve ou crée la fiche correspondante pour que client_id
+  // reste cohérent avec le nom affiché sur le document, au lieu de rester pointé
+  // sur l'ancien client.
+  const clientId = await resoudreOuCreerClient(supabase, entreprise.id, {
+    nom: clientNom,
+    adresse: clientAdresse,
+    telephone: clientTelephone,
+    email: clientEmail,
+  });
+
+  const { error } = await supabase
     .from("documents")
     .update({
       lignes,
+      client_id: clientId,
       client_nom: clientNom,
-      client_adresse: donnees.clientAdresse.trim() || null,
-      client_telephone: donnees.clientTelephone.trim() || null,
-      client_email: donnees.clientEmail.trim() || null,
+      client_adresse: clientAdresse,
+      client_telephone: clientTelephone,
+      client_email: clientEmail,
       date_validite: donnees.dateValidite || null,
       date_echeance: donnees.dateEcheance || null,
       date_prestation: donnees.datePrestation || null,
@@ -143,6 +161,7 @@ export async function enregistrerLignesDocument(documentId: string, lignesJson: 
     .eq("entreprise_id", entreprise.id);
   if (error) throw new Error(error.message);
   revalidatePath(`/dashboard/documents/${documentId}`);
+  revalidatePath("/dashboard/clients");
 }
 
 const STATUTS_VALIDES = new Set(["brouillon", "envoye", "accepte", "refuse", "envoyee", "payee"]);

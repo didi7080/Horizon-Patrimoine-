@@ -7,6 +7,7 @@ import { synchroniserRdvGoogle } from "@/lib/google-calendar/sync";
 import { emailConfigure, envoyerEmail } from "@/lib/email/client";
 import { evaluerFormule, ErreurFormule } from "@/lib/calculs/evaluateur";
 import type { Champ, Formule, DonneesEtude } from "@/lib/calculs/types";
+import { resoudreOuCreerClient } from "@/lib/clients/resoudre";
 
 export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
   {
@@ -389,50 +390,6 @@ function estErreurResolution(resultat: { id: string } | { erreur: string; salari
   salaries_disponibles: string[];
 } {
   return "erreur" in resultat;
-}
-
-/**
- * Retrouve un client existant (par e-mail exact, sinon par nom exact unique) ou en crée un nouveau.
- * Évite de dupliquer un client déjà enregistré à chaque nouvelle demande de l'IA.
- */
-async function resoudreOuCreerClient(
-  admin: AdminClient,
-  entrepriseId: string,
-  donnees: { nom: string; email?: string; telephone?: string; adresse?: string },
-): Promise<string> {
-  const email = donnees.email?.trim();
-  if (email) {
-    const { data } = await admin
-      .from("clients")
-      .select("id")
-      .eq("entreprise_id", entrepriseId)
-      .ilike("email", email)
-      .maybeSingle();
-    if (data) return data.id;
-  }
-
-  const nom = donnees.nom.trim();
-  const { data: parNom } = await admin
-    .from("clients")
-    .select("id")
-    .eq("entreprise_id", entrepriseId)
-    .ilike("nom", nom)
-    .limit(2);
-  if (parNom && parNom.length === 1) return parNom[0].id;
-
-  const { data: nouveau, error } = await admin
-    .from("clients")
-    .insert({
-      entreprise_id: entrepriseId,
-      nom,
-      adresse: donnees.adresse?.trim() || null,
-      telephone: donnees.telephone?.trim() || null,
-      email: email || null,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(error.message);
-  return nouveau.id;
 }
 
 /** E-mail du compte artisan à l'origine de la demande, utilisé comme adresse de réponse. */
