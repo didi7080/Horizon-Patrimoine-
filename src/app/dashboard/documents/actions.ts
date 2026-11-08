@@ -131,16 +131,32 @@ export async function enregistrerLignesDocument(documentId: string, lignesJson: 
   const clientTelephone = donnees.clientTelephone.trim() || null;
   const clientEmail = donnees.clientEmail.trim() || null;
 
-  // Si le nom du client a été changé (ex. après une duplication de devis pour un
-  // autre client), on retrouve ou crée la fiche correspondante pour que client_id
-  // reste cohérent avec le nom affiché sur le document, au lieu de rester pointé
-  // sur l'ancien client.
-  const clientId = await resoudreOuCreerClient(supabase, entreprise.id, {
-    nom: clientNom,
-    adresse: clientAdresse,
-    telephone: clientTelephone,
-    email: clientEmail,
-  });
+  const { data: actuel, error: erreurActuel } = await supabase
+    .from("documents")
+    .select("client_id, client_nom, client_adresse, client_telephone, client_email")
+    .eq("id", documentId)
+    .eq("entreprise_id", entreprise.id)
+    .single();
+  if (erreurActuel) throw new Error(erreurActuel.message);
+
+  // On ne retrouve/crée la fiche client que si ses informations ont vraiment
+  // changé (ex. après une duplication de devis pour un autre client) : si rien
+  // n'a changé, on garde le client_id existant, même si son nom n'est plus
+  // unique en base, pour ne jamais décrocher un document d'un client déjà
+  // correctement lié.
+  const infosInchangees =
+    actuel.client_nom === clientNom &&
+    actuel.client_adresse === clientAdresse &&
+    actuel.client_telephone === clientTelephone &&
+    actuel.client_email === clientEmail;
+  const clientId = infosInchangees
+    ? actuel.client_id
+    : await resoudreOuCreerClient(supabase, entreprise.id, {
+        nom: clientNom,
+        adresse: clientAdresse,
+        telephone: clientTelephone,
+        email: clientEmail,
+      });
 
   const { error } = await supabase
     .from("documents")
