@@ -138,6 +138,7 @@ export default async function DepensesPage({ searchParams }: PageProps<"/dashboa
 
   const auteurs = await nomsAuteurs(admin, attente.map((d) => d.created_by).filter((id): id is string => Boolean(id)));
   const photosAttente = await avecPhotos(attente);
+  const photosListe = await avecPhotos(liste);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -216,14 +217,25 @@ export default async function DepensesPage({ searchParams }: PageProps<"/dashboa
         {liste.length > 0 ? (
           liste.map((d) => (
             <Card key={d.id} className="flex items-center justify-between gap-3 p-4">
-              <div>
-                <p className="font-medium text-foreground">
-                  {d.categorie} · {formatPrix(d.montant_cents)}
-                </p>
-                <p className="text-sm text-muted">
-                  {formatDateCourte(d.date)}
-                  {d.description ? ` · ${d.description}` : ""}
-                </p>
+              <div className="flex items-center gap-3">
+                {photosListe.get(d.id) && (
+                  <Link href={photosListe.get(d.id)!} target="_blank">
+                    <img
+                      src={photosListe.get(d.id)}
+                      alt="Justificatif"
+                      className="size-12 rounded-md border border-border object-cover"
+                    />
+                  </Link>
+                )}
+                <div>
+                  <p className="font-medium text-foreground">
+                    {d.categorie} · {formatPrix(d.montant_cents)}
+                  </p>
+                  <p className="text-sm text-muted">
+                    {formatDateCourte(d.date)}
+                    {d.description ? ` · ${d.description}` : ""}
+                  </p>
+                </div>
               </div>
               <BoutonSupprimer confirmation="Supprimer cette dépense ?" action={supprimerDepense.bind(null, d.id)} />
             </Card>
