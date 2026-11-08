@@ -234,7 +234,9 @@ export type Database = {
           description: string | null
           entreprise_id: string
           id: string
+          justificatif_path: string | null
           montant_cents: number
+          statut: Database["public"]["Enums"]["statut_depense"]
         }
         Insert: {
           categorie: string
@@ -244,7 +246,9 @@ export type Database = {
           description?: string | null
           entreprise_id: string
           id?: string
+          justificatif_path?: string | null
           montant_cents: number
+          statut?: Database["public"]["Enums"]["statut_depense"]
         }
         Update: {
           categorie?: string
@@ -254,7 +258,9 @@ export type Database = {
           description?: string | null
           entreprise_id?: string
           id?: string
+          justificatif_path?: string | null
           montant_cents?: number
+          statut?: Database["public"]["Enums"]["statut_depense"]
         }
         Relationships: [
           {
@@ -335,10 +341,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "documents_entreprise_id_fkey"
-            columns: ["entreprise_id"]
+            foreignKeyName: "documents_client_id_fkey"
+            columns: ["client_id"]
             isOneToOne: false
-            referencedRelation: "entreprises"
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
@@ -349,10 +355,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "documents_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "documents_entreprise_id_fkey"
+            columns: ["entreprise_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "entreprises"
             referencedColumns: ["id"]
           },
         ]
@@ -1055,6 +1061,9 @@ export type Database = {
         }
         Returns: {
           adresse: string | null
+          assujetti_tva: boolean
+          assurance_nom: string | null
+          assurance_zone: string | null
           avis_actif: boolean
           battement_min: number
           code_postal: string | null
@@ -1063,14 +1072,20 @@ export type Database = {
           created_by: string | null
           delai_min_heures: number
           description: string | null
+          domaine_personnalise: string | null
           email: string | null
+          email_bienvenue_envoye: boolean
           fenetre_max_jours: number
+          forme_juridique: string | null
           id: string
           logo_url: string | null
+          mentions_legales: string | null
           metier: string | null
           nb_salaries: number
           nom: string
+          numero_tva: string | null
           recap_actif: boolean
+          siret: string | null
           slug: string
           sms_actif: boolean
           stripe_connect_account_id: string | null
@@ -1178,6 +1193,7 @@ export type Database = {
     Enums: {
       role_membre: "owner" | "admin" | "salarie"
       statut_abonnement: "essai" | "actif" | "impaye" | "annule"
+      statut_depense: "en_attente" | "validee" | "refusee"
       statut_rdv: "confirme" | "annule" | "honore" | "absent" | "demande"
     }
     CompositeTypes: {
@@ -1308,6 +1324,7 @@ export const Constants = {
     Enums: {
       role_membre: ["owner", "admin", "salarie"],
       statut_abonnement: ["essai", "actif", "impaye", "annule"],
+      statut_depense: ["en_attente", "validee", "refusee"],
       statut_rdv: ["confirme", "annule", "honore", "absent", "demande"],
     },
   },

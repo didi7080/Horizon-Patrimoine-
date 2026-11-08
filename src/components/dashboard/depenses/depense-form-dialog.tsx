@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus } from "lucide-react";
+import { Camera, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ import {
 import { creerDepense } from "@/app/dashboard/depenses/actions";
 import { CATEGORIES_DEPENSE } from "@/lib/depenses/types";
 
-export function DepenseFormDialog() {
+export function DepenseFormDialog({ estSalarie = false }: { estSalarie?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -71,6 +71,16 @@ export function DepenseFormDialog() {
             <Label htmlFor="depense-description">Description</Label>
             <Input id="depense-description" name="description" placeholder="Ex. Achat de peinture chez..." />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="depense-justificatif">Photo du justificatif (ticket, facture...)</Label>
+            <Input id="depense-justificatif" name="justificatif" type="file" accept="image/*" capture="environment" />
+          </div>
+          {estSalarie && (
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <Camera className="mt-0.5 size-3.5 shrink-0" />
+              Cette dépense sera soumise au gérant pour validation avant d&apos;être comptée.
+            </p>
+          )}
           {erreur && <p className="text-sm text-destructive">{erreur}</p>}
           <DialogFooter>
             <DialogClose asChild>
