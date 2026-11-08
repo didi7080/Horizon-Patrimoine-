@@ -297,7 +297,9 @@ export type Database = {
           lignes: Json
           notes: string | null
           numero: string
+          relance_envoyee: boolean
           statut: string
+          token: string
           type: string
           updated_at: string
         }
@@ -319,7 +321,9 @@ export type Database = {
           lignes?: Json
           notes?: string | null
           numero: string
+          relance_envoyee?: boolean
           statut?: string
+          token?: string
           type: string
           updated_at?: string
         }
@@ -341,7 +345,9 @@ export type Database = {
           lignes?: Json
           notes?: string | null
           numero?: string
+          relance_envoyee?: boolean
           statut?: string
+          token?: string
           type?: string
           updated_at?: string
         }
@@ -1159,10 +1165,12 @@ export type Database = {
           salarie_nom: string
         }[]
       }
+      devis_par_token: { Args: { p_token: string }; Returns: Json }
       entreprise_active: { Args: { e: string }; Returns: boolean }
       envoyer_rappels: { Args: never; Returns: undefined }
       envoyer_recap_quotidien: { Args: never; Returns: undefined }
       envoyer_relances: { Args: never; Returns: undefined }
+      envoyer_relances_factures: { Args: never; Returns: undefined }
       ical_salarie: {
         Args: { p_token: string }
         Returns: {
@@ -1194,6 +1202,10 @@ export type Database = {
           p_salarie: string
           p_tel: string
         }
+        Returns: undefined
+      }
+      repondre_devis_public: {
+        Args: { p_accepter: boolean; p_token: string }
         Returns: undefined
       }
       reporter_rdv_public: {

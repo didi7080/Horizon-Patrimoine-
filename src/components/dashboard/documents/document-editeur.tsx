@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { BookmarkPlus, Copy, ExternalLink, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { BookmarkPlus, Copy, ExternalLink, Link2, Loader2, Mail, MailWarning, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,9 @@ import {
   dupliquerDocument,
   supprimerDocument,
   creerLigneBibliotheque,
+  relancerDocument,
+  lienPublicDevis,
+  envoyerLienDevisParEmail,
 } from "@/app/dashboard/documents/actions";
 import { calculerTotaux, TAUX_TVA, type LigneDocument, type TypeDocument } from "@/lib/documents/types";
 import type { Tables } from "@/lib/types/database";
@@ -116,9 +119,14 @@ export function DocumentEditeur({
   const [pendingDuplication, startTransitionDuplication] = useTransition();
   const [pendingBibliotheque, startTransitionBibliotheque] = useTransition();
   const [choixBibliotheque, setChoixBibliotheque] = useState("");
+  const [pendingRelance, startTransitionRelance] = useTransition();
+  const [pendingLien, startTransitionLien] = useTransition();
+  const [pendingEnvoiLien, startTransitionEnvoiLien] = useTransition();
   const [erreur, setErreur] = useState<string | null>(null);
 
   const totaux = useMemo(() => calculerTotaux(lignes), [lignes]);
+  const estFactureEnRetard =
+    type === "facture" && statut === "envoyee" && Boolean(dateEcheance) && dateEcheance < new Date().toISOString().slice(0, 10);
 
   function changerDelaiPaiement(valeur: string) {
     setDelaiPaiement(valeur);
@@ -233,6 +241,41 @@ export function DocumentEditeur({
     });
   }
 
+  function relancer() {
+    startTransitionRelance(async () => {
+      try {
+        await relancerDocument(documentId);
+        toast.success("E-mail de relance envoyé au client");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      }
+    });
+  }
+
+  function copierLien() {
+    startTransitionLien(async () => {
+      try {
+        const lien = await lienPublicDevis(documentId);
+        await navigator.clipboard.writeText(lien);
+        toast.success("Lien copié — le client peut l'ouvrir pour consulter et accepter le devis.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      }
+    });
+  }
+
+  function envoyerLienParEmail() {
+    startTransitionEnvoiLien(async () => {
+      try {
+        await envoyerLienDevisParEmail(documentId);
+        toast.success("Devis envoyé par e-mail au client");
+        if (statut === "brouillon") setStatut("envoye");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      }
+    });
+  }
+
   function supprimer() {
     if (!confirm("Supprimer ce document ? Cette action est irréversible.")) return;
     startTransition(async () => {
@@ -263,7 +306,7 @@ export function DocumentEditeur({
             </Button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="outline" size="sm">
             <Link href={`/dashboard/documents/${documentId}/presentation`} target="_blank">
               <ExternalLink className="size-3.5" /> Aperçu / Imprimer
@@ -274,13 +317,35 @@ export function DocumentEditeur({
             Dupliquer
           </Button>
           {type === "devis" && (
-            <Button type="button" size="sm" onClick={convertir} disabled={pendingConversion}>
-              {pendingConversion && <Loader2 className="size-3.5 animate-spin" />}
-              Convertir en facture
+            <>
+              <Button type="button" variant="outline" size="sm" onClick={copierLien} disabled={pendingLien}>
+                {pendingLien ? <Loader2 className="size-3.5 animate-spin" /> : <Link2 className="size-3.5" />}
+                Copier le lien client
+              </Button>
+              {clientEmail && (
+                <Button type="button" variant="outline" size="sm" onClick={envoyerLienParEmail} disabled={pendingEnvoiLien}>
+                  {pendingEnvoiLien ? <Loader2 className="size-3.5 animate-spin" /> : <Mail className="size-3.5" />}
+                  Envoyer au client
+                </Button>
+              )}
+              <Button type="button" size="sm" onClick={convertir} disabled={pendingConversion}>
+                {pendingConversion && <Loader2 className="size-3.5 animate-spin" />}
+                Convertir en facture
+              </Button>
+            </>
+          )}
+          {estFactureEnRetard && (
+            <Button type="button" variant="outline" size="sm" onClick={relancer} disabled={pendingRelance}>
+              {pendingRelance ? <Loader2 className="size-3.5 animate-spin" /> : <MailWarning className="size-3.5" />}
+              Relancer le client
             </Button>
           )}
         </div>
       </div>
+
+      {estFactureEnRetard && (
+        <p className="text-sm text-danger">Cette facture est en retard de paiement.</p>
+      )}
 
       {devisOrigineId && (
         <p className="text-sm text-muted">

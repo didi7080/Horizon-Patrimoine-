@@ -1,11 +1,21 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { LigneDocument, TypeDocument } from "@/lib/documents/types";
 import { resoudreOuCreerClient } from "@/lib/clients/resoudre";
+import { envoyerRelanceDocument, emailArtisan } from "@/lib/documents/relance";
+import { emailConfigure, envoyerEmail } from "@/lib/email/client";
 import type { Tables } from "@/lib/types/database";
+
+async function origine(): Promise<string> {
+  const site = process.env.NEXT_PUBLIC_SITE_URL;
+  if (site) return site;
+  const h = await headers();
+  return `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
+}
 
 type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
 
@@ -100,6 +110,10 @@ export async function creerDocument(type: TypeDocument, formData: FormData): Pro
       client_adresse: clientAdresse,
       client_telephone: clientTelephone,
       client_email: clientEmail,
+      // Échéance par défaut "à réception" : sans ça, une facture jamais
+      // ré-ouverte dans l'éditeur n'a pas de date d'échéance et n'apparaît
+      // jamais comme en retard de paiement.
+      date_echeance: type === "facture" ? new Date().toISOString().slice(0, 10) : null,
       created_by: userId,
     })
     .select("id")
@@ -225,6 +239,7 @@ export async function convertirDevisEnFacture(devisId: string): Promise<string> 
       client_email: devis.client_email,
       lignes: devis.lignes,
       date_prestation: devis.date_prestation,
+      date_echeance: new Date().toISOString().slice(0, 10),
       notes: devis.notes,
       devis_origine_id: devis.id,
       created_by: userId,
@@ -280,6 +295,72 @@ export async function dupliquerDocument(documentId: string): Promise<string> {
 
   revalidatePath("/dashboard/documents");
   return copie.id as string;
+}
+
+/** Envoie immédiatement un e-mail de relance au client pour ce devis ou cette facture. */
+export async function relancerDocument(documentId: string) {
+  const { entreprise, userId } = await getEntrepriseContext();
+  const supabase = admin();
+
+  const { data: document, error } = await supabase
+    .from("documents")
+    .select("type, numero, client_nom, client_email, date_echeance, lignes")
+    .eq("id", documentId)
+    .eq("entreprise_id", entreprise.id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!document) throw new Error("Document introuvable.");
+
+  const resultat = await envoyerRelanceDocument(supabase, userId, document.client_email, document);
+  if (!resultat.ok) throw new Error(resultat.erreur);
+}
+
+/** Lien public (sans connexion) permettant au client de consulter et d'accepter ce devis en ligne. */
+export async function lienPublicDevis(documentId: string): Promise<string> {
+  const { entreprise } = await getEntrepriseContext();
+  const { data: document, error } = await admin()
+    .from("documents")
+    .select("type, token")
+    .eq("id", documentId)
+    .eq("entreprise_id", entreprise.id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!document) throw new Error("Document introuvable.");
+  if (document.type !== "devis") throw new Error("Seuls les devis ont un lien d'acceptation en ligne.");
+  const base = await origine();
+  return `${base}/devis/${document.token}`;
+}
+
+/** Envoie au client un e-mail avec le lien du devis, et le marque "Envoyé" s'il était encore en brouillon. */
+export async function envoyerLienDevisParEmail(documentId: string) {
+  const { entreprise, userId } = await getEntrepriseContext();
+  const supabase = admin();
+
+  const { data: document, error } = await supabase
+    .from("documents")
+    .select("type, numero, statut, token, client_nom, client_email")
+    .eq("id", documentId)
+    .eq("entreprise_id", entreprise.id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!document) throw new Error("Document introuvable.");
+  if (document.type !== "devis") throw new Error("Seuls les devis ont un lien d'acceptation en ligne.");
+  if (!document.client_email) throw new Error("Ce client n'a pas d'adresse e-mail enregistrée.");
+  if (!emailConfigure()) throw new Error("L'envoi automatique par e-mail n'est pas configuré sur cette instance.");
+
+  const base = await origine();
+  const lien = `${base}/devis/${document.token}`;
+  const objet = `Votre devis ${document.numero} — ${entreprise.nom}`;
+  const message = `Bonjour ${document.client_nom},\n\nVoici votre devis ${document.numero}. Vous pouvez le consulter et l'accepter directement en ligne :\n${lien}\n\nCordialement.`;
+
+  const replyTo = await emailArtisan(supabase, userId);
+  const resultat = await envoyerEmail({ to: document.client_email, subject: objet, text: message, replyTo });
+  if (!resultat.ok) throw new Error(resultat.erreur);
+
+  if (document.statut === "brouillon") {
+    await supabase.from("documents").update({ statut: "envoye" }).eq("id", documentId);
+    revalidatePath(`/dashboard/documents/${documentId}`);
+  }
 }
 
 export async function supprimerDocument(documentId: string) {

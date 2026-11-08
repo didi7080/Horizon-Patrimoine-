@@ -1,9 +1,12 @@
-import { CalendarClock, Inbox } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, CalendarClock, Inbox } from "lucide-react";
 import { RdvRow, type RdvAvecRelations } from "@/components/dashboard/rdv-row";
 import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist";
 import { Card } from "@/components/ui/card";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
+import { calculerTotaux, type LigneDocument } from "@/lib/documents/types";
+import { formatPrix, formatDateCourte } from "@/lib/utils";
 
 export const revalidate = 0;
 
@@ -11,6 +14,7 @@ export default async function DashboardPage() {
   const { entreprise } = await getEntrepriseContext();
   const supabase = await createClient();
 
+  const maintenant = new Date();
   const debutJour = new Date();
   debutJour.setHours(0, 0, 0, 0);
   const finJour = new Date();
@@ -24,6 +28,7 @@ export default async function DashboardPage() {
     { data: rdvAujourdhui },
     { count: nbPrestations },
     { count: nbHoraires },
+    { data: facturesEnRetard },
   ] = await Promise.all([
     supabase
       .from("rendez_vous")
@@ -47,6 +52,14 @@ export default async function DashboardPage() {
       .from("horaires")
       .select("id, salaries!inner(entreprise_id)", { count: "exact", head: true })
       .eq("salaries.entreprise_id", entreprise.id),
+    supabase
+      .from("documents")
+      .select("id, numero, client_nom, date_echeance, lignes")
+      .eq("entreprise_id", entreprise.id)
+      .eq("type", "facture")
+      .eq("statut", "envoyee")
+      .lt("date_echeance", maintenant.toISOString().slice(0, 10))
+      .order("date_echeance"),
   ]);
 
   const etapesOnboarding = [
@@ -84,6 +97,38 @@ export default async function DashboardPage() {
             {(demandes as RdvAvecRelations[]).map((rdv) => (
               <RdvRow key={rdv.id} rdv={rdv} />
             ))}
+          </div>
+        </section>
+      )}
+
+      {facturesEnRetard && facturesEnRetard.length > 0 && (
+        <section>
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-danger">
+            <AlertTriangle className="size-4" /> Factures en retard de paiement ({facturesEnRetard.length})
+          </h2>
+          <div className="space-y-2">
+            {facturesEnRetard.map((f) => {
+              const totaux = calculerTotaux((f.lignes as LigneDocument[] | null) ?? []);
+              const joursRetard = Math.floor(
+                (maintenant.getTime() - new Date(`${f.date_echeance}T00:00:00`).getTime()) / 86_400_000,
+              );
+              return (
+                <Link key={f.id} href={`/dashboard/documents/${f.id}`}>
+                  <Card className="flex items-center justify-between gap-3 p-4 transition-colors hover:border-brand">
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {f.numero} · {f.client_nom}
+                      </p>
+                      <p className="text-sm text-muted">
+                        En retard de {joursRetard} jour{joursRetard > 1 ? "s" : ""} · échéance le{" "}
+                        {formatDateCourte(f.date_echeance!)}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-sm font-semibold text-foreground">{formatPrix(totaux.totalTTC)}</p>
+                  </Card>
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}
