@@ -1,7 +1,6 @@
 import { Download } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ClientRow } from "@/components/dashboard/client-row";
+import { ClientsListe } from "@/components/dashboard/clients/clients-liste";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
 
@@ -20,10 +19,10 @@ export default async function ClientsPage() {
     supabase.from("rendez_vous").select("client_id").eq("entreprise_id", entreprise.id),
   ]);
 
-  const nbRdvParClient = new Map<string, number>();
+  const nbRdvParClient: Record<string, number> = {};
   for (const r of rdvs ?? []) {
     if (!r.client_id) continue;
-    nbRdvParClient.set(r.client_id, (nbRdvParClient.get(r.client_id) ?? 0) + 1);
+    nbRdvParClient[r.client_id] = (nbRdvParClient[r.client_id] ?? 0) + 1;
   }
 
   return (
@@ -40,17 +39,7 @@ export default async function ClientsPage() {
         </Button>
       </div>
 
-      <div className="space-y-2">
-        {clients && clients.length > 0 ? (
-          clients.map((c) => (
-            <ClientRow key={c.id} client={c} nbRdv={nbRdvParClient.get(c.id) ?? 0} />
-          ))
-        ) : (
-          <Card className="p-10 text-center text-sm text-muted">
-            Vos clients apparaîtront ici après leur première réservation.
-          </Card>
-        )}
-      </div>
+      <ClientsListe clients={clients ?? []} nbRdvParClient={nbRdvParClient} />
     </div>
   );
 }
