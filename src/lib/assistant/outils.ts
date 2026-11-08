@@ -5,6 +5,8 @@ import { calculerBilanMensuel, bornesMois, moisCourant, libelleMois } from "@/li
 import { creerDocument, enregistrerLignesDocument, changerStatutDocument, convertirDevisEnFacture } from "@/app/dashboard/documents/actions";
 import { synchroniserRdvGoogle } from "@/lib/google-calendar/sync";
 import { emailConfigure, envoyerEmail } from "@/lib/email/client";
+import { evaluerFormule, ErreurFormule } from "@/lib/calculs/evaluateur";
+import type { Champ, Formule, DonneesEtude } from "@/lib/calculs/types";
 
 export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
   {
@@ -273,6 +275,75 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
         description: { type: "string" },
       },
       required: ["categorie", "montant_euros"],
+    },
+  },
+  {
+    name: "lister_modules_calcul",
+    description:
+      "Liste les modules de calcul personnalisés déjà créés par l'entreprise (outils de calcul, Premium), avec leurs champs et formules. Utilise ceci avant calculer_etude si tu ne connais pas déjà les identifiants exacts des champs d'un module.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "creer_module_calcul",
+    description:
+      "Crée un module de calcul personnalisé (champs à remplir + formules) pour chiffrer des études chantier, à partir d'une description libre de l'artisan (ex. « crée-moi un module pour calculer la quantité de peinture : surface des murs moins les ouvertures, divisée par le rendement du pot »). Choisis toi-même des identifiants de champs clairs en français sans accent ni espace (ex. surface_murs, nb_fenetres). Chaque formule ne peut utiliser QUE : les identifiants des champs de type nombre, les identifiants d'autres formules placées AVANT elle dans la liste (une formule ne peut pas utiliser le résultat d'une formule qui vient après), les opérateurs + - * / ^, des parenthèses, et les fonctions min/max/round/abs/sqrt/pow/floor/ceil — rien d'autre. Le module est vérifié automatiquement avant d'être enregistré : si une formule est invalide (identifiant inconnu, mauvais ordre...), la création échoue et l'erreur exacte est renvoyée pour que tu corriges et réessaies toi-même sans redemander à l'utilisateur.",
+    input_schema: {
+      type: "object",
+      properties: {
+        nom: { type: "string", description: "Nom du module, ex. « Peinture — calcul de quantité »." },
+        champs: {
+          type: "array",
+          description: "Les informations à saisir pour faire le calcul.",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "Identifiant technique : lettres minuscules, chiffres, underscore, sans accent ni espace. Ex. surface_murs." },
+              label: { type: "string", description: "Libellé affiché à l'artisan, ex. « Surface des murs »." },
+              type: { type: "string", enum: ["nombre", "texte", "select", "booleen"] },
+              unite: { type: "string", description: "Ex. m², ml, u, h. Optionnel." },
+              options: { type: "array", items: { type: "string" }, description: "Uniquement pour le type select : liste des choix possibles." },
+              defaut: { description: "Valeur par défaut optionnelle." },
+              aide: { type: "string", description: "Texte d'aide optionnel affiché sous le champ." },
+            },
+            required: ["id", "label", "type"],
+          },
+        },
+        formules: {
+          type: "array",
+          description: "Les calculs à effectuer, dans l'ordre : chacune peut utiliser les champs nombre et les formules précédentes.",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "Identifiant technique, même règles que pour un champ." },
+              label: { type: "string", description: "Libellé du résultat, ex. « Surface nette à peindre »." },
+              expression: { type: "string", description: "Ex. surface_murs - (nb_fenetres * surface_fenetre)." },
+              unite: { type: "string" },
+              decimales: { type: "integer", description: "Nombre de décimales à afficher, par défaut arrondi naturel." },
+            },
+            required: ["id", "label", "expression"],
+          },
+        },
+      },
+      required: ["nom", "champs", "formules"],
+    },
+  },
+  {
+    name: "calculer_etude",
+    description:
+      "Calcule immédiatement les résultats d'un module de calcul existant à partir des valeurs fournies par l'artisan (ex. « calcule-moi ça : surface 20m², 2 fenêtres de 1m² »). Renvoie chaque résultat de formule avec sa valeur réelle, calculée par l'application (jamais par toi-même de tête). Si un nom de client ou un titre est fourni, le calcul est aussi enregistré comme une étude consultable et imprimable dans l'application ; sinon c'est juste une estimation rapide, non enregistrée.",
+    input_schema: {
+      type: "object",
+      properties: {
+        module_nom: { type: "string", description: "Nom exact (ou très proche) du module de calcul à utiliser." },
+        valeurs: {
+          type: "object",
+          description: "Valeurs des champs du module, par identifiant. Ex. { \"surface_murs\": 20, \"nb_fenetres\": 2 }.",
+          additionalProperties: true,
+        },
+        client_nom: { type: "string", description: "Optionnel : si fourni, le calcul est enregistré comme étude pour ce client." },
+        titre: { type: "string", description: "Optionnel : titre de l'étude si elle doit être enregistrée." },
+      },
+      required: ["module_nom", "valeurs"],
     },
   },
   {
@@ -730,6 +801,204 @@ async function outilEnregistrerDepense(
     : { enregistre: true, lien: "/dashboard/depenses" };
 }
 
+const ID_VALIDE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+const TYPES_CHAMP_VALIDES = new Set(["nombre", "texte", "select", "booleen"]);
+
+type ChampEntree = {
+  id: string;
+  label: string;
+  type: string;
+  unite?: string;
+  options?: string[];
+  defaut?: string | number | boolean;
+  aide?: string;
+};
+type FormuleEntree = { id: string; label: string; expression: string; unite?: string; decimales?: number };
+
+/**
+ * Valide des champs/formules fournis par l'IA en les évaluant réellement (avec
+ * des valeurs par défaut) plutôt qu'en se contentant de vérifier la syntaxe :
+ * ça détecte un identifiant inconnu ou une formule qui référence une autre
+ * formule placée après elle, avant d'enregistrer quoi que ce soit.
+ */
+function validerChampsEtFormules(
+  champsEntree: ChampEntree[],
+  formulesEntree: FormuleEntree[],
+): { champs: Champ[]; formules: Formule[] } | { erreur: string } {
+  const idsVus = new Set<string>();
+
+  for (const c of champsEntree) {
+    if (!c.id?.trim() || !c.label?.trim()) return { erreur: "Chaque champ doit avoir un identifiant et un libellé." };
+    if (!ID_VALIDE.test(c.id)) {
+      return { erreur: `Identifiant de champ invalide : "${c.id}" — uniquement lettres, chiffres et underscore, sans accent ni espace, sans commencer par un chiffre.` };
+    }
+    if (!TYPES_CHAMP_VALIDES.has(c.type)) return { erreur: `Type de champ invalide pour "${c.id}" : utilise nombre, texte, select ou booleen.` };
+    if (idsVus.has(c.id)) return { erreur: `Identifiant en double : "${c.id}".` };
+    idsVus.add(c.id);
+  }
+
+  const portee: Record<string, number> = {};
+  for (const c of champsEntree) {
+    if (c.type === "nombre") portee[c.id] = typeof c.defaut === "number" ? c.defaut : 1;
+  }
+
+  const formulesValidees: Formule[] = [];
+  for (const f of formulesEntree) {
+    if (!f.id?.trim() || !f.label?.trim() || !f.expression?.trim()) {
+      return { erreur: "Chaque formule doit avoir un identifiant, un libellé et une expression." };
+    }
+    if (!ID_VALIDE.test(f.id)) {
+      return { erreur: `Identifiant de formule invalide : "${f.id}" — uniquement lettres, chiffres et underscore, sans accent ni espace, sans commencer par un chiffre.` };
+    }
+    if (idsVus.has(f.id)) return { erreur: `Identifiant en double : "${f.id}" (déjà utilisé par un champ ou une autre formule).` };
+    idsVus.add(f.id);
+
+    try {
+      portee[f.id] = evaluerFormule(f.expression, portee);
+    } catch (err) {
+      const message = err instanceof ErreurFormule ? err.message : "erreur inconnue";
+      return {
+        erreur: `La formule "${f.label}" (${f.id}) est invalide : ${message} Vérifie l'orthographe des identifiants et que chaque formule ne référence que des champs ou des formules placées avant elle dans la liste.`,
+      };
+    }
+    formulesValidees.push({ id: f.id, label: f.label, expression: f.expression, unite: f.unite, decimales: f.decimales });
+  }
+
+  const champsValides: Champ[] = champsEntree.map((c) => ({
+    id: c.id,
+    label: c.label,
+    type: c.type as Champ["type"],
+    unite: c.unite,
+    options: c.type === "select" ? c.options : undefined,
+    defaut: c.defaut,
+    aide: c.aide,
+  }));
+
+  return { champs: champsValides, formules: formulesValidees };
+}
+
+async function outilListerModulesCalcul(ctx: ContexteOutils) {
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+  const { data, error } = await admin
+    .from("modules_calcul")
+    .select("id, nom, champs, formules")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .order("ordre");
+  if (error) return { erreur: error.message };
+  return {
+    modules: (data ?? []).map((m) => ({
+      id: m.id,
+      nom: m.nom,
+      champs: (m.champs as Champ[]).map((c) => ({ id: c.id, label: c.label, type: c.type, unite: c.unite, options: c.options })),
+      formules: (m.formules as Formule[]).map((f) => ({ id: f.id, label: f.label, unite: f.unite })),
+    })),
+  };
+}
+
+async function outilCreerModuleCalcul(ctx: ContexteOutils, input: { nom: string; champs: ChampEntree[]; formules: FormuleEntree[] }) {
+  if (!input.nom?.trim()) return { erreur: "Le nom du module est requis." };
+  if (!input.champs || input.champs.length === 0) return { erreur: "Au moins un champ est requis." };
+  if (!input.formules || input.formules.length === 0) return { erreur: "Au moins une formule est requise." };
+
+  const resultat = validerChampsEtFormules(input.champs, input.formules);
+  if ("erreur" in resultat) return resultat;
+
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+
+  const { data: entreprise } = await admin.from("entreprises").select("metier").eq("id", ctx.entrepriseId).maybeSingle();
+
+  const { data, error } = await admin
+    .from("modules_calcul")
+    .insert({
+      entreprise_id: ctx.entrepriseId,
+      metier: entreprise?.metier ?? "",
+      nom: input.nom.trim(),
+      champs: resultat.champs,
+      formules: resultat.formules,
+    })
+    .select("id")
+    .single();
+  if (error) return { erreur: error.message };
+
+  return { cree: true, id: data.id, lien: `/dashboard/outils/modules/${data.id}` };
+}
+
+async function outilCalculerEtude(
+  ctx: ContexteOutils,
+  input: { module_nom: string; valeurs: Record<string, string | number | boolean>; client_nom?: string; titre?: string },
+) {
+  if (!input.module_nom?.trim()) return { erreur: "Le nom du module est requis." };
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+
+  const { data: modules, error } = await admin
+    .from("modules_calcul")
+    .select("id, nom, metier, champs, formules")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .ilike("nom", `%${input.module_nom.trim()}%`);
+  if (error) return { erreur: error.message };
+  if (!modules || modules.length === 0) {
+    return { erreur: "Aucun module de calcul ne correspond à ce nom. Utilise lister_modules_calcul pour voir les modules disponibles." };
+  }
+  if (modules.length > 1) {
+    return { erreur: "Plusieurs modules correspondent, précise lequel.", modules_disponibles: modules.map((m) => m.nom) };
+  }
+  const module_ = modules[0];
+  const champs = module_.champs as Champ[];
+  const formules = module_.formules as Formule[];
+
+  const portee: Record<string, number> = {};
+  for (const champ of champs) {
+    if (champ.type !== "nombre") continue;
+    const valeur = input.valeurs?.[champ.id];
+    portee[champ.id] =
+      valeur !== undefined && valeur !== null && valeur !== ""
+        ? Number(valeur)
+        : typeof champ.defaut === "number"
+          ? champ.defaut
+          : 0;
+  }
+
+  const resultats: { id: string; label: string; valeur?: number; unite?: string; erreur?: string }[] = [];
+  for (const formule of formules) {
+    try {
+      const valeur = evaluerFormule(formule.expression, portee);
+      const arrondi = formule.decimales !== undefined ? Number(valeur.toFixed(formule.decimales)) : Math.round(valeur * 1000) / 1000;
+      resultats.push({ id: formule.id, label: formule.label, valeur: arrondi, unite: formule.unite });
+      portee[formule.id] = valeur;
+    } catch (err) {
+      resultats.push({ id: formule.id, label: formule.label, erreur: err instanceof ErreurFormule ? err.message : "Erreur de calcul" });
+    }
+  }
+
+  const reponse: Record<string, unknown> = { module: module_.nom, resultats };
+
+  if (input.client_nom?.trim() || input.titre?.trim()) {
+    const donnees: DonneesEtude = { champs: input.valeurs };
+    const { data: etude, error: erreurEtude } = await admin
+      .from("etudes")
+      .insert({
+        entreprise_id: ctx.entrepriseId,
+        metier: module_.metier,
+        titre: input.titre?.trim() || `Étude ${module_.nom}`,
+        module_id: module_.id,
+        client_nom: input.client_nom?.trim() || null,
+        donnees,
+        created_by: ctx.userId,
+      })
+      .select("id")
+      .single();
+    if (!erreurEtude && etude) {
+      reponse.etude_enregistree = true;
+      reponse.lien = `/dashboard/outils/etudes/${etude.id}`;
+    }
+  }
+
+  return reponse;
+}
+
 async function outilListerDepenses(ctx: ContexteOutils, input: { mois?: string }) {
   const mois = input.mois?.trim() || moisCourant();
   const { debut, fin } = bornesMois(mois);
@@ -1098,6 +1367,12 @@ export async function executerOutil(ctx: ContexteOutils, nom: string, input: unk
       return outilEnregistrerDepense(ctx, entree as Parameters<typeof outilEnregistrerDepense>[1]);
     case "lister_depenses":
       return outilListerDepenses(ctx, entree as Parameters<typeof outilListerDepenses>[1]);
+    case "lister_modules_calcul":
+      return outilListerModulesCalcul(ctx);
+    case "creer_module_calcul":
+      return outilCreerModuleCalcul(ctx, entree as Parameters<typeof outilCreerModuleCalcul>[1]);
+    case "calculer_etude":
+      return outilCalculerEtude(ctx, entree as Parameters<typeof outilCalculerEtude>[1]);
     case "bloquer_creneau":
       return outilBloquerCreneau(ctx, entree as Parameters<typeof outilBloquerCreneau>[1]);
     case "lister_rendez_vous":
