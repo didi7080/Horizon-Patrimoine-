@@ -1,9 +1,9 @@
 import { Suspense } from "react";
-import { SearchX } from "lucide-react";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { FiltresRecherche } from "@/components/marketing/filtres-recherche";
 import { EntrepriseCard } from "@/components/marketing/entreprise-card";
+import { AlerteRecherche } from "@/components/marketing/alerte-recherche";
 import { createClient } from "@/lib/supabase/server";
 
 export const revalidate = 0;
@@ -28,13 +28,7 @@ async function Resultats({
   const { data: entreprises, error } = await query;
 
   if (error || !entreprises || entreprises.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-16 text-center">
-        <SearchX className="size-8 text-muted-foreground" />
-        <p className="font-medium text-foreground">Aucun artisan ne correspond à cette recherche</p>
-        <p className="text-sm text-muted">Essayez un autre métier ou une autre ville.</p>
-      </div>
-    );
+    return <AlerteRecherche metier={metier} ville={ville} />;
   }
 
   const ids = entreprises.map((e) => e.id);

@@ -87,6 +87,33 @@ export type Database = {
           },
         ]
       }
+      alertes_recherche: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          metier: string
+          notifie_le: string | null
+          ville: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          metier: string
+          notifie_le?: string | null
+          ville?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          metier?: string
+          notifie_le?: string | null
+          ville?: string | null
+        }
+        Relationships: []
+      }
       avis: {
         Row: {
           auteur_nom: string | null
