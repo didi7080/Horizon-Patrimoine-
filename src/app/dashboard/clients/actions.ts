@@ -19,20 +19,18 @@ async function origine(): Promise<string> {
   return `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
 }
 
+type ResultatActualite = { ok: true; nbEnvoyes: number; nbEchecs: number } | { ok: false; erreur: string };
+
 /** Envoie une actualité (promotion, événement...) par e-mail aux clients de l'entreprise ayant une adresse enregistrée et non désabonnés, avec lien de désabonnement. */
-export async function envoyerActualiteClients(
-  sujet: string,
-  message: string,
-  filtreAdresse: string,
-): Promise<{ nbEnvoyes: number; nbEchecs: number }> {
+export async function envoyerActualiteClients(sujet: string, message: string, filtreAdresse: string): Promise<ResultatActualite> {
   const { entreprise } = await getEntrepriseContext();
   const supabase = admin();
 
   const sujetTrim = sujet.trim();
   const messageTrim = message.trim();
-  if (!sujetTrim) throw new Error("L'objet est requis.");
-  if (!messageTrim) throw new Error("Le message est requis.");
-  if (!emailConfigure()) throw new Error("L'envoi d'e-mails n'est pas configuré sur cette instance.");
+  if (!sujetTrim) return { ok: false, erreur: "L'objet est requis." };
+  if (!messageTrim) return { ok: false, erreur: "Le message est requis." };
+  if (!emailConfigure()) return { ok: false, erreur: "L'envoi d'e-mails n'est pas configuré sur cette instance." };
 
   let requete = supabase
     .from("clients")
@@ -43,9 +41,9 @@ export async function envoyerActualiteClients(
   if (filtreAdresse.trim()) requete = requete.ilike("adresse", `%${filtreAdresse.trim()}%`);
 
   const { data: clients, error } = await requete;
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, erreur: error.message };
   if (!clients || clients.length === 0) {
-    throw new Error("Aucun client correspondant n'a d'adresse e-mail enregistrée.");
+    return { ok: false, erreur: "Aucun client correspondant n'a d'adresse e-mail enregistrée." };
   }
 
   const site = await origine();
@@ -60,7 +58,7 @@ export async function envoyerActualiteClients(
     else nbEchecs++;
   }
 
-  return { nbEnvoyes, nbEchecs };
+  return { ok: true, nbEnvoyes, nbEchecs };
 }
 
 /**

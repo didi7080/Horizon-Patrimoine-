@@ -21,15 +21,16 @@ export function ActualiteClientsForm({ nbClientsEligibles }: { nbClientsEligible
       return;
     }
     startTransition(async () => {
-      try {
-        const { nbEnvoyes, nbEchecs } = await envoyerActualiteClients(sujet, message, filtreAdresse);
-        toast.success(`${nbEnvoyes} e-mail${nbEnvoyes > 1 ? "s" : ""} envoyé${nbEnvoyes > 1 ? "s" : ""}${nbEchecs > 0 ? `, ${nbEchecs} échec(s)` : ""}.`);
-        setSujet("");
-        setMessage("");
-        setFiltreAdresse("");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await envoyerActualiteClients(sujet, message, filtreAdresse);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      const { nbEnvoyes, nbEchecs } = resultat;
+      toast.success(`${nbEnvoyes} e-mail${nbEnvoyes > 1 ? "s" : ""} envoyé${nbEnvoyes > 1 ? "s" : ""}${nbEchecs > 0 ? `, ${nbEchecs} échec(s)` : ""}.`);
+      setSujet("");
+      setMessage("");
+      setFiltreAdresse("");
     });
   }
 
