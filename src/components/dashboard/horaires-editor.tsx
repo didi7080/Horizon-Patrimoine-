@@ -23,22 +23,19 @@ export function HorairesEditor({
 
   function confirmerAjout(jour: number) {
     startTransition(async () => {
-      try {
-        await ajouterHoraire(salarieId, jour, debut, fin);
-        setAjoutJour(null);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur");
+      const resultat = await ajouterHoraire(salarieId, jour, debut, fin);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      setAjoutJour(null);
     });
   }
 
   function retirer(id: string) {
     startTransition(async () => {
-      try {
-        await supprimerHoraire(id);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur");
-      }
+      const resultat = await supprimerHoraire(id);
+      if (!resultat.ok) toast.error(resultat.erreur);
     });
   }
 

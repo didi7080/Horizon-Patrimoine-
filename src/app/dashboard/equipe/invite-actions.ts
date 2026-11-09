@@ -82,13 +82,18 @@ export async function inviterMembre(
   return { success: true };
 }
 
-export async function revoquerMembre(membershipId: string) {
+export async function revoquerMembre(membershipId: string): Promise<{ ok: true } | { ok: false; erreur: string }> {
   const { role: monRole } = await getEntrepriseContext();
-  if (monRole !== "owner" && monRole !== "admin") {
-    throw new Error("Seul un administrateur peut retirer un membre.");
+  try {
+    if (monRole !== "owner" && monRole !== "admin") {
+      throw new Error("Seul un administrateur peut retirer un membre.");
+    }
+    const supabase = await createClient();
+    const { error } = await supabase.from("memberships").delete().eq("id", membershipId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/equipe");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
   }
-  const supabase = await createClient();
-  const { error } = await supabase.from("memberships").delete().eq("id", membershipId);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/equipe");
 }

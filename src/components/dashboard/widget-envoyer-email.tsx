@@ -23,14 +23,14 @@ export function WidgetEnvoyerEmail({ titre, code }: { titre: string; code: strin
   function envoyer() {
     if (!email.trim()) return;
     startTransition(async () => {
-      try {
-        await envoyerCodeWidgetParEmail(email.trim(), titre, code);
-        toast.success(`E-mail envoyé à ${email.trim()}`);
-        setOuvert(false);
-        setEmail("");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await envoyerCodeWidgetParEmail(email.trim(), titre, code);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success(`E-mail envoyé à ${email.trim()}`);
+      setOuvert(false);
+      setEmail("");
     });
   }
 

@@ -61,12 +61,12 @@ export function ReglagesForm({ entreprise }: { entreprise: Tables<"entreprises">
     const formData = new FormData(e.currentTarget);
     formData.set("couleur", couleur);
     startTransition(async () => {
-      try {
-        await mettreAJourReglages(formData);
-        toast.success("Réglages enregistrés");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur");
+      const resultat = await mettreAJourReglages(formData);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success("Réglages enregistrés");
     });
   }
 

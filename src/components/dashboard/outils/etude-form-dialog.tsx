@@ -29,14 +29,13 @@ export function EtudeFormDialog({ modules }: { modules: { id: string; nom: strin
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      try {
-        const id = await enregistrerEtude(formData);
-        setOpen(false);
-        if (id) router.push(`/dashboard/outils/etudes/${id}`);
-        else router.refresh();
-      } catch (err) {
-        setErreur(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await enregistrerEtude(formData);
+      if (!resultat.ok) {
+        setErreur(resultat.erreur);
+        return;
       }
+      setOpen(false);
+      router.push(`/dashboard/outils/etudes/${resultat.id}`);
     });
   }
 

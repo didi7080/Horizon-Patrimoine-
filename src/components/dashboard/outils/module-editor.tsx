@@ -109,13 +109,13 @@ export function ModuleEditor({
     formData.set("champs", JSON.stringify(champs));
     formData.set("formules", JSON.stringify(formules));
     startTransition(async () => {
-      try {
-        const idFinal = await enregistrerModule(formData);
-        toast.success("Module enregistré");
-        if (!moduleId) router.replace(`/dashboard/outils/modules/${idFinal}`);
-      } catch (err) {
-        setErreur(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await enregistrerModule(formData);
+      if (!resultat.ok) {
+        setErreur(resultat.erreur);
+        return;
       }
+      toast.success("Module enregistré");
+      if (!moduleId) router.replace(`/dashboard/outils/modules/${resultat.id}`);
     });
   }
 

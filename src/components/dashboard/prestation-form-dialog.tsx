@@ -37,13 +37,13 @@ export function PrestationFormDialog({
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      try {
-        await enregistrerPrestation(formData);
-        setOpen(false);
-        toast.success(prestation ? "Prestation modifiée" : "Prestation créée");
-      } catch (err) {
-        setErreur(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await enregistrerPrestation(formData);
+      if (!resultat.ok) {
+        setErreur(resultat.erreur);
+        return;
       }
+      setOpen(false);
+      toast.success(prestation ? "Prestation modifiée" : "Prestation créée");
     });
   }
 

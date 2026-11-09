@@ -58,7 +58,7 @@ export default async function PrestationsPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <form action={togglePrestationActif.bind(null, p.id, !p.actif)}>
+                <form action={async () => { "use server"; await togglePrestationActif(p.id, !p.actif); }}>
                   <Button size="sm" variant="ghost" type="submit">
                     {p.actif ? "Masquer" : "Réactiver"}
                   </Button>

@@ -168,124 +168,124 @@ export function DocumentEditeur({
       return;
     }
     startTransitionBibliotheque(async () => {
-      try {
-        await creerLigneBibliotheque({
-          designation: ligne.designation,
-          unite: ligne.unite,
-          prixUnitaireCents: ligne.prixUnitaireCents,
-          tauxTva: ligne.tauxTva,
-        });
-        toast.success("Ligne enregistrée dans la bibliothèque");
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await creerLigneBibliotheque({
+        designation: ligne.designation,
+        unite: ligne.unite,
+        prixUnitaireCents: ligne.prixUnitaireCents,
+        tauxTva: ligne.tauxTva,
+      });
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success("Ligne enregistrée dans la bibliothèque");
+      router.refresh();
     });
   }
 
   function enregistrer() {
     setErreur(null);
     startTransition(async () => {
-      try {
-        await enregistrerLignesDocument(documentId, JSON.stringify(lignes), {
-          clientNom,
-          clientAdresse,
-          clientTelephone,
-          clientEmail,
-          dateValidite,
-          dateEcheance,
-          datePrestation,
-          notes,
-        });
-        toast.success("Document enregistré");
-        router.refresh();
-      } catch (err) {
-        setErreur(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await enregistrerLignesDocument(documentId, JSON.stringify(lignes), {
+        clientNom,
+        clientAdresse,
+        clientTelephone,
+        clientEmail,
+        dateValidite,
+        dateEcheance,
+        datePrestation,
+        notes,
+      });
+      if (!resultat.ok) {
+        setErreur(resultat.erreur);
+        return;
       }
+      toast.success("Document enregistré");
+      router.refresh();
     });
   }
 
   function changerStatut(nouveauStatut: string) {
     startTransitionStatut(async () => {
-      try {
-        await changerStatutDocument(documentId, nouveauStatut);
-        setStatut(nouveauStatut);
-        toast.success("Statut mis à jour");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await changerStatutDocument(documentId, nouveauStatut);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      setStatut(nouveauStatut);
+      toast.success("Statut mis à jour");
     });
   }
 
   function convertir() {
     startTransitionConversion(async () => {
-      try {
-        const factureId = await convertirDevisEnFacture(documentId);
-        toast.success("Facture créée à partir du devis");
-        router.push(`/dashboard/documents/${factureId}`);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await convertirDevisEnFacture(documentId);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success("Facture créée à partir du devis");
+      router.push(`/dashboard/documents/${resultat.id}`);
     });
   }
 
   function dupliquer() {
     startTransitionDuplication(async () => {
-      try {
-        const copieId = await dupliquerDocument(documentId);
-        toast.success(type === "devis" ? "Devis dupliqué" : "Facture dupliquée");
-        router.push(`/dashboard/documents/${copieId}`);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await dupliquerDocument(documentId);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success(type === "devis" ? "Devis dupliqué" : "Facture dupliquée");
+      router.push(`/dashboard/documents/${resultat.id}`);
     });
   }
 
   function relancer() {
     startTransitionRelance(async () => {
-      try {
-        await relancerDocument(documentId);
-        toast.success("E-mail de relance envoyé au client");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await relancerDocument(documentId);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success("E-mail de relance envoyé au client");
     });
   }
 
   function copierLien() {
     startTransitionLien(async () => {
-      try {
-        const lien = await lienPublicDevis(documentId);
-        await navigator.clipboard.writeText(lien);
-        toast.success("Lien copié — le client peut l'ouvrir pour consulter et accepter le devis.");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await lienPublicDevis(documentId);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      await navigator.clipboard.writeText(resultat.lien);
+      toast.success("Lien copié — le client peut l'ouvrir pour consulter et accepter le devis.");
     });
   }
 
   function envoyerLienParEmail() {
     startTransitionEnvoiLien(async () => {
-      try {
-        await envoyerLienDevisParEmail(documentId);
-        toast.success("Devis envoyé par e-mail au client");
-        if (statut === "brouillon") setStatut("envoye");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await envoyerLienDevisParEmail(documentId);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success("Devis envoyé par e-mail au client");
+      if (statut === "brouillon") setStatut("envoye");
     });
   }
 
   function supprimer() {
     if (!confirm("Supprimer ce document ? Cette action est irréversible.")) return;
     startTransition(async () => {
-      try {
-        await supprimerDocument(documentId);
-        toast.success("Document supprimé");
-        router.push("/dashboard/documents");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await supprimerDocument(documentId);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success("Document supprimé");
+      router.push("/dashboard/documents");
     });
   }
 

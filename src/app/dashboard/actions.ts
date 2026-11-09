@@ -8,234 +8,301 @@ import { synchroniserRdvGoogle } from "@/lib/google-calendar/sync";
 
 // --- Rendez-vous ---------------------------------------------------------
 
-export async function validerDemande(rdvId: string, accepter: boolean) {
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("valider_demande_rdv", { p_rdv: rdvId, p_accepter: accepter });
-  if (error) throw new Error(error.message);
-  if (accepter) await synchroniserRdvGoogle(rdvId);
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/rendez-vous");
+type Resultat = { ok: true } | { ok: false; erreur: string };
+
+export async function validerDemande(rdvId: string, accepter: boolean): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("valider_demande_rdv", { p_rdv: rdvId, p_accepter: accepter });
+    if (error) throw new Error(error.message);
+    if (accepter) await synchroniserRdvGoogle(rdvId);
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/rendez-vous");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }
 
 export async function changerStatutRdv(
   rdvId: string,
   statut: "annule" | "honore" | "absent" | "confirme",
-) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("rendez_vous").update({ statut }).eq("id", rdvId);
-  if (error) throw new Error(error.message);
-  await synchroniserRdvGoogle(rdvId);
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/rendez-vous");
+): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("rendez_vous").update({ statut }).eq("id", rdvId);
+    if (error) throw new Error(error.message);
+    await synchroniserRdvGoogle(rdvId);
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/rendez-vous");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }
 
 // --- Google Calendar -------------------------------------------------------
 
-export async function deconnecterGoogleCalendar(salarieId: string) {
+export async function deconnecterGoogleCalendar(salarieId: string): Promise<Resultat> {
   const { entreprise } = await getEntrepriseContext();
-  const admin = createAdminClient();
-  if (!admin) throw new Error("La connexion à la base de données n'est pas configurée.");
-  const { error } = await admin
-    .from("salaries")
-    .update({ google_refresh_token: null, google_email: null })
-    .eq("id", salarieId)
-    .eq("entreprise_id", entreprise.id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/equipe");
+  try {
+    const admin = createAdminClient();
+    if (!admin) throw new Error("La connexion à la base de données n'est pas configurée.");
+    const { error } = await admin
+      .from("salaries")
+      .update({ google_refresh_token: null, google_email: null })
+      .eq("id", salarieId)
+      .eq("entreprise_id", entreprise.id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/equipe");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }
 
 // --- Prestations ----------------------------------------------------------
 
-export async function enregistrerPrestation(formData: FormData) {
+export async function enregistrerPrestation(formData: FormData): Promise<Resultat> {
   const { entreprise } = await getEntrepriseContext();
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const id = String(formData.get("id") ?? "").trim() || null;
-  const nom = String(formData.get("nom") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
-  const dureeMin = Number(formData.get("dureeMin") ?? 60);
-  const prixEuros = formData.get("prix");
-  const prixCents =
-    prixEuros === null || String(prixEuros).trim() === ""
-      ? null
-      : Math.round(Number(prixEuros) * 100);
-  const acompteEuros = formData.get("acompte");
-  const acompteCents =
-    acompteEuros === null || String(acompteEuros).trim() === ""
-      ? null
-      : Math.round(Number(acompteEuros) * 100);
-  const salarieIds = formData.getAll("salarieIds").map(String);
+    const id = String(formData.get("id") ?? "").trim() || null;
+    const nom = String(formData.get("nom") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+    const dureeMin = Number(formData.get("dureeMin") ?? 60);
+    const prixEuros = formData.get("prix");
+    const prixCents =
+      prixEuros === null || String(prixEuros).trim() === ""
+        ? null
+        : Math.round(Number(prixEuros) * 100);
+    const acompteEuros = formData.get("acompte");
+    const acompteCents =
+      acompteEuros === null || String(acompteEuros).trim() === ""
+        ? null
+        : Math.round(Number(acompteEuros) * 100);
+    const salarieIds = formData.getAll("salarieIds").map(String);
 
-  if (!nom) throw new Error("Le nom de la prestation est requis.");
-  if (acompteCents !== null && prixCents !== null && acompteCents > prixCents) {
-    throw new Error("L'acompte ne peut pas dépasser le prix de la prestation.");
+    if (!nom) throw new Error("Le nom de la prestation est requis.");
+    if (acompteCents !== null && prixCents !== null && acompteCents > prixCents) {
+      throw new Error("L'acompte ne peut pas dépasser le prix de la prestation.");
+    }
+
+    let prestationId = id;
+    if (id) {
+      const { error } = await supabase
+        .from("prestations")
+        .update({ nom, description: description || null, duree_min: dureeMin, prix_cents: prixCents, acompte_cents: acompteCents })
+        .eq("id", id)
+        .eq("entreprise_id", entreprise.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { data, error } = await supabase
+        .from("prestations")
+        .insert({
+          entreprise_id: entreprise.id,
+          nom,
+          description: description || null,
+          duree_min: dureeMin,
+          prix_cents: prixCents,
+          acompte_cents: acompteCents,
+        })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      prestationId = data.id;
+    }
+
+    await supabase.from("prestation_salaries").delete().eq("prestation_id", prestationId!);
+    if (salarieIds.length > 0) {
+      await supabase
+        .from("prestation_salaries")
+        .insert(salarieIds.map((salarie_id) => ({ prestation_id: prestationId!, salarie_id })));
+    }
+
+    revalidatePath("/dashboard/prestations");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
   }
-
-  let prestationId = id;
-  if (id) {
-    const { error } = await supabase
-      .from("prestations")
-      .update({ nom, description: description || null, duree_min: dureeMin, prix_cents: prixCents, acompte_cents: acompteCents })
-      .eq("id", id)
-      .eq("entreprise_id", entreprise.id);
-    if (error) throw new Error(error.message);
-  } else {
-    const { data, error } = await supabase
-      .from("prestations")
-      .insert({
-        entreprise_id: entreprise.id,
-        nom,
-        description: description || null,
-        duree_min: dureeMin,
-        prix_cents: prixCents,
-        acompte_cents: acompteCents,
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    prestationId = data.id;
-  }
-
-  await supabase.from("prestation_salaries").delete().eq("prestation_id", prestationId!);
-  if (salarieIds.length > 0) {
-    await supabase
-      .from("prestation_salaries")
-      .insert(salarieIds.map((salarie_id) => ({ prestation_id: prestationId!, salarie_id })));
-  }
-
-  revalidatePath("/dashboard/prestations");
 }
 
-export async function togglePrestationActif(id: string, actif: boolean) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("prestations").update({ actif }).eq("id", id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/prestations");
+export async function togglePrestationActif(id: string, actif: boolean): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("prestations").update({ actif }).eq("id", id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/prestations");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }
 
 // --- Équipe -----------------------------------------------------------
 
-export async function enregistrerSalarie(formData: FormData) {
+export async function enregistrerSalarie(formData: FormData): Promise<Resultat> {
   const { entreprise } = await getEntrepriseContext();
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const id = String(formData.get("id") ?? "").trim() || null;
-  const nom = String(formData.get("nom") ?? "").trim();
-  const fonction = String(formData.get("fonction") ?? "").trim();
-  const couleur = String(formData.get("couleur") ?? "#2563eb");
+    const id = String(formData.get("id") ?? "").trim() || null;
+    const nom = String(formData.get("nom") ?? "").trim();
+    const fonction = String(formData.get("fonction") ?? "").trim();
+    const couleur = String(formData.get("couleur") ?? "#2563eb");
 
-  if (!nom) throw new Error("Le nom est requis.");
+    if (!nom) throw new Error("Le nom est requis.");
 
-  if (id) {
-    const { error } = await supabase
-      .from("salaries")
-      .update({ nom, fonction: fonction || null, couleur })
-      .eq("id", id)
-      .eq("entreprise_id", entreprise.id);
-    if (error) throw new Error(error.message);
-  } else {
-    const { error } = await supabase
-      .from("salaries")
-      .insert({ entreprise_id: entreprise.id, nom, fonction: fonction || null, couleur });
-    if (error) throw new Error(error.message);
+    if (id) {
+      const { error } = await supabase
+        .from("salaries")
+        .update({ nom, fonction: fonction || null, couleur })
+        .eq("id", id)
+        .eq("entreprise_id", entreprise.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabase
+        .from("salaries")
+        .insert({ entreprise_id: entreprise.id, nom, fonction: fonction || null, couleur });
+      if (error) throw new Error(error.message);
+    }
+
+    revalidatePath("/dashboard/equipe");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
   }
-
-  revalidatePath("/dashboard/equipe");
 }
 
-export async function toggleSalarieActif(id: string, actif: boolean) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("salaries").update({ actif }).eq("id", id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/equipe");
+export async function toggleSalarieActif(id: string, actif: boolean): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("salaries").update({ actif }).eq("id", id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/equipe");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }
 
-export async function ajouterHoraire(salarieId: string, jour: number, debut: string, fin: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("horaires").insert({ salarie_id: salarieId, jour, debut, fin });
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/equipe");
+export async function ajouterHoraire(salarieId: string, jour: number, debut: string, fin: string): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("horaires").insert({ salarie_id: salarieId, jour, debut, fin });
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/equipe");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }
 
-export async function supprimerHoraire(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("horaires").delete().eq("id", id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/equipe");
+export async function supprimerHoraire(id: string): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("horaires").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/equipe");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }
 
 // --- Clients ------------------------------------------------------------
 
-export async function enregistrerNotesClient(id: string, notes: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("clients").update({ notes }).eq("id", id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/clients");
+export async function enregistrerNotesClient(id: string, notes: string): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("clients").update({ notes }).eq("id", id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/clients");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }
 
 // --- Avis -----------------------------------------------------------------
 
-export async function togglePublieAvis(id: string, publie: boolean) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("avis").update({ publie }).eq("id", id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/avis");
+export async function togglePublieAvis(id: string, publie: boolean): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("avis").update({ publie }).eq("id", id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/avis");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }
 
-export async function repondreAvis(id: string, reponse: string) {
+export async function repondreAvis(id: string, reponse: string): Promise<Resultat> {
   const { entreprise } = await getEntrepriseContext();
-  const supabase = await createClient();
-  const texte = reponse.trim();
-  const { error } = await supabase
-    .from("avis")
-    .update({ reponse_artisan: texte || null, reponse_le: texte ? new Date().toISOString() : null })
-    .eq("id", id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/avis");
-  revalidatePath(`/e/${entreprise.slug}`);
+  try {
+    const supabase = await createClient();
+    const texte = reponse.trim();
+    const { error } = await supabase
+      .from("avis")
+      .update({ reponse_artisan: texte || null, reponse_le: texte ? new Date().toISOString() : null })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/avis");
+    revalidatePath(`/e/${entreprise.slug}`);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }
 
 // --- Réglages ---------------------------------------------------------
 
-export async function mettreAJourReglages(formData: FormData) {
+export async function mettreAJourReglages(formData: FormData): Promise<Resultat> {
   const { entreprise } = await getEntrepriseContext();
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const zoneCodes = String(formData.get("zoneCodes") ?? "")
-    .split(",")
-    .map((z) => z.trim())
-    .filter(Boolean);
+    const zoneCodes = String(formData.get("zoneCodes") ?? "")
+      .split(",")
+      .map((z) => z.trim())
+      .filter(Boolean);
 
-  const { error } = await supabase
-    .from("entreprises")
-    .update({
-      nom: String(formData.get("nom") ?? entreprise.nom),
-      description: String(formData.get("description") ?? "").trim() || null,
-      telephone: String(formData.get("telephone") ?? "").trim() || null,
-      email: String(formData.get("email") ?? "").trim() || null,
-      adresse: String(formData.get("adresse") ?? "").trim() || null,
-      ville: String(formData.get("ville") ?? "").trim() || null,
-      code_postal: String(formData.get("codePostal") ?? "").trim() || null,
-      couleur: String(formData.get("couleur") ?? entreprise.couleur),
-      delai_min_heures: Number(formData.get("delaiMinHeures") ?? entreprise.delai_min_heures),
-      fenetre_max_jours: Number(formData.get("fenetreMaxJours") ?? entreprise.fenetre_max_jours),
-      battement_min: Number(formData.get("battementMin") ?? entreprise.battement_min),
-      zone_codes: zoneCodes,
-      validation_manuelle: formData.get("validationManuelle") === "on",
-      avis_actif: formData.get("avisActif") === "on",
-      sms_actif: formData.get("smsActif") === "on",
-      recap_actif: formData.get("recapActif") === "on",
-      siret: String(formData.get("siret") ?? "").trim() || null,
-      forme_juridique: String(formData.get("formeJuridique") ?? "").trim() || null,
-      assujetti_tva: formData.get("assujettiTva") === "on",
-      numero_tva: String(formData.get("numeroTva") ?? "").trim() || null,
-      assurance_nom: String(formData.get("assuranceNom") ?? "").trim() || null,
-      assurance_zone: String(formData.get("assuranceZone") ?? "").trim() || null,
-      mentions_legales: String(formData.get("mentionsLegales") ?? "").trim() || null,
-    })
-    .eq("id", entreprise.id);
+    const { error } = await supabase
+      .from("entreprises")
+      .update({
+        nom: String(formData.get("nom") ?? entreprise.nom),
+        description: String(formData.get("description") ?? "").trim() || null,
+        telephone: String(formData.get("telephone") ?? "").trim() || null,
+        email: String(formData.get("email") ?? "").trim() || null,
+        adresse: String(formData.get("adresse") ?? "").trim() || null,
+        ville: String(formData.get("ville") ?? "").trim() || null,
+        code_postal: String(formData.get("codePostal") ?? "").trim() || null,
+        couleur: String(formData.get("couleur") ?? entreprise.couleur),
+        delai_min_heures: Number(formData.get("delaiMinHeures") ?? entreprise.delai_min_heures),
+        fenetre_max_jours: Number(formData.get("fenetreMaxJours") ?? entreprise.fenetre_max_jours),
+        battement_min: Number(formData.get("battementMin") ?? entreprise.battement_min),
+        zone_codes: zoneCodes,
+        validation_manuelle: formData.get("validationManuelle") === "on",
+        avis_actif: formData.get("avisActif") === "on",
+        sms_actif: formData.get("smsActif") === "on",
+        recap_actif: formData.get("recapActif") === "on",
+        siret: String(formData.get("siret") ?? "").trim() || null,
+        forme_juridique: String(formData.get("formeJuridique") ?? "").trim() || null,
+        assujetti_tva: formData.get("assujettiTva") === "on",
+        numero_tva: String(formData.get("numeroTva") ?? "").trim() || null,
+        assurance_nom: String(formData.get("assuranceNom") ?? "").trim() || null,
+        assurance_zone: String(formData.get("assuranceZone") ?? "").trim() || null,
+        mentions_legales: String(formData.get("mentionsLegales") ?? "").trim() || null,
+      })
+      .eq("id", entreprise.id);
 
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/reglages");
-  revalidatePath(`/e/${entreprise.slug}`);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/reglages");
+    revalidatePath(`/e/${entreprise.slug}`);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }

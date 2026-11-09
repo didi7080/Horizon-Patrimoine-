@@ -28,13 +28,13 @@ export function DepenseFormDialog({ estSalarie = false }: { estSalarie?: boolean
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      try {
-        await creerDepense(formData);
-        setOpen(false);
-        router.refresh();
-      } catch (err) {
-        setErreur(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await creerDepense(formData);
+      if (!resultat.ok) {
+        setErreur(resultat.erreur);
+        return;
       }
+      setOpen(false);
+      router.refresh();
     });
   }
 

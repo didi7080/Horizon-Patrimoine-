@@ -2,12 +2,11 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatPrix } from "@/lib/utils";
 import { MaterielFormDialog } from "@/components/dashboard/outils/materiel-form-dialog";
-import { togglerMaterielActif } from "@/app/dashboard/outils/actions";
+import { ToggleMaterielActifBouton } from "@/components/dashboard/outils/toggle-materiel-actif-bouton";
 
 export const revalidate = 0;
 
@@ -51,11 +50,7 @@ export default async function MaterielPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <form action={togglerMaterielActif.bind(null, a.id, !a.actif)}>
-                  <Button size="sm" variant="ghost" type="submit">
-                    {a.actif ? "Masquer" : "Réactiver"}
-                  </Button>
-                </form>
+                <ToggleMaterielActifBouton id={a.id} actif={a.actif} />
                 <MaterielFormDialog article={a} />
               </div>
             </Card>

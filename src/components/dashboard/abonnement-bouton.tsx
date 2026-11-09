@@ -26,12 +26,12 @@ export function AbonnementBouton({
 
   function onClick() {
     startTransition(async () => {
-      try {
-        const resultat = action === "portail" ? await ouvrirPortailFacturation() : await demarrerAbonnement(plan);
-        window.location.href = resultat.url;
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = action === "portail" ? await ouvrirPortailFacturation() : await demarrerAbonnement(plan);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      window.location.href = resultat.url;
     });
   }
 

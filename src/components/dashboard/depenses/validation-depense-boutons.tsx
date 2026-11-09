@@ -11,14 +11,14 @@ export function ValidationDepenseBoutons({ id }: { id: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  function traiter(action: (id: string) => Promise<void>) {
+  function traiter(action: (id: string) => Promise<{ ok: true } | { ok: false; erreur: string }>) {
     startTransition(async () => {
-      try {
-        await action(id);
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await action(id);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      router.refresh();
     });
   }
 

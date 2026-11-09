@@ -70,44 +70,52 @@ export async function envoyerActualiteClients(sujet: string, message: string, fi
  * historique, qui garde sa propre copie figée du nom/adresse à la date du
  * document.
  */
-export async function supprimerOuAnonymiserClient(clientId: string): Promise<{ action: "supprime" | "anonymise" }> {
+type ResultatSuppressionClient =
+  | { ok: true; action: "supprime" | "anonymise" }
+  | { ok: false; erreur: string };
+
+export async function supprimerOuAnonymiserClient(clientId: string): Promise<ResultatSuppressionClient> {
   const { entreprise } = await getEntrepriseContext();
-  const supabase = admin();
+  try {
+    const supabase = admin();
 
-  const [{ count: nbDocuments }, { count: nbRdv }] = await Promise.all([
-    supabase
-      .from("documents")
-      .select("id", { count: "exact", head: true })
-      .eq("client_id", clientId)
-      .eq("entreprise_id", entreprise.id),
-    supabase
-      .from("rendez_vous")
-      .select("id", { count: "exact", head: true })
-      .eq("client_id", clientId)
-      .eq("entreprise_id", entreprise.id),
-  ]);
+    const [{ count: nbDocuments }, { count: nbRdv }] = await Promise.all([
+      supabase
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .eq("client_id", clientId)
+        .eq("entreprise_id", entreprise.id),
+      supabase
+        .from("rendez_vous")
+        .select("id", { count: "exact", head: true })
+        .eq("client_id", clientId)
+        .eq("entreprise_id", entreprise.id),
+    ]);
 
-  const aDeLHistorique = (nbDocuments ?? 0) > 0 || (nbRdv ?? 0) > 0;
+    const aDeLHistorique = (nbDocuments ?? 0) > 0 || (nbRdv ?? 0) > 0;
 
-  if (!aDeLHistorique) {
-    const { error } = await supabase.from("clients").delete().eq("id", clientId).eq("entreprise_id", entreprise.id);
+    if (!aDeLHistorique) {
+      const { error } = await supabase.from("clients").delete().eq("id", clientId).eq("entreprise_id", entreprise.id);
+      if (error) throw new Error(error.message);
+      revalidatePath("/dashboard/clients");
+      return { ok: true, action: "supprime" };
+    }
+
+    const { error } = await supabase
+      .from("clients")
+      .update({
+        nom: `Client anonymisé #${clientId.slice(0, 8)}`,
+        email: null,
+        telephone: null,
+        adresse: null,
+        notes: null,
+      })
+      .eq("id", clientId)
+      .eq("entreprise_id", entreprise.id);
     if (error) throw new Error(error.message);
     revalidatePath("/dashboard/clients");
-    return { action: "supprime" };
+    return { ok: true, action: "anonymise" };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
   }
-
-  const { error } = await supabase
-    .from("clients")
-    .update({
-      nom: `Client anonymisé #${clientId.slice(0, 8)}`,
-      email: null,
-      telephone: null,
-      adresse: null,
-      notes: null,
-    })
-    .eq("id", clientId)
-    .eq("entreprise_id", entreprise.id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/clients");
-  return { action: "anonymise" };
 }

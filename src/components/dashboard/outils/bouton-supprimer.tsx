@@ -11,7 +11,7 @@ export function BoutonSupprimer({
   action,
 }: {
   confirmation: string;
-  action: () => Promise<void>;
+  action: () => Promise<{ ok: true } | { ok: false; erreur: string }>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -19,12 +19,12 @@ export function BoutonSupprimer({
   function onClick() {
     if (!window.confirm(confirmation)) return;
     startTransition(async () => {
-      try {
-        await action();
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await action();
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      router.refresh();
     });
   }
 

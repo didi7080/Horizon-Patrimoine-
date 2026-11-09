@@ -104,26 +104,26 @@ export function EtudeEditeur({
       champsAEnregistrer[champ.id] = champ.type === "nombre" ? Number(brut) : brut;
     }
     startTransition(async () => {
-      try {
-        await enregistrerDonneesEtude(etudeId, { champs: champsAEnregistrer, materiel, synthese });
-        toast.success("Étude enregistrée");
-        router.refresh();
-      } catch (err) {
-        setErreur(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await enregistrerDonneesEtude(etudeId, { champs: champsAEnregistrer, materiel, synthese });
+      if (!resultat.ok) {
+        setErreur(resultat.erreur);
+        return;
       }
+      toast.success("Étude enregistrée");
+      router.refresh();
     });
   }
 
   function basculerStatut() {
     const nouveauStatut = statut === "termine" ? "brouillon" : "termine";
     startTransitionStatut(async () => {
-      try {
-        await changerStatutEtude(etudeId, nouveauStatut);
-        setStatut(nouveauStatut);
-        toast.success(nouveauStatut === "termine" ? "Étude marquée comme terminée" : "Étude repassée en brouillon");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await changerStatutEtude(etudeId, nouveauStatut);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      setStatut(nouveauStatut);
+      toast.success(nouveauStatut === "termine" ? "Étude marquée comme terminée" : "Étude repassée en brouillon");
     });
   }
 

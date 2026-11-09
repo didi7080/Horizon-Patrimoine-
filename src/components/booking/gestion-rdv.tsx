@@ -57,13 +57,10 @@ export function GestionRdv({
 
   async function payerAcompte() {
     setEnCours(true);
-    try {
-      await payerAcompteAction(token);
-    } catch (e) {
+    const resultat = await payerAcompteAction(token);
+    if (resultat && !resultat.ok) {
       setEnCours(false);
-      toast.error("Impossible de lancer le paiement", {
-        description: e instanceof Error ? e.message : undefined,
-      });
+      toast.error("Impossible de lancer le paiement", { description: resultat.erreur });
     }
   }
 

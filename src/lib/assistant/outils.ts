@@ -530,41 +530,40 @@ async function creerDevisOuFacture(ctx: ContexteOutils, type: "devis" | "facture
     return { erreur: err instanceof Error ? err.message : "Erreur lors de l'enregistrement du client." };
   }
 
-  try {
-    const formData = new FormData();
-    formData.set("clientId", clientId);
+  const formData = new FormData();
+  formData.set("clientId", clientId);
 
-    const documentId = await creerDocument(type, formData);
+  const resultatCreation = await creerDocument(type, formData);
+  if (!resultatCreation.ok) return { erreur: resultatCreation.erreur };
+  const documentId = resultatCreation.id;
 
-    const lignes: LigneDocument[] = input.lignes.map((l, i) => ({
-      id: `ia_${i}_${Math.random().toString(36).slice(2, 8)}`,
-      designation: l.designation,
-      unite: l.unite?.trim() || "u",
-      quantite: l.quantite,
-      prixUnitaireCents: Math.round(l.prix_unitaire_euros * 100),
-      tauxTva: l.taux_tva ?? 20,
-    }));
+  const lignes: LigneDocument[] = input.lignes.map((l, i) => ({
+    id: `ia_${i}_${Math.random().toString(36).slice(2, 8)}`,
+    designation: l.designation,
+    unite: l.unite?.trim() || "u",
+    quantite: l.quantite,
+    prixUnitaireCents: Math.round(l.prix_unitaire_euros * 100),
+    tauxTva: l.taux_tva ?? 20,
+  }));
 
-    await enregistrerLignesDocument(documentId, JSON.stringify(lignes), {
-      clientNom: input.client_nom,
-      clientAdresse: input.client_adresse ?? "",
-      clientTelephone: input.client_telephone ?? "",
-      clientEmail: input.client_email ?? "",
-      dateValidite: "",
-      dateEcheance: input.date_echeance ?? "",
-      datePrestation: "",
-      notes: input.notes ?? "",
-    });
+  const resultatLignes = await enregistrerLignesDocument(documentId, JSON.stringify(lignes), {
+    clientNom: input.client_nom,
+    clientAdresse: input.client_adresse ?? "",
+    clientTelephone: input.client_telephone ?? "",
+    clientEmail: input.client_email ?? "",
+    dateValidite: "",
+    dateEcheance: input.date_echeance ?? "",
+    datePrestation: "",
+    notes: input.notes ?? "",
+  });
+  if (!resultatLignes.ok) return { erreur: resultatLignes.erreur };
 
-    const totaux = calculerTotaux(lignes);
-    return {
-      cree: true,
-      total_ttc_euros: totaux.totalTTC / 100,
-      lien: `/dashboard/documents/${documentId}`,
-    };
-  } catch (err) {
-    return { erreur: err instanceof Error ? err.message : "Erreur lors de la création du document." };
-  }
+  const totaux = calculerTotaux(lignes);
+  return {
+    cree: true,
+    total_ttc_euros: totaux.totalTTC / 100,
+    lien: `/dashboard/documents/${documentId}`,
+  };
 }
 
 async function outilCreerDevis(ctx: ContexteOutils, input: EntreeDocument) {
@@ -588,12 +587,9 @@ async function outilConvertirDevisEnFacture(ctx: ContexteOutils, input: { numero
     .maybeSingle();
   if (error) return { erreur: error.message };
   if (!devis) return { erreur: "Aucun devis avec ce numéro." };
-  try {
-    const factureId = await convertirDevisEnFacture(devis.id);
-    return { converti: true, lien: `/dashboard/documents/${factureId}` };
-  } catch (err) {
-    return { erreur: err instanceof Error ? err.message : "Erreur lors de la conversion en facture." };
-  }
+  const resultat = await convertirDevisEnFacture(devis.id);
+  if (!resultat.ok) return { erreur: resultat.erreur };
+  return { converti: true, lien: `/dashboard/documents/${resultat.id}` };
 }
 
 async function outilRechercherClient(ctx: ContexteOutils, input: { nom: string }) {
@@ -1179,11 +1175,8 @@ async function outilChangerStatutDocument(ctx: ContexteOutils, input: { numero: 
     .maybeSingle();
   if (error) return { erreur: error.message };
   if (!document) return { erreur: "Aucun document avec ce numéro." };
-  try {
-    await changerStatutDocument(document.id, input.nouveau_statut);
-  } catch (err) {
-    return { erreur: err instanceof Error ? err.message : "Erreur lors du changement de statut." };
-  }
+  const resultat = await changerStatutDocument(document.id, input.nouveau_statut);
+  if (!resultat.ok) return { erreur: resultat.erreur };
   return { modifie: true, lien: `/dashboard/documents/${document.id}` };
 }
 

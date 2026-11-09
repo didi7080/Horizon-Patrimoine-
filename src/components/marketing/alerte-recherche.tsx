@@ -21,13 +21,13 @@ export function AlerteRecherche({ metier, ville }: { metier?: string; ville?: st
   function envoyer() {
     if (!metier) return;
     startTransition(async () => {
-      try {
-        await creerAlerteRecherche(metier, ville ?? "", email);
-        setEnvoye(true);
-        toast.success("C'est noté, vous serez prévenu(e) !");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await creerAlerteRecherche(metier, ville ?? "", email);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      setEnvoye(true);
+      toast.success("C'est noté, vous serez prévenu(e) !");
     });
   }
 

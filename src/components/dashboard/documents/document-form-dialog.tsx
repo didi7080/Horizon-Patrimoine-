@@ -34,13 +34,13 @@ export function DocumentFormDialog({ type, clients }: { type: TypeDocument; clie
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      try {
-        const id = await creerDocument(type, formData);
-        setOpen(false);
-        router.push(`/dashboard/documents/${id}`);
-      } catch (err) {
-        setErreur(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await creerDocument(type, formData);
+      if (!resultat.ok) {
+        setErreur(resultat.erreur);
+        return;
       }
+      setOpen(false);
+      router.push(`/dashboard/documents/${resultat.id}`);
     });
   }
 

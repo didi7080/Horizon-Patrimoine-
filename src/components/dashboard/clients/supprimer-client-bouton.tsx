@@ -20,17 +20,17 @@ export function SupprimerClientBouton({ clientId, clientNom }: { clientId: strin
       return;
     }
     startTransition(async () => {
-      try {
-        const { action } = await supprimerOuAnonymiserClient(clientId);
-        if (action === "supprime") {
-          toast.success("Client supprimé.");
-          router.push("/dashboard/clients");
-        } else {
-          toast.success("Client anonymisé (il avait un historique conservé).");
-          router.refresh();
-        }
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await supprimerOuAnonymiserClient(clientId);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
+      }
+      if (resultat.action === "supprime") {
+        toast.success("Client supprimé.");
+        router.push("/dashboard/clients");
+      } else {
+        toast.success("Client anonymisé (il avait un historique conservé).");
+        router.refresh();
       }
     });
   }

@@ -13,13 +13,13 @@ export function CreerDepuisModeleBouton({ nomModele }: { nomModele: string }) {
 
   function onClick() {
     startTransition(async () => {
-      try {
-        await creerModuleDepuisModele(nomModele);
-        toast.success("Module ajouté — vous pouvez le personnaliser.");
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await creerModuleDepuisModele(nomModele);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success("Module ajouté — vous pouvez le personnaliser.");
+      router.refresh();
     });
   }
 

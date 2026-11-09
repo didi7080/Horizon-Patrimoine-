@@ -11,12 +11,12 @@ export function ConnecterStripeBouton({ children }: { children: React.ReactNode 
 
   function onClick() {
     startTransition(async () => {
-      try {
-        const { url } = await demarrerConnexionStripe();
-        window.location.href = url;
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await demarrerConnexionStripe();
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      window.location.href = resultat.url;
     });
   }
 

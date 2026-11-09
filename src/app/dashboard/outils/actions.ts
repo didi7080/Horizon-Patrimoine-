@@ -1,12 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getEntrepriseContext, planActuelEntreprise } from "@/lib/dashboard/context";
+import { getEntrepriseContext, planActuelEntreprise, type EntrepriseContext } from "@/lib/dashboard/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { accesOutilsCalcul } from "@/lib/stripe";
 import { modelesPourMetier } from "@/lib/calculs/modeles";
 import { formuleValide } from "@/lib/calculs/evaluateur";
 import type { Champ, DonneesEtude, Formule } from "@/lib/calculs/types";
+
+type Resultat<T extends object = object> = ({ ok: true } & T) | { ok: false; erreur: string };
+type ContexteOutils = ({ ok: true } & EntrepriseContext) | { ok: false; erreur: string };
 
 function admin() {
   const client = createAdminClient();
@@ -14,15 +17,20 @@ function admin() {
   return client;
 }
 
-/** Comme getEntrepriseContext(), mais vérifie en plus l'accès à la formule Premium
- * (les pages sont déjà protégées par le layout, ceci couvre un appel direct de l'action). */
-async function getEntrepriseAvecOutils() {
+/**
+ * Comme getEntrepriseContext(), mais vérifie en plus l'accès à la formule Premium
+ * (les pages sont déjà protégées par le layout, ceci couvre un appel direct de l'action).
+ * getEntrepriseContext() peut rediriger (redirect()) : cet appel reste donc hors de tout
+ * try/catch, ici et chez chaque appelant — un redirect() intercepté par un catch ne
+ * redirige plus.
+ */
+async function getEntrepriseAvecOutils(): Promise<ContexteOutils> {
   const contexte = await getEntrepriseContext();
   const plan = await planActuelEntreprise(contexte.entreprise.id, contexte.entreprise.nb_salaries);
   if (!accesOutilsCalcul(plan)) {
-    throw new Error("Les outils de calcul nécessitent la formule Premium.");
+    return { ok: false, erreur: "Les outils de calcul nécessitent la formule Premium." };
   }
-  return contexte;
+  return { ok: true, ...contexte };
 }
 
 function parserChamps(json: string): Champ[] {
@@ -48,207 +56,278 @@ function parserFormules(json: string): Formule[] {
 
 // --- Modules de calcul ----------------------------------------------------
 
-export async function creerModuleDepuisModele(nomModele: string) {
-  const { entreprise } = await getEntrepriseAvecOutils();
-  const modeles = modelesPourMetier(entreprise.metier);
-  const modele = modeles.find((m) => m.nom === nomModele);
-  if (!modele) throw new Error("Modèle introuvable.");
+export async function creerModuleDepuisModele(nomModele: string): Promise<Resultat> {
+  const contexte = await getEntrepriseAvecOutils();
+  if (!contexte.ok) return contexte;
+  try {
+    const { entreprise } = contexte;
+    const modeles = modelesPourMetier(entreprise.metier);
+    const modele = modeles.find((m) => m.nom === nomModele);
+    if (!modele) throw new Error("Modèle introuvable.");
 
-  const { error } = await admin().from("modules_calcul").insert({
-    entreprise_id: entreprise.id,
-    metier: entreprise.metier ?? "",
-    nom: modele.nom,
-    champs: modele.champs,
-    formules: modele.formules,
-  });
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/outils");
-}
-
-export async function enregistrerModule(formData: FormData) {
-  const { entreprise } = await getEntrepriseAvecOutils();
-
-  const id = String(formData.get("id") ?? "").trim() || null;
-  const nom = String(formData.get("nom") ?? "").trim();
-  if (!nom) throw new Error("Le nom du module est requis.");
-  const champs = parserChamps(String(formData.get("champs") ?? "[]"));
-  const formules = parserFormules(String(formData.get("formules") ?? "[]"));
-
-  const supabase = admin();
-  let idFinal = id;
-  if (id) {
-    const { error } = await supabase
-      .from("modules_calcul")
-      .update({ nom, champs, formules, updated_at: new Date().toISOString() })
-      .eq("id", id)
-      .eq("entreprise_id", entreprise.id);
+    const { error } = await admin().from("modules_calcul").insert({
+      entreprise_id: entreprise.id,
+      metier: entreprise.metier ?? "",
+      nom: modele.nom,
+      champs: modele.champs,
+      formules: modele.formules,
+    });
     if (error) throw new Error(error.message);
-  } else {
-    const { data, error } = await supabase
-      .from("modules_calcul")
-      .insert({
-        entreprise_id: entreprise.id,
-        metier: entreprise.metier ?? "",
-        nom,
-        champs,
-        formules,
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    idFinal = data.id;
+    revalidatePath("/dashboard/outils");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
   }
-  revalidatePath("/dashboard/outils");
-  revalidatePath(`/dashboard/outils/modules/${idFinal}`);
-  return idFinal as string;
 }
 
-export async function supprimerModule(id: string) {
-  const { entreprise } = await getEntrepriseAvecOutils();
-  const { error } = await admin().from("modules_calcul").delete().eq("id", id).eq("entreprise_id", entreprise.id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/outils");
+export async function enregistrerModule(formData: FormData): Promise<Resultat<{ id: string }>> {
+  const contexte = await getEntrepriseAvecOutils();
+  if (!contexte.ok) return contexte;
+  try {
+    const { entreprise } = contexte;
+    const id = String(formData.get("id") ?? "").trim() || null;
+    const nom = String(formData.get("nom") ?? "").trim();
+    if (!nom) throw new Error("Le nom du module est requis.");
+    const champs = parserChamps(String(formData.get("champs") ?? "[]"));
+    const formules = parserFormules(String(formData.get("formules") ?? "[]"));
+
+    const supabase = admin();
+    let idFinal = id;
+    if (id) {
+      const { error } = await supabase
+        .from("modules_calcul")
+        .update({ nom, champs, formules, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("entreprise_id", entreprise.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { data, error } = await supabase
+        .from("modules_calcul")
+        .insert({
+          entreprise_id: entreprise.id,
+          metier: entreprise.metier ?? "",
+          nom,
+          champs,
+          formules,
+        })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      idFinal = data.id;
+    }
+    revalidatePath("/dashboard/outils");
+    revalidatePath(`/dashboard/outils/modules/${idFinal}`);
+    return { ok: true, id: idFinal as string };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+/**
+ * Conserve un contrat qui throw (contrairement aux autres fonctions de ce fichier) :
+ * consommée par BoutonSupprimer (src/components/dashboard/outils/bouton-supprimer.tsx),
+ * un composant partagé avec d'autres écrans hors du périmètre de cette passe — son
+ * contrat `() => Promise<void>` n'a pas été changé.
+ */
+export async function supprimerModule(id: string): Promise<Resultat> {
+  const contexte = await getEntrepriseAvecOutils();
+  if (!contexte.ok) return contexte;
+  try {
+    const { error } = await admin().from("modules_calcul").delete().eq("id", id).eq("entreprise_id", contexte.entreprise.id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/outils");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }
 
 // --- Études -----------------------------------------------------------
 
-export async function enregistrerEtude(formData: FormData) {
-  const { entreprise, userId } = await getEntrepriseAvecOutils();
+export async function enregistrerEtude(formData: FormData): Promise<Resultat<{ id: string }>> {
+  const contexte = await getEntrepriseAvecOutils();
+  if (!contexte.ok) return contexte;
+  try {
+    const { entreprise, userId } = contexte;
+    const id = String(formData.get("id") ?? "").trim() || null;
+    const titre = String(formData.get("titre") ?? "").trim();
+    if (!titre) throw new Error("Le titre de l'étude est requis.");
+    const moduleId = String(formData.get("moduleId") ?? "").trim() || null;
+    const clientNom = String(formData.get("clientNom") ?? "").trim() || null;
+    const clientAdresse = String(formData.get("clientAdresse") ?? "").trim() || null;
+    const clientTelephone = String(formData.get("clientTelephone") ?? "").trim() || null;
+    const clientEmail = String(formData.get("clientEmail") ?? "").trim() || null;
 
-  const id = String(formData.get("id") ?? "").trim() || null;
-  const titre = String(formData.get("titre") ?? "").trim();
-  if (!titre) throw new Error("Le titre de l'étude est requis.");
-  const moduleId = String(formData.get("moduleId") ?? "").trim() || null;
-  const clientNom = String(formData.get("clientNom") ?? "").trim() || null;
-  const clientAdresse = String(formData.get("clientAdresse") ?? "").trim() || null;
-  const clientTelephone = String(formData.get("clientTelephone") ?? "").trim() || null;
-  const clientEmail = String(formData.get("clientEmail") ?? "").trim() || null;
+    const supabase = admin();
+    let idFinal = id;
+    if (id) {
+      const { error } = await supabase
+        .from("etudes")
+        .update({
+          titre,
+          module_id: moduleId,
+          client_nom: clientNom,
+          client_adresse: clientAdresse,
+          client_telephone: clientTelephone,
+          client_email: clientEmail,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .eq("entreprise_id", entreprise.id);
+      if (error) throw new Error(error.message);
+      revalidatePath(`/dashboard/outils/etudes/${id}`);
+    } else {
+      const { data, error } = await supabase
+        .from("etudes")
+        .insert({
+          entreprise_id: entreprise.id,
+          metier: entreprise.metier ?? "",
+          titre,
+          module_id: moduleId,
+          client_nom: clientNom,
+          client_adresse: clientAdresse,
+          client_telephone: clientTelephone,
+          client_email: clientEmail,
+          created_by: userId,
+        })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      idFinal = data.id;
+    }
+    revalidatePath("/dashboard/outils/etudes");
+    return { ok: true, id: idFinal as string };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
 
-  const supabase = admin();
-  if (id) {
-    const { error } = await supabase
+export async function enregistrerDonneesEtude(etudeId: string, donnees: DonneesEtude): Promise<Resultat> {
+  const contexte = await getEntrepriseAvecOutils();
+  if (!contexte.ok) return contexte;
+  try {
+    const { error } = await admin()
       .from("etudes")
-      .update({
-        titre,
-        module_id: moduleId,
-        client_nom: clientNom,
-        client_adresse: clientAdresse,
-        client_telephone: clientTelephone,
-        client_email: clientEmail,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .eq("entreprise_id", entreprise.id);
+      .update({ donnees, updated_at: new Date().toISOString() })
+      .eq("id", etudeId)
+      .eq("entreprise_id", contexte.entreprise.id);
     if (error) throw new Error(error.message);
-    revalidatePath(`/dashboard/outils/etudes/${id}`);
-  } else {
-    const { data, error } = await supabase
+    revalidatePath(`/dashboard/outils/etudes/${etudeId}`);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+export async function changerStatutEtude(etudeId: string, statut: "brouillon" | "termine"): Promise<Resultat> {
+  const contexte = await getEntrepriseAvecOutils();
+  if (!contexte.ok) return contexte;
+  try {
+    const { error } = await admin()
       .from("etudes")
-      .insert({
-        entreprise_id: entreprise.id,
-        metier: entreprise.metier ?? "",
-        titre,
-        module_id: moduleId,
-        client_nom: clientNom,
-        client_adresse: clientAdresse,
-        client_telephone: clientTelephone,
-        client_email: clientEmail,
-        created_by: userId,
-      })
-      .select("id")
-      .single();
+      .update({ statut, updated_at: new Date().toISOString() })
+      .eq("id", etudeId)
+      .eq("entreprise_id", contexte.entreprise.id);
+    if (error) throw new Error(error.message);
+    revalidatePath(`/dashboard/outils/etudes/${etudeId}`);
+    revalidatePath("/dashboard/outils/etudes");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+/** Contrat qui throw conservé — voir le commentaire sur supprimerModule ci-dessus. */
+export async function supprimerEtude(etudeId: string): Promise<Resultat> {
+  const contexte = await getEntrepriseAvecOutils();
+  if (!contexte.ok) return contexte;
+  try {
+    const { error } = await admin().from("etudes").delete().eq("id", etudeId).eq("entreprise_id", contexte.entreprise.id);
     if (error) throw new Error(error.message);
     revalidatePath("/dashboard/outils/etudes");
-    return data.id as string;
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
   }
-  revalidatePath("/dashboard/outils/etudes");
-}
-
-export async function enregistrerDonneesEtude(etudeId: string, donnees: DonneesEtude) {
-  const { entreprise } = await getEntrepriseAvecOutils();
-  const { error } = await admin()
-    .from("etudes")
-    .update({ donnees, updated_at: new Date().toISOString() })
-    .eq("id", etudeId)
-    .eq("entreprise_id", entreprise.id);
-  if (error) throw new Error(error.message);
-  revalidatePath(`/dashboard/outils/etudes/${etudeId}`);
-}
-
-export async function changerStatutEtude(etudeId: string, statut: "brouillon" | "termine") {
-  const { entreprise } = await getEntrepriseAvecOutils();
-  const { error } = await admin()
-    .from("etudes")
-    .update({ statut, updated_at: new Date().toISOString() })
-    .eq("id", etudeId)
-    .eq("entreprise_id", entreprise.id);
-  if (error) throw new Error(error.message);
-  revalidatePath(`/dashboard/outils/etudes/${etudeId}`);
-  revalidatePath("/dashboard/outils/etudes");
-}
-
-export async function supprimerEtude(etudeId: string) {
-  const { entreprise } = await getEntrepriseAvecOutils();
-  const { error } = await admin().from("etudes").delete().eq("id", etudeId).eq("entreprise_id", entreprise.id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/outils/etudes");
 }
 
 // --- Catalogue matériel -----------------------------------------------
 
-export async function enregistrerMateriel(formData: FormData) {
-  const { entreprise } = await getEntrepriseAvecOutils();
+export async function enregistrerMateriel(formData: FormData): Promise<Resultat> {
+  const contexte = await getEntrepriseAvecOutils();
+  if (!contexte.ok) return contexte;
+  try {
+    const { entreprise } = contexte;
+    const id = String(formData.get("id") ?? "").trim() || null;
+    const designation = String(formData.get("designation") ?? "").trim();
+    if (!designation) throw new Error("La désignation est requise.");
+    const reference = String(formData.get("reference") ?? "").trim() || null;
+    const famille = String(formData.get("famille") ?? "").trim() || null;
+    const unite = String(formData.get("unite") ?? "u").trim() || "u";
+    const prixAchatEuros = formData.get("prixAchat");
+    const prixAchatCents =
+      prixAchatEuros === null || String(prixAchatEuros).trim() === ""
+        ? null
+        : Math.round(Number(prixAchatEuros) * 100);
+    const coefficient = Number(formData.get("coefficient") ?? 1.4);
 
-  const id = String(formData.get("id") ?? "").trim() || null;
-  const designation = String(formData.get("designation") ?? "").trim();
-  if (!designation) throw new Error("La désignation est requise.");
-  const reference = String(formData.get("reference") ?? "").trim() || null;
-  const famille = String(formData.get("famille") ?? "").trim() || null;
-  const unite = String(formData.get("unite") ?? "u").trim() || "u";
-  const prixAchatEuros = formData.get("prixAchat");
-  const prixAchatCents =
-    prixAchatEuros === null || String(prixAchatEuros).trim() === ""
-      ? null
-      : Math.round(Number(prixAchatEuros) * 100);
-  const coefficient = Number(formData.get("coefficient") ?? 1.4);
-
-  const supabase = admin();
-  if (id) {
-    const { error } = await supabase
-      .from("materiel_catalogue")
-      .update({ designation, reference, famille, unite, prix_achat_cents: prixAchatCents, coefficient })
-      .eq("id", id)
-      .eq("entreprise_id", entreprise.id);
-    if (error) throw new Error(error.message);
-  } else {
-    const { error } = await supabase.from("materiel_catalogue").insert({
-      entreprise_id: entreprise.id,
-      designation,
-      reference,
-      famille,
-      unite,
-      prix_achat_cents: prixAchatCents,
-      coefficient,
-    });
-    if (error) throw new Error(error.message);
+    const supabase = admin();
+    if (id) {
+      const { error } = await supabase
+        .from("materiel_catalogue")
+        .update({ designation, reference, famille, unite, prix_achat_cents: prixAchatCents, coefficient })
+        .eq("id", id)
+        .eq("entreprise_id", entreprise.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabase.from("materiel_catalogue").insert({
+        entreprise_id: entreprise.id,
+        designation,
+        reference,
+        famille,
+        unite,
+        prix_achat_cents: prixAchatCents,
+        coefficient,
+      });
+      if (error) throw new Error(error.message);
+    }
+    revalidatePath("/dashboard/outils/materiel");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
   }
-  revalidatePath("/dashboard/outils/materiel");
 }
 
-export async function togglerMaterielActif(id: string, actif: boolean) {
-  const { entreprise } = await getEntrepriseAvecOutils();
-  const { error } = await admin()
-    .from("materiel_catalogue")
-    .update({ actif })
-    .eq("id", id)
-    .eq("entreprise_id", entreprise.id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/outils/materiel");
+export async function togglerMaterielActif(id: string, actif: boolean): Promise<Resultat> {
+  const contexte = await getEntrepriseAvecOutils();
+  if (!contexte.ok) return contexte;
+  try {
+    const { error } = await admin()
+      .from("materiel_catalogue")
+      .update({ actif })
+      .eq("id", id)
+      .eq("entreprise_id", contexte.entreprise.id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/outils/materiel");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }
 
-export async function supprimerMateriel(id: string) {
-  const { entreprise } = await getEntrepriseAvecOutils();
-  const { error } = await admin().from("materiel_catalogue").delete().eq("id", id).eq("entreprise_id", entreprise.id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/outils/materiel");
+export async function supprimerMateriel(id: string): Promise<Resultat> {
+  const contexte = await getEntrepriseAvecOutils();
+  if (!contexte.ok) return contexte;
+  try {
+    const { error } = await admin()
+      .from("materiel_catalogue")
+      .delete()
+      .eq("id", id)
+      .eq("entreprise_id", contexte.entreprise.id);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/outils/materiel");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }

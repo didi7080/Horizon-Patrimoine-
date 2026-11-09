@@ -30,13 +30,13 @@ export function SalarieFormDialog({ salarie }: { salarie?: Tables<"salaries"> })
     const formData = new FormData(e.currentTarget);
     formData.set("couleur", couleur);
     startTransition(async () => {
-      try {
-        await enregistrerSalarie(formData);
-        setOpen(false);
-        toast.success(salarie ? "Membre modifié" : "Membre ajouté");
-      } catch (err) {
-        setErreur(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await enregistrerSalarie(formData);
+      if (!resultat.ok) {
+        setErreur(resultat.erreur);
+        return;
       }
+      setOpen(false);
+      toast.success(salarie ? "Membre modifié" : "Membre ajouté");
     });
   }
 

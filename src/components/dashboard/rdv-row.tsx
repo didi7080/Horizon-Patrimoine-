@@ -48,12 +48,12 @@ export function RdvRow({ rdv, showDate = false }: { rdv: RdvAvecRelations; showD
       <div className="flex items-center gap-2">
         {enAttente ? (
           <>
-            <form action={validerDemande.bind(null, rdv.id, true)}>
+            <form action={async () => { "use server"; await validerDemande(rdv.id, true); }}>
               <Button size="sm" type="submit">
                 <Check className="size-3.5" /> Accepter
               </Button>
             </form>
-            <form action={validerDemande.bind(null, rdv.id, false)}>
+            <form action={async () => { "use server"; await validerDemande(rdv.id, false); }}>
               <Button size="sm" variant="outline" type="submit">
                 <X className="size-3.5" /> Refuser
               </Button>
@@ -64,12 +64,12 @@ export function RdvRow({ rdv, showDate = false }: { rdv: RdvAvecRelations; showD
             <StatutBadge statut={rdv.statut} />
             {rdv.statut === "confirme" && passe && (
               <div className="flex gap-1">
-                <form action={changerStatutRdv.bind(null, rdv.id, "honore")}>
+                <form action={async () => { "use server"; await changerStatutRdv(rdv.id, "honore"); }}>
                   <Button size="sm" variant="subtle" type="submit">
                     Honoré
                   </Button>
                 </form>
-                <form action={changerStatutRdv.bind(null, rdv.id, "absent")}>
+                <form action={async () => { "use server"; await changerStatutRdv(rdv.id, "absent"); }}>
                   <Button size="sm" variant="outline" type="submit">
                     Absent
                   </Button>
@@ -77,7 +77,7 @@ export function RdvRow({ rdv, showDate = false }: { rdv: RdvAvecRelations; showD
               </div>
             )}
             {rdv.statut === "confirme" && !passe && (
-              <form action={changerStatutRdv.bind(null, rdv.id, "annule")}>
+              <form action={async () => { "use server"; await changerStatutRdv(rdv.id, "annule"); }}>
                 <Button size="sm" variant="ghost" type="submit">
                   Annuler
                 </Button>

@@ -26,13 +26,13 @@ export function MaterielFormDialog({ article }: { article?: Tables<"materiel_cat
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      try {
-        await enregistrerMateriel(formData);
-        setOpen(false);
-        toast.success(article ? "Article modifié" : "Article ajouté");
-      } catch (err) {
-        setErreur(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await enregistrerMateriel(formData);
+      if (!resultat.ok) {
+        setErreur(resultat.erreur);
+        return;
       }
+      setOpen(false);
+      toast.success(article ? "Article modifié" : "Article ajouté");
     });
   }
 

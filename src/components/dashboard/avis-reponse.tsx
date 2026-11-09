@@ -14,13 +14,13 @@ export function AvisReponse({ avisId, reponse }: { avisId: string; reponse: stri
 
   function enregistrer() {
     startTransition(async () => {
-      try {
-        await repondreAvis(avisId, valeur);
-        toast.success(valeur.trim() ? "Réponse publiée" : "Réponse retirée");
-        setEnEdition(false);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await repondreAvis(avisId, valeur);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success(valeur.trim() ? "Réponse publiée" : "Réponse retirée");
+      setEnEdition(false);
     });
   }
 

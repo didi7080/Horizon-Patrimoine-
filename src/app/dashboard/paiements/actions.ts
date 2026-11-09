@@ -22,54 +22,60 @@ async function origine(): Promise<string> {
  * responsabilité sur les pertes. Les acomptes clients lui sont versés
  * directement, sans commission ArtisanRDV (voir payerAcompteAction).
  */
-export async function demarrerConnexionStripe(): Promise<{ url: string }> {
-  if (!facturationConfiguree()) {
-    throw new Error("Le paiement en ligne n'est pas encore configuré par ArtisanRDV.");
-  }
-  const stripe = getStripe()!;
-  const { entreprise } = await getEntrepriseContext();
-  const admin = createAdminClient();
-  if (!admin) throw new Error("La connexion à la base de données n'est pas configurée.");
+type ResultatUrl = { ok: true; url: string } | { ok: false; erreur: string };
 
-  let compteId = entreprise.stripe_connect_account_id;
-  if (!compteId) {
-    const compte = await stripe.v2.core.accounts.create({
-      // display_name (et les autres infos d'identité) ne peuvent pas être
-      // pré-remplis par une plateforme Connect basée en France sans passer
-      // par un "account token" signé : Stripe les collecte directement
-      // auprès de l'artisan pendant l'onboarding hébergé (accountLinks).
-      contact_email: entreprise.email ?? undefined,
-      dashboard: "full",
-      identity: { country: "FR" },
-      defaults: {
-        responsibilities: { fees_collector: "stripe", losses_collector: "stripe" },
-      },
-      configuration: {
-        merchant: { capabilities: { card_payments: { requested: true } } },
+export async function demarrerConnexionStripe(): Promise<ResultatUrl> {
+  const { entreprise } = await getEntrepriseContext();
+  try {
+    if (!facturationConfiguree()) {
+      throw new Error("Le paiement en ligne n'est pas encore configuré par ArtisanRDV.");
+    }
+    const stripe = getStripe()!;
+    const admin = createAdminClient();
+    if (!admin) throw new Error("La connexion à la base de données n'est pas configurée.");
+
+    let compteId = entreprise.stripe_connect_account_id;
+    if (!compteId) {
+      const compte = await stripe.v2.core.accounts.create({
+        // display_name (et les autres infos d'identité) ne peuvent pas être
+        // pré-remplis par une plateforme Connect basée en France sans passer
+        // par un "account token" signé : Stripe les collecte directement
+        // auprès de l'artisan pendant l'onboarding hébergé (accountLinks).
+        contact_email: entreprise.email ?? undefined,
+        dashboard: "full",
+        identity: { country: "FR" },
+        defaults: {
+          responsibilities: { fees_collector: "stripe", losses_collector: "stripe" },
+        },
+        configuration: {
+          merchant: { capabilities: { card_payments: { requested: true } } },
+        },
+      });
+      compteId = compte.id;
+      const { error } = await admin
+        .from("entreprises")
+        .update({ stripe_connect_account_id: compteId })
+        .eq("id", entreprise.id);
+      if (error) throw new Error(error.message);
+    }
+
+    const base = await origine();
+    const lien = await stripe.v2.core.accountLinks.create({
+      account: compteId,
+      use_case: {
+        type: "account_onboarding",
+        account_onboarding: {
+          configurations: ["merchant"],
+          refresh_url: `${base}/dashboard/paiements?connect=refresh`,
+          return_url: `${base}/dashboard/paiements?connect=retour`,
+        },
       },
     });
-    compteId = compte.id;
-    const { error } = await admin
-      .from("entreprises")
-      .update({ stripe_connect_account_id: compteId })
-      .eq("id", entreprise.id);
-    if (error) throw new Error(error.message);
+
+    return { ok: true, url: lien.url };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
   }
-
-  const base = await origine();
-  const lien = await stripe.v2.core.accountLinks.create({
-    account: compteId,
-    use_case: {
-      type: "account_onboarding",
-      account_onboarding: {
-        configurations: ["merchant"],
-        refresh_url: `${base}/dashboard/paiements?connect=refresh`,
-        return_url: `${base}/dashboard/paiements?connect=retour`,
-      },
-    },
-  });
-
-  return { url: lien.url };
 }
 
 export type StatutConnexionStripe = {

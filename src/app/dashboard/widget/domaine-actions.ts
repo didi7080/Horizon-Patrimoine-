@@ -7,27 +7,34 @@ import { attacherDomaine, detacherDomaine, statutDomaine, vercelConfigure, type 
 
 const DOMAINE_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
 
-export async function connecterDomainePersonnalise(domaineBrut: string): Promise<void> {
+type Resultat = { ok: true } | { ok: false; erreur: string };
+
+export async function connecterDomainePersonnalise(domaineBrut: string): Promise<Resultat> {
   const { entreprise } = await getEntrepriseContext();
-  if (!vercelConfigure()) throw new Error("Cette fonctionnalité n'est pas encore configurée sur cette instance.");
+  try {
+    if (!vercelConfigure()) throw new Error("Cette fonctionnalité n'est pas encore configurée sur cette instance.");
 
-  const domaine = domaineBrut.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
-  if (!DOMAINE_REGEX.test(domaine)) throw new Error("Nom de domaine invalide (ex. rdv.mon-site.fr).");
+    const domaine = domaineBrut.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (!DOMAINE_REGEX.test(domaine)) throw new Error("Nom de domaine invalide (ex. rdv.mon-site.fr).");
 
-  const resultat = await attacherDomaine(domaine);
-  if (!resultat.ok) throw new Error(resultat.erreur);
+    const resultat = await attacherDomaine(domaine);
+    if (!resultat.ok) throw new Error(resultat.erreur);
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("entreprises")
-    .update({ domaine_personnalise: domaine })
-    .eq("id", entreprise.id);
-  if (error) {
-    if (error.code === "23505") throw new Error("Ce domaine est déjà utilisé par une autre entreprise.");
-    throw new Error(error.message);
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("entreprises")
+      .update({ domaine_personnalise: domaine })
+      .eq("id", entreprise.id);
+    if (error) {
+      if (error.code === "23505") throw new Error("Ce domaine est déjà utilisé par une autre entreprise.");
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/dashboard/widget");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
   }
-
-  revalidatePath("/dashboard/widget");
 }
 
 export async function verifierDomainePersonnalise(): Promise<StatutDomaine | null> {
@@ -36,16 +43,21 @@ export async function verifierDomainePersonnalise(): Promise<StatutDomaine | nul
   return statutDomaine(entreprise.domaine_personnalise);
 }
 
-export async function deconnecterDomainePersonnalise(): Promise<void> {
+export async function deconnecterDomainePersonnalise(): Promise<Resultat> {
   const { entreprise } = await getEntrepriseContext();
-  if (entreprise.domaine_personnalise) await detacherDomaine(entreprise.domaine_personnalise);
+  try {
+    if (entreprise.domaine_personnalise) await detacherDomaine(entreprise.domaine_personnalise);
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("entreprises")
-    .update({ domaine_personnalise: null })
-    .eq("id", entreprise.id);
-  if (error) throw new Error(error.message);
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("entreprises")
+      .update({ domaine_personnalise: null })
+      .eq("id", entreprise.id);
+    if (error) throw new Error(error.message);
 
-  revalidatePath("/dashboard/widget");
+    revalidatePath("/dashboard/widget");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
 }

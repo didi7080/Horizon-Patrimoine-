@@ -56,7 +56,7 @@ export default async function AvisPage() {
                   <span className="text-sm text-muted-foreground">· {formatDateCourte(a.created_at)}</span>
                   {!a.publie && <Badge variant="neutral">Masqué</Badge>}
                 </div>
-                <form action={togglePublieAvis.bind(null, a.id, !a.publie)}>
+                <form action={async () => { "use server"; await togglePublieAvis(a.id, !a.publie); }}>
                   <Button size="sm" variant="ghost" type="submit">
                     {a.publie ? "Masquer" : "Republier"}
                   </Button>

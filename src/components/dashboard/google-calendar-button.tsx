@@ -23,13 +23,13 @@ export function GoogleCalendarButton({ salarieId, emailConnecte }: { salarieId: 
 
   function deconnecter() {
     startTransition(async () => {
-      try {
-        await deconnecterGoogleCalendar(salarieId);
-        toast.success("Google Calendar déconnecté");
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await deconnecterGoogleCalendar(salarieId);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success("Google Calendar déconnecté");
+      router.refresh();
     });
   }
 

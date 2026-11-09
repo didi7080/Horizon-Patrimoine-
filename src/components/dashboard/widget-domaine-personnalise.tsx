@@ -32,13 +32,13 @@ export function WidgetDomainePersonnalise({
   function connecter() {
     if (!domaine.trim()) return;
     startTransition(async () => {
-      try {
-        await connecterDomainePersonnalise(domaine.trim());
-        toast.success("Domaine ajouté. Configurez le DNS indiqué ci-dessous.");
-        setDomaine("");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await connecterDomainePersonnalise(domaine.trim());
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success("Domaine ajouté. Configurez le DNS indiqué ci-dessous.");
+      setDomaine("");
     });
   }
 
@@ -58,26 +58,30 @@ export function WidgetDomainePersonnalise({
 
   function deconnecter() {
     startTransition(async () => {
-      try {
-        await deconnecterDomainePersonnalise();
-        toast.success("Domaine retiré.");
-        setStatut("inconnu");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultat = await deconnecterDomainePersonnalise();
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success("Domaine retiré.");
+      setStatut("inconnu");
     });
   }
 
   function utiliserWww() {
     if (!domaineActuel) return;
     startTransition(async () => {
-      try {
-        await deconnecterDomainePersonnalise();
-        await connecterDomainePersonnalise(`www.${domaineActuel}`);
-        toast.success("Basculé sur www. Configurez le DNS indiqué ci-dessous.");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      const resultatDeconnexion = await deconnecterDomainePersonnalise();
+      if (!resultatDeconnexion.ok) {
+        toast.error(resultatDeconnexion.erreur);
+        return;
       }
+      const resultatConnexion = await connecterDomainePersonnalise(`www.${domaineActuel}`);
+      if (!resultatConnexion.ok) {
+        toast.error(resultatConnexion.erreur);
+        return;
+      }
+      toast.success("Basculé sur www. Configurez le DNS indiqué ci-dessous.");
     });
   }
 

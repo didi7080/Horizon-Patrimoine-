@@ -81,7 +81,7 @@ export default async function EquipePage() {
                 </Badge>
               </div>
               {m.profile_id !== userId && m.role !== "owner" && (
-                <form action={revoquerMembre.bind(null, m.id)}>
+                <form action={async () => { "use server"; await revoquerMembre(m.id); }}>
                   <Button size="sm" variant="ghost" type="submit">
                     <X className="size-3.5" /> Retirer
                   </Button>
@@ -128,7 +128,7 @@ export default async function EquipePage() {
                   <div className="flex gap-2">
                     <IcalLinkButton token={s.ical_token} />
                     <GoogleCalendarButton salarieId={s.id} emailConnecte={s.google_email} />
-                    <form action={toggleSalarieActif.bind(null, s.id, !s.actif)}>
+                    <form action={async () => { "use server"; await toggleSalarieActif(s.id, !s.actif); }}>
                       <Button size="sm" variant="ghost" type="submit">
                         {s.actif ? "Désactiver" : "Réactiver"}
                       </Button>

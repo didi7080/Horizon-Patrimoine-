@@ -13,12 +13,12 @@ export function ClientNotes({ clientId, notes }: { clientId: string; notes: stri
 
   function enregistrer() {
     startTransition(async () => {
-      try {
-        await enregistrerNotesClient(clientId, valeur);
-        toast.success("Notes enregistrées");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur");
+      const resultat = await enregistrerNotesClient(clientId, valeur);
+      if (!resultat.ok) {
+        toast.error(resultat.erreur);
+        return;
       }
+      toast.success("Notes enregistrées");
     });
   }
 
