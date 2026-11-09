@@ -182,6 +182,7 @@ export type Database = {
         Row: {
           adresse: string | null
           created_at: string
+          desabonne_communications: boolean
           email: string | null
           entreprise_id: string
           id: string
@@ -189,10 +190,12 @@ export type Database = {
           notes: string | null
           profile_id: string | null
           telephone: string | null
+          token: string
         }
         Insert: {
           adresse?: string | null
           created_at?: string
+          desabonne_communications?: boolean
           email?: string | null
           entreprise_id: string
           id?: string
@@ -200,10 +203,12 @@ export type Database = {
           notes?: string | null
           profile_id?: string | null
           telephone?: string | null
+          token?: string
         }
         Update: {
           adresse?: string | null
           created_at?: string
+          desabonne_communications?: boolean
           email?: string | null
           entreprise_id?: string
           id?: string
@@ -211,6 +216,7 @@ export type Database = {
           notes?: string | null
           profile_id?: string | null
           telephone?: string | null
+          token?: string
         }
         Relationships: [
           {
@@ -1192,6 +1198,7 @@ export type Database = {
           salarie_nom: string
         }[]
       }
+      desabonner_client_public: { Args: { p_token: string }; Returns: Json }
       devis_par_token: { Args: { p_token: string }; Returns: Json }
       entreprise_active: { Args: { e: string }; Returns: boolean }
       envoyer_rappels: { Args: never; Returns: undefined }
