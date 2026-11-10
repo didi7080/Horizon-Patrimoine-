@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReglagesForm } from "@/components/dashboard/reglages-form";
 import { AbonnementBouton } from "@/components/dashboard/abonnement-bouton";
+import { CarteParrainage } from "@/components/dashboard/carte-parrainage";
 import { formatDateCourte } from "@/lib/utils";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
@@ -86,6 +87,8 @@ export default async function ReglagesPage() {
           )}
         </Card>
       )}
+
+      <CarteParrainage entrepriseId={entreprise.id} />
 
       <Card className="p-6">
         <ReglagesForm entreprise={entreprise} />

@@ -9,6 +9,8 @@ import { slugify } from "@/lib/utils";
 
 export type EtatFormulaire = { error?: string } | null;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function origine(): Promise<string> {
   const site = process.env.NEXT_PUBLIC_SITE_URL;
   if (site) return site;
@@ -71,6 +73,8 @@ export async function inscriptionAction(
   const adresse = String(formData.get("adresse") ?? "").trim();
   const telephone = String(formData.get("telephone") ?? "").trim() || phone;
   const nbSalaries = Number(formData.get("nbSalaries") ?? 1) || 1;
+  const parrainBrut = String(formData.get("parrain") ?? "").trim();
+  const parraineParId = UUID_RE.test(parrainBrut) ? parrainBrut : null;
 
   if (!email || motDePasse.length < 8) {
     return { error: "Mot de passe trop court (8 caractères minimum)." };
@@ -111,6 +115,7 @@ export async function inscriptionAction(
     p_adresse: (adresse || null) as string,
     p_telephone: (telephone || null) as string,
     p_nb_salaries: nbSalaries,
+    p_parraine_par_id: parraineParId ?? undefined,
   });
 
   if (entrepriseError || !entreprise) {

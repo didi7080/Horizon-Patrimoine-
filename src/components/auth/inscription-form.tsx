@@ -11,11 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { METIERS } from "@/lib/metiers";
 import { inscriptionAction, type EtatFormulaire } from "@/app/inscription/actions";
 
-export function InscriptionForm() {
+export function InscriptionForm({ parrain }: { parrain?: string }) {
   const [etat, action, enCours] = useActionState<EtatFormulaire, FormData>(inscriptionAction, null);
 
   return (
     <form action={action} className="space-y-6">
+      {parrain && <input type="hidden" name="parrain" value={parrain} />}
       <div className="space-y-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Votre compte

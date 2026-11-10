@@ -434,6 +434,8 @@ export type Database = {
           nb_salaries: number
           nom: string
           numero_tva: string | null
+          parraine_par_id: string | null
+          parrainage_recompense_le: string | null
           recap_actif: boolean
           siret: string | null
           slug: string
@@ -469,6 +471,8 @@ export type Database = {
           nb_salaries?: number
           nom: string
           numero_tva?: string | null
+          parraine_par_id?: string | null
+          parrainage_recompense_le?: string | null
           recap_actif?: boolean
           siret?: string | null
           slug: string
@@ -504,6 +508,8 @@ export type Database = {
           nb_salaries?: number
           nom?: string
           numero_tva?: string | null
+          parraine_par_id?: string | null
+          parrainage_recompense_le?: string | null
           recap_actif?: boolean
           siret?: string | null
           slug?: string
@@ -1138,6 +1144,7 @@ export type Database = {
           p_metier: string
           p_nb_salaries?: number
           p_nom: string
+          p_parraine_par_id?: string
           p_slug: string
           p_telephone: string
           p_ville: string
@@ -1167,6 +1174,8 @@ export type Database = {
           nb_salaries: number
           nom: string
           numero_tva: string | null
+          parraine_par_id: string | null
+          parrainage_recompense_le: string | null
           recap_actif: boolean
           siret: string | null
           slug: string

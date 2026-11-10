@@ -5,6 +5,7 @@ import { getStripe } from "@/lib/stripe";
 import { createAnonClient } from "@/lib/supabase/anon";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerBienvenue } from "@/lib/notifications/bienvenue";
+import { appliquerRecompenseParrainage } from "@/lib/parrainage";
 
 export const runtime = "nodejs";
 
@@ -95,6 +96,7 @@ export async function POST(request: Request) {
           session.metadata?.plan,
         );
         await envoyerBienvenue(entrepriseId);
+        await appliquerRecompenseParrainage(entrepriseId, session.amount_total ?? null);
       }
       break;
     }
