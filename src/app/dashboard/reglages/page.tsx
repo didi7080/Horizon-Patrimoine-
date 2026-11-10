@@ -5,11 +5,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReglagesForm } from "@/components/dashboard/reglages-form";
 import { AbonnementBouton } from "@/components/dashboard/abonnement-bouton";
+import { ChoixAbonnement } from "@/components/dashboard/choix-abonnement";
 import { CarteParrainage } from "@/components/dashboard/carte-parrainage";
 import { formatDateCourte } from "@/lib/utils";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
-import { facturationConfiguree, planPourEffectif, planEffectif, nomPlan, accesOutilsCalcul } from "@/lib/stripe";
+import {
+  facturationConfiguree,
+  planPourEffectif,
+  planEffectif,
+  nomPlan,
+  accesOutilsCalcul,
+  getPrixAbonnementCents,
+} from "@/lib/stripe";
 export const revalidate = 0;
 
 const LABEL_ABONNEMENT: Record<string, { label: string; variant: "success" | "warning" | "danger" | "neutral" }> = {
@@ -32,6 +40,13 @@ export default async function ReglagesPage() {
   const facturationPrete = facturationConfiguree();
   const planSuggere = planPourEffectif(entreprise.nb_salaries);
   const planActuel = planEffectif(abonnement?.plan, entreprise.nb_salaries);
+  const peutDemarrerAbonnement = Boolean(abonnement) && facturationPrete && !(abonnement!.statut === "actif" || abonnement!.statut === "impaye");
+  const [prixMensuelCents, prixAnnuelCents] = peutDemarrerAbonnement
+    ? await Promise.all([
+        getPrixAbonnementCents(planSuggere, entreprise.nb_salaries, "mois"),
+        getPrixAbonnementCents(planSuggere, entreprise.nb_salaries, "annee"),
+      ])
+    : [null, null];
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -68,9 +83,12 @@ export default async function ReglagesPage() {
                   Gérer mon abonnement
                 </AbonnementBouton>
               ) : (
-                <AbonnementBouton action="demarrer" plan={planSuggere} size="sm">
-                  Passer à la formule {nomPlan(planSuggere)}
-                </AbonnementBouton>
+                <ChoixAbonnement
+                  plan={planSuggere}
+                  nomPlanAffiche={nomPlan(planSuggere)}
+                  prixMensuelCents={prixMensuelCents}
+                  prixAnnuelCents={prixAnnuelCents}
+                />
               )}
               {!accesOutilsCalcul(planActuel) && (
                 <Button asChild size="sm" variant="outline">

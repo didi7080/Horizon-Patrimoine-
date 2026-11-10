@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import { getStripe, facturationConfiguree, idPrixPour, planPourEffectif, type Plan } from "@/lib/stripe";
+import { getStripe, facturationConfiguree, idPrixPour, planPourEffectif, type Plan, type Intervalle } from "@/lib/stripe";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,7 +14,7 @@ async function origine(): Promise<string> {
 
 type ResultatUrl = { ok: true; url: string } | { ok: false; erreur: string };
 
-export async function demarrerAbonnement(planChoisi?: Plan): Promise<ResultatUrl> {
+export async function demarrerAbonnement(planChoisi?: Plan, intervalle: Intervalle = "mois"): Promise<ResultatUrl> {
   const { entreprise } = await getEntrepriseContext();
   try {
     if (!facturationConfiguree()) {
@@ -22,7 +22,7 @@ export async function demarrerAbonnement(planChoisi?: Plan): Promise<ResultatUrl
     }
     const stripe = getStripe()!;
     const plan = planChoisi ?? planPourEffectif(entreprise.nb_salaries);
-    const priceId = idPrixPour(plan, entreprise.nb_salaries);
+    const priceId = idPrixPour(plan, entreprise.nb_salaries, intervalle);
     if (!priceId) {
       throw new Error(
         plan === "premium"

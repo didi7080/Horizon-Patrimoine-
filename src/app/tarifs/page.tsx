@@ -1,20 +1,21 @@
 import { Fragment } from "react";
-import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight, Check, Minus } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { SiteFooter } from "@/components/marketing/site-footer";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CartesFormules } from "@/components/marketing/cartes-formules";
 
 export const metadata: Metadata = { title: "Tarifs — ArtisanRDV" };
 
 // Prix indicatifs : à ajuster selon votre positionnement avant mise en production.
+// Tarifs annuels = 2 mois offerts (≈ -17 %) par rapport au mensuel × 12.
 const FORMULES = [
   {
     nom: "Solo",
     description: "Jusqu'à 1 salarié",
-    prix: 39,
+    prixMois: 39,
+    prixAn: 390,
     misEnAvant: false,
     inclus: [
       "Réservation en ligne, agenda et rappels automatiques",
@@ -25,7 +26,8 @@ const FORMULES = [
   {
     nom: "Équipe",
     description: "À partir de 2 salariés",
-    prix: 89,
+    prixMois: 89,
+    prixAn: 890,
     misEnAvant: true,
     inclus: [
       "Tout ce qui est inclus dans Solo",
@@ -35,8 +37,9 @@ const FORMULES = [
   },
   {
     nom: "Premium",
-    description: "Option ajoutée à Solo (69€) ou Équipe (119€)",
-    prix: 30,
+    description: "Option ajoutée à Solo (69€/mois ou 690€/an) ou Équipe (119€/mois ou 1 190€/an)",
+    prixMois: 30,
+    prixAn: 300,
     option: true,
     misEnAvant: false,
     inclus: [
@@ -98,7 +101,7 @@ const QUESTIONS = [
   },
   {
     q: "Puis-je changer d’avis après la période d’essai ?",
-    r: "Oui, l’abonnement est sans engagement : vous pouvez résilier à tout moment depuis votre espace.",
+    r: "Oui, l’abonnement mensuel est sans engagement : vous pouvez résilier à tout moment depuis votre espace. L’abonnement annuel engage pour 1 an en échange des 2 mois offerts.",
   },
   {
     q: "Comment choisir entre Solo et Équipe ?",
@@ -107,6 +110,10 @@ const QUESTIONS = [
   {
     q: "Qu’est-ce que la formule Premium apporte en plus ?",
     r: "Premium ajoute les Outils de calcul à votre formule Solo ou Équipe pour 30€/mois de plus : vous créez vos propres modules de calcul adaptés à votre métier (vos champs, vos formules), les utilisez pour des études chantier chiffrées avec votre catalogue matériel, puis générez une présentation client imprimable.",
+  },
+  {
+    q: "Quelle est la différence entre mensuel et annuel ?",
+    r: "Le prix est le même, mais l’annuel vous fait économiser l’équivalent de 2 mois (payé en une fois, pour 1 an). C’est un engagement sur 1 an, contrairement au mensuel qui reste résiliable à tout moment.",
   },
   {
     q: "Puis-je utiliser mon propre nom de domaine ?",
@@ -129,39 +136,8 @@ export default function TarifsPage() {
           </p>
         </section>
 
-        <section className="mx-auto grid max-w-5xl gap-6 px-4 pb-20 sm:px-6 md:grid-cols-3">
-          {FORMULES.map((formule) => (
-            <Card
-              key={formule.nom}
-              className={
-                "p-8 text-center" +
-                (formule.misEnAvant ? " border-brand/30 shadow-lg shadow-slate-900/5" : "")
-              }
-            >
-              <p className="text-sm font-semibold uppercase tracking-wide text-brand">{formule.nom}</p>
-              <p className="mt-3 flex items-end justify-center gap-1">
-                <span className="text-5xl font-semibold text-foreground">
-                  {"option" in formule && formule.option ? "+" : ""}
-                  {formule.prix}€
-                </span>
-                <span className="pb-1.5 text-muted">/ mois HT</span>
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{formule.description}</p>
-              <Button asChild size="lg" className="mt-6 w-full">
-                <Link href="/inscription">
-                  Démarrer l’essai gratuit <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-              <ul className="mt-8 space-y-3 text-left text-sm">
-                {formule.inclus.map((item) => (
-                  <li key={item} className="flex items-start gap-2">
-                    <Check className="mt-0.5 size-4 shrink-0 text-brand" />
-                    <span className="text-foreground">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ))}
+        <section className="mx-auto max-w-5xl px-4 pb-20 sm:px-6">
+          <CartesFormules formules={FORMULES} />
         </section>
 
         <section className="mx-auto max-w-4xl px-4 pb-20 sm:px-6">

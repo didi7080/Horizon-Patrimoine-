@@ -5,11 +5,12 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { demarrerAbonnement, ouvrirPortailFacturation } from "@/app/dashboard/facturation/actions";
-import type { Plan } from "@/lib/stripe";
+import type { Intervalle, Plan } from "@/lib/stripe";
 
 export function AbonnementBouton({
   action,
   plan,
+  intervalle = "mois",
   children,
   size,
   variant,
@@ -17,6 +18,7 @@ export function AbonnementBouton({
 }: {
   action: "demarrer" | "portail";
   plan?: Plan;
+  intervalle?: Intervalle;
   children: React.ReactNode;
   size?: "default" | "sm" | "lg";
   variant?: "default" | "outline";
@@ -26,7 +28,7 @@ export function AbonnementBouton({
 
   function onClick() {
     startTransition(async () => {
-      const resultat = action === "portail" ? await ouvrirPortailFacturation() : await demarrerAbonnement(plan);
+      const resultat = action === "portail" ? await ouvrirPortailFacturation() : await demarrerAbonnement(plan, intervalle);
       if (!resultat.ok) {
         toast.error(resultat.erreur);
         return;

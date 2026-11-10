@@ -112,6 +112,37 @@ describe("idPrixPour", () => {
     delete process.env.STRIPE_PRICE_ID_EQUIPE;
     expect(idPrixPour("solo", 0)).toBeNull();
   });
+
+  it("utilise les variables _ANNUEL pour l'intervalle annuel", () => {
+    process.env.STRIPE_PRICE_ID_SOLO = "price_solo_mois";
+    process.env.STRIPE_PRICE_ID_SOLO_ANNUEL = "price_solo_an";
+    process.env.STRIPE_PRICE_ID_EQUIPE = "price_equipe_mois";
+    process.env.STRIPE_PRICE_ID_EQUIPE_ANNUEL = "price_equipe_an";
+    expect(idPrixPour("solo", 0, "annee")).toBe("price_solo_an");
+    expect(idPrixPour("equipe", SEUIL_SALARIES_EQUIPE, "annee")).toBe("price_equipe_an");
+    expect(idPrixPour("solo", 0)).toBe("price_solo_mois");
+  });
+
+  it("replie sur Solo annuel si Équipe annuel n'est pas configuré, sans jamais retomber sur le mensuel", () => {
+    process.env.STRIPE_PRICE_ID_SOLO = "price_solo_mois";
+    process.env.STRIPE_PRICE_ID_SOLO_ANNUEL = "price_solo_an";
+    process.env.STRIPE_PRICE_ID_EQUIPE = "price_equipe_mois";
+    delete process.env.STRIPE_PRICE_ID_EQUIPE_ANNUEL;
+    expect(idPrixPour("equipe", SEUIL_SALARIES_EQUIPE, "annee")).toBe("price_solo_an");
+  });
+
+  it("renvoie null en annuel si aucun prix annuel n'est configuré, même si le mensuel l'est", () => {
+    process.env.STRIPE_PRICE_ID_SOLO = "price_solo_mois";
+    delete process.env.STRIPE_PRICE_ID_SOLO_ANNUEL;
+    expect(idPrixPour("solo", 0, "annee")).toBeNull();
+  });
+
+  it("utilise les variables Premium _ANNUEL pour l'intervalle annuel", () => {
+    process.env.STRIPE_PRICE_ID_PREMIUM_ANNUEL = "price_premium_equipe_an";
+    process.env.STRIPE_PRICE_ID_PREMIUM_SOLO_ANNUEL = "price_premium_solo_an";
+    expect(idPrixPour("premium", SEUIL_SALARIES_EQUIPE, "annee")).toBe("price_premium_equipe_an");
+    expect(idPrixPour("premium", 0, "annee")).toBe("price_premium_solo_an");
+  });
 });
 
 describe("facturationConfiguree", () => {
