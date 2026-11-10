@@ -106,7 +106,7 @@ export async function inscriptionAction(
     };
   }
 
-  const { data: entreprise, error: entrepriseError } = await supabase.rpc("creer_entreprise", {
+  const { data: entreprise, error: entrepriseError } = await supabase.rpc("creer_entreprise_avec_parrainage", {
     p_nom: nomEntreprise,
     p_slug: slugify(nomEntreprise),
     p_metier: (metier || null) as string,

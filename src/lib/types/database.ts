@@ -1144,6 +1144,61 @@ export type Database = {
           p_metier: string
           p_nb_salaries?: number
           p_nom: string
+          p_slug: string
+          p_telephone: string
+          p_ville: string
+        }
+        Returns: {
+          adresse: string | null
+          assujetti_tva: boolean
+          assurance_nom: string | null
+          assurance_zone: string | null
+          avis_actif: boolean
+          battement_min: number
+          code_postal: string | null
+          couleur: string
+          created_at: string
+          created_by: string | null
+          delai_min_heures: number
+          description: string | null
+          domaine_personnalise: string | null
+          email: string | null
+          email_bienvenue_envoye: boolean
+          fenetre_max_jours: number
+          forme_juridique: string | null
+          id: string
+          logo_url: string | null
+          mentions_legales: string | null
+          metier: string | null
+          nb_salaries: number
+          nom: string
+          numero_tva: string | null
+          parraine_par_id: string | null
+          parrainage_recompense_le: string | null
+          recap_actif: boolean
+          siret: string | null
+          slug: string
+          sms_actif: boolean
+          stripe_connect_account_id: string | null
+          telephone: string | null
+          validation_manuelle: boolean
+          ville: string | null
+          zone_codes: string[]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "entreprises"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      creer_entreprise_avec_parrainage: {
+        Args: {
+          p_adresse: string
+          p_code_postal: string
+          p_metier: string
+          p_nb_salaries?: number
+          p_nom: string
           p_parraine_par_id?: string
           p_slug: string
           p_telephone: string
