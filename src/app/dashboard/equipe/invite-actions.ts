@@ -4,7 +4,8 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getEntrepriseContext } from "@/lib/dashboard/context";
+import { getEntrepriseContext, planActuelEntreprise } from "@/lib/dashboard/context";
+import { accesInvitationMembres } from "@/lib/stripe";
 import type { Enums } from "@/lib/types/database";
 
 export type EtatInvitation = { error?: string; success?: boolean } | null;
@@ -24,6 +25,11 @@ export async function inviterMembre(
 
   if (monRole !== "owner" && monRole !== "admin") {
     return { error: "Seul un administrateur peut inviter un membre." };
+  }
+
+  const plan = await planActuelEntreprise(entreprise.id, entreprise.nb_salaries);
+  if (!accesInvitationMembres(plan, entreprise.nb_salaries)) {
+    return { error: "L'invitation de membres est réservée à la formule Équipe." };
   }
 
   const admin = createAdminClient();

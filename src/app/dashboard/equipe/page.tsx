@@ -1,5 +1,6 @@
 import { Suspense } from "react";
-import { ShieldCheck, X } from "lucide-react";
+import Link from "next/link";
+import { Lock, ShieldCheck, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,9 +13,10 @@ import { IcalLinkButton } from "@/components/dashboard/ical-link-button";
 import { GoogleCalendarButton } from "@/components/dashboard/google-calendar-button";
 import { GoogleCalendarStatut } from "@/components/dashboard/google-calendar-statut";
 import { initiales } from "@/lib/utils";
-import { getEntrepriseContext } from "@/lib/dashboard/context";
+import { getEntrepriseContext, planActuelEntreprise } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { accesInvitationMembres } from "@/lib/stripe";
 import { toggleSalarieActif } from "@/app/dashboard/actions";
 import { revoquerMembre } from "@/app/dashboard/equipe/invite-actions";
 
@@ -29,6 +31,8 @@ const LABEL_ROLE: Record<string, string> = {
 export default async function EquipePage() {
   const { entreprise, userId } = await getEntrepriseContext();
   const supabase = await createClient();
+  const plan = await planActuelEntreprise(entreprise.id, entreprise.nb_salaries);
+  const peutInviter = accesInvitationMembres(plan, entreprise.nb_salaries);
 
   const [{ data: salaries }, { data: memberships }] = await Promise.all([
     supabase.from("salaries").select("*, horaires(*)").eq("entreprise_id", entreprise.id).order("created_at"),
@@ -67,7 +71,15 @@ export default async function EquipePage() {
           <h2 className="flex items-center gap-2 font-semibold text-foreground">
             <ShieldCheck className="size-4 text-brand" /> Accès au tableau de bord
           </h2>
-          <InviteMembreDialog salariesSansAcces={salariesSansAcces} />
+          {peutInviter ? (
+            <InviteMembreDialog salariesSansAcces={salariesSansAcces} />
+          ) : (
+            <Button asChild variant="outline" size="sm">
+              <Link href="/dashboard/reglages">
+                <Lock className="size-3.5" /> Inviter un membre — formule Équipe
+              </Link>
+            </Button>
+          )}
         </div>
         <div className="space-y-2">
           {membresAvecEmail.map((m) => (

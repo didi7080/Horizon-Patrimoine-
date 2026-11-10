@@ -3,6 +3,7 @@ import {
   planPourEffectif,
   planEffectif,
   accesOutilsCalcul,
+  accesInvitationMembres,
   idPrixPour,
   facturationConfiguree,
   SEUIL_SALARIES_EQUIPE,
@@ -48,6 +49,23 @@ describe("accesOutilsCalcul", () => {
     expect(accesOutilsCalcul("premium")).toBe(true);
     expect(accesOutilsCalcul("solo")).toBe(false);
     expect(accesOutilsCalcul("equipe")).toBe(false);
+  });
+});
+
+describe("accesInvitationMembres", () => {
+  it("autorise la formule Équipe, quel que soit l'effectif", () => {
+    expect(accesInvitationMembres("equipe", 0)).toBe(true);
+    expect(accesInvitationMembres("equipe", 1)).toBe(true);
+  });
+
+  it("refuse Solo, même avec Premium", () => {
+    expect(accesInvitationMembres("solo", 1)).toBe(false);
+    expect(accesInvitationMembres("premium", 1)).toBe(false);
+  });
+
+  it("autorise Premium seulement à partir du seuil Équipe", () => {
+    expect(accesInvitationMembres("premium", SEUIL_SALARIES_EQUIPE - 1)).toBe(false);
+    expect(accesInvitationMembres("premium", SEUIL_SALARIES_EQUIPE)).toBe(true);
   });
 });
 

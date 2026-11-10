@@ -41,6 +41,17 @@ export function accesOutilsCalcul(plan: Plan): boolean {
   return plan === "premium";
 }
 
+/**
+ * Inviter d'autres membres dans le tableau de bord est réservé à la formule
+ * Équipe (seule ou avec Premium) : un compte Solo+Premium reste un compte à
+ * 1 personne, Premium n'ajoutant que les outils de calcul et l'assistant IA.
+ */
+export function accesInvitationMembres(plan: Plan, nbSalaries: number): boolean {
+  if (plan === "equipe") return true;
+  if (plan === "premium" && nbSalaries >= SEUIL_SALARIES_EQUIPE) return true;
+  return false;
+}
+
 export function facturationConfiguree(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID_SOLO);
 }

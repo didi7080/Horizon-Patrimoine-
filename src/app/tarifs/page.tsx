@@ -1,6 +1,7 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Minus } from "lucide-react";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { Button } from "@/components/ui/button";
@@ -16,13 +17,9 @@ const FORMULES = [
     prix: 39,
     misEnAvant: false,
     inclus: [
-      "Page de réservation en ligne illimitée",
-      "Agenda jusqu'à 1 salarié",
-      "Rappels automatiques par e-mail (SMS en option)",
-      "Widget intégrable sur votre propre site internet",
-      "Avis clients vérifiés",
-      "Gestion des demandes, annulations et reports",
-      "Assistance par e-mail",
+      "Réservation en ligne, agenda et rappels automatiques",
+      "Widget intégrable, avis clients, devis & factures",
+      "Jusqu'à 1 salarié sur votre agenda",
     ],
   },
   {
@@ -33,9 +30,7 @@ const FORMULES = [
     inclus: [
       "Tout ce qui est inclus dans Solo",
       "Agenda multi-salariés illimité",
-      "Statistiques et export de vos données",
-      "Invitation de membres avec accès dédié",
-      "Assistance prioritaire",
+      "Invitez vos collaborateurs avec leur propre accès",
     ],
   },
   {
@@ -47,11 +42,54 @@ const FORMULES = [
     inclus: [
       "Les outils de calcul, en plus de votre formule Solo ou Équipe",
       "Modules de calcul personnalisables (vos propres formules)",
-      "Études chantier, catalogue matériel et chiffrage",
-      "Présentations client imprimables",
+      "Assistant IA pour vos devis et questions du quotidien",
     ],
   },
 ] as const;
+
+type Disponibilite = true | false | "premium";
+
+const COMPARATIF: { categorie: string; lignes: { label: string; solo: Disponibilite; equipe: Disponibilite }[] }[] = [
+  {
+    categorie: "Réservation & agenda",
+    lignes: [
+      { label: "Page de réservation en ligne illimitée", solo: true, equipe: true },
+      { label: "Widget intégrable sur votre site", solo: true, equipe: true },
+      { label: "Rappels automatiques par e-mail", solo: true, equipe: true },
+      { label: "Gestion des demandes, annulations et reports", solo: true, equipe: true },
+      { label: "Agenda multi-salariés", solo: true, equipe: true },
+    ],
+  },
+  {
+    categorie: "Clients & facturation",
+    lignes: [
+      { label: "Devis, factures et relances automatiques", solo: true, equipe: true },
+      { label: "Avis clients vérifiés", solo: true, equipe: true },
+      { label: "Statistiques et export de vos données", solo: true, equipe: true },
+    ],
+  },
+  {
+    categorie: "Équipe",
+    lignes: [
+      { label: "Invitation de collaborateurs avec accès dédié au tableau de bord", solo: false, equipe: true },
+    ],
+  },
+  {
+    categorie: "Avec l'option Premium (+30€)",
+    lignes: [
+      { label: "Outils de calcul personnalisés par métier", solo: "premium", equipe: "premium" },
+      { label: "Assistant IA (devis par message, questions admin/technique)", solo: "premium", equipe: "premium" },
+    ],
+  },
+];
+
+function PuceDisponibilite({ valeur }: { valeur: Disponibilite }) {
+  if (valeur === true) return <Check className="mx-auto size-4 text-success" />;
+  if (valeur === "premium") {
+    return <span className="text-xs font-medium text-brand">+30€</span>;
+  }
+  return <Minus className="mx-auto size-4 text-muted-foreground" />;
+}
 
 const QUESTIONS = [
   {
@@ -64,7 +102,7 @@ const QUESTIONS = [
   },
   {
     q: "Comment choisir entre Solo et Équipe ?",
-    r: "La formule s’ajuste automatiquement selon le nombre de salariés que vous ajoutez : Solo jusqu’à 1, Équipe à partir de 2. Le nombre de rendez-vous n’est jamais plafonné.",
+    r: "La formule s’ajuste selon le nombre de salariés : Solo jusqu’à 1, Équipe à partir de 2. Le nombre de rendez-vous n’est jamais plafonné. La différence concrète : seule la formule Équipe permet d’inviter des collaborateurs avec leur propre accès au tableau de bord.",
   },
   {
     q: "Qu’est-ce que la formule Premium apporte en plus ?",
@@ -124,6 +162,43 @@ export default function TarifsPage() {
               </ul>
             </Card>
           ))}
+        </section>
+
+        <section className="mx-auto max-w-4xl px-4 pb-20 sm:px-6">
+          <h2 className="text-center text-xl font-semibold text-foreground">Comparez les formules en détail</h2>
+          <Card className="mt-6 overflow-x-auto p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Fonctionnalité</th>
+                  <th className="w-28 px-4 py-3 text-center font-semibold text-foreground">Solo</th>
+                  <th className="w-28 px-4 py-3 text-center font-semibold text-foreground">Équipe</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARATIF.map((groupe) => (
+                  <Fragment key={groupe.categorie}>
+                    <tr className="bg-surface">
+                      <td colSpan={3} className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {groupe.categorie}
+                      </td>
+                    </tr>
+                    {groupe.lignes.map((ligne) => (
+                      <tr key={ligne.label} className="border-b border-border last:border-0">
+                        <td className="px-4 py-3 text-foreground">{ligne.label}</td>
+                        <td className="px-4 py-3 text-center">
+                          <PuceDisponibilite valeur={ligne.solo} />
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <PuceDisponibilite valeur={ligne.equipe} />
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </Card>
         </section>
 
         <section className="border-t border-border bg-surface py-16">
