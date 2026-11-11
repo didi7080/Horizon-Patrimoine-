@@ -58,7 +58,7 @@ export function facturationConfiguree(): boolean {
 
 export type Intervalle = "mois" | "annee";
 
-/** Réduction affichée pour un engagement annuel (2 mois offerts, soit environ -17%). */
+/** Réduction affichée pour un engagement annuel, payé en une fois. */
 export const REDUCTION_ANNUELLE_POURCENT = 17;
 
 function idPrixEnv(nomBase: string, intervalle: Intervalle): string | undefined {

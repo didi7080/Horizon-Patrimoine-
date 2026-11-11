@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AbonnementBouton } from "@/components/dashboard/abonnement-bouton";
 import { formatPrix } from "@/lib/utils";
-import type { Intervalle, Plan } from "@/lib/stripe";
+import { REDUCTION_ANNUELLE_POURCENT, type Intervalle, type Plan } from "@/lib/stripe";
 
 export function ChoixAbonnement({
   plan,
@@ -45,7 +45,7 @@ export function ChoixAbonnement({
             intervalle === "annee" ? "bg-brand text-brand-foreground" : "text-muted hover:text-foreground"
           }`}
         >
-          Annuel (2 mois offerts)
+          Annuel (-{REDUCTION_ANNUELLE_POURCENT}%)
         </button>
       </div>
       <AbonnementBouton action="demarrer" plan={plan} intervalle={intervalle} size="sm">

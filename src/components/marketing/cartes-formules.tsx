@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { REDUCTION_ANNUELLE_POURCENT } from "@/lib/stripe";
 
 type Formule = {
   nom: string;
@@ -38,7 +39,7 @@ export function CartesFormules({ formules }: { formules: readonly Formule[] }) {
             annuel ? "bg-brand text-brand-foreground" : "text-muted hover:text-foreground"
           }`}
         >
-          Annuel <span className="ml-1 text-xs opacity-80">(2 mois offerts)</span>
+          Annuel <span className="ml-1 text-xs opacity-80">(-{REDUCTION_ANNUELLE_POURCENT}%)</span>
         </button>
       </div>
 
@@ -60,7 +61,10 @@ export function CartesFormules({ formules }: { formules: readonly Formule[] }) {
                 <span className="pb-1.5 text-muted">{annuel ? "/ an HT" : "/ mois HT"}</span>
               </p>
               {annuel && (
-                <p className="mt-1 text-xs text-success">Soit {prefixe}{(formule.prixAn / 12).toFixed(2)}€/mois, 2 mois offerts</p>
+                <p className="mt-1 text-xs text-success">
+                  Soit {prefixe}
+                  {(formule.prixAn / 12).toFixed(2)}€/mois, -{REDUCTION_ANNUELLE_POURCENT}%
+                </p>
               )}
               <p className="mt-1 text-sm text-muted-foreground">{formule.description}</p>
               <Button asChild size="lg" className="mt-6 w-full">

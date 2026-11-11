@@ -9,7 +9,7 @@ import { CartesFormules } from "@/components/marketing/cartes-formules";
 export const metadata: Metadata = { title: "Tarifs — ArtisanRDV" };
 
 // Prix indicatifs : à ajuster selon votre positionnement avant mise en production.
-// Tarifs annuels = 2 mois offerts (≈ -17 %) par rapport au mensuel × 12.
+// Tarifs annuels = -17 % par rapport au mensuel × 12, payé en une fois.
 const FORMULES = [
   {
     nom: "Solo",
@@ -101,7 +101,7 @@ const QUESTIONS = [
   },
   {
     q: "Puis-je changer d’avis après la période d’essai ?",
-    r: "Oui, l’abonnement mensuel est sans engagement : vous pouvez résilier à tout moment depuis votre espace. L’abonnement annuel engage pour 1 an en échange des 2 mois offerts.",
+    r: "Oui, l’abonnement mensuel est sans engagement : vous pouvez résilier à tout moment depuis votre espace. L’abonnement annuel engage pour 1 an en échange d’une réduction de 17 %.",
   },
   {
     q: "Comment choisir entre Solo et Équipe ?",
@@ -113,7 +113,7 @@ const QUESTIONS = [
   },
   {
     q: "Quelle est la différence entre mensuel et annuel ?",
-    r: "Le prix est le même, mais l’annuel vous fait économiser l’équivalent de 2 mois (payé en une fois, pour 1 an). C’est un engagement sur 1 an, contrairement au mensuel qui reste résiliable à tout moment.",
+    r: "L’annuel applique une réduction de 17 %, payée en une fois pour toute l’année. C’est un engagement sur 1 an, contrairement au mensuel qui reste résiliable à tout moment.",
   },
   {
     q: "Puis-je utiliser mon propre nom de domaine ?",
