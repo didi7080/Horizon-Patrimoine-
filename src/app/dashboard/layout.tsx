@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
+import { EnregistrerServiceWorker } from "@/components/dashboard/enregistrer-service-worker";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getEntrepriseContext, planActuelEntreprise } from "@/lib/dashboard/context";
@@ -13,6 +14,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
 
   return (
     <div className="min-h-screen bg-surface lg:flex">
+      <EnregistrerServiceWorker />
       <aside className="border-b border-border bg-background lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r">
         <div className="flex h-16 items-center justify-between px-4 lg:px-5">
           <Link href="/dashboard">

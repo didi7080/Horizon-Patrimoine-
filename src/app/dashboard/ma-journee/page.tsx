@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatutBadge } from "@/components/statut-badge";
 import { PhotosIntervention } from "@/components/dashboard/photos-intervention";
+import { BoutonHorsConnexion } from "@/components/dashboard/bouton-hors-connexion";
+import { BanniereHorsConnexion } from "@/components/dashboard/banniere-hors-connexion";
 import { changerStatutRdv } from "@/app/dashboard/actions";
 import { parisVersIso } from "@/lib/assistant/outils";
 import { formatHeure } from "@/lib/utils";
@@ -79,9 +81,12 @@ export default async function MaJourneePage() {
   const libelleJour = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Paris" }).format(
     new Date(),
   );
+  const derniereSynchro = new Intl.DateTimeFormat("fr-FR", { timeStyle: "short", timeZone: "Europe/Paris" }).format(new Date());
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
+      <BanniereHorsConnexion derniereSynchro={derniereSynchro} />
+
       <div>
         <h1 className="text-2xl font-semibold capitalize text-foreground">{libelleJour}</h1>
         <p className="mt-1 text-muted">
@@ -139,14 +144,14 @@ export default async function MaJourneePage() {
                 {rdv.statut === "confirme" && passe && (
                   <div className="flex gap-2 border-t border-border pt-3">
                     <form action={async () => { "use server"; await changerStatutRdv(rdv.id, "honore"); }}>
-                      <Button size="sm" type="submit">
+                      <BoutonHorsConnexion size="sm" type="submit">
                         Honoré
-                      </Button>
+                      </BoutonHorsConnexion>
                     </form>
                     <form action={async () => { "use server"; await changerStatutRdv(rdv.id, "absent"); }}>
-                      <Button size="sm" variant="outline" type="submit">
+                      <BoutonHorsConnexion size="sm" variant="outline" type="submit">
                         Client absent
-                      </Button>
+                      </BoutonHorsConnexion>
                     </form>
                   </div>
                 )}

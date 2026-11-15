@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Service worker statique : hors du projet TypeScript, scope global
+    // différent (ServiceWorkerGlobalScope), pas de règles React/Next à y appliquer.
+    "public/sw.js",
   ]),
 ]);
 
