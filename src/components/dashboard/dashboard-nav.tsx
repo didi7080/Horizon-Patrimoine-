@@ -13,6 +13,7 @@ import {
   Landmark,
   ListChecks,
   Settings,
+  Smartphone,
   Sparkles,
   Star,
   Users,
@@ -24,6 +25,7 @@ import { cn } from "@/lib/utils";
 
 const LIENS = [
   { href: "/dashboard", label: "Vue du jour", icon: LayoutGrid, exact: true },
+  { href: "/dashboard/ma-journee", label: "Ma journée", icon: Smartphone },
   { href: "/dashboard/rendez-vous", label: "Rendez-vous", icon: CalendarDays },
   { href: "/dashboard/statistiques", label: "Statistiques", icon: BarChart3 },
   { href: "/dashboard/bilan", label: "Bilan mensuel", icon: FileSpreadsheet },
