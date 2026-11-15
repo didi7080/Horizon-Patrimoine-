@@ -29,7 +29,7 @@ export async function notifierNouveauRdv(rdvId: string): Promise<void> {
   const { data: rdv } = await admin
     .from("rendez_vous")
     .select(
-      "debut, statut, adresse_client, entreprise:entreprises(id, nom), salarie:salaries(nom, profile_id), prestation:prestations(nom), client:clients(nom, telephone)",
+      "debut, statut, adresse_client, entreprise:entreprises(id, nom), salarie:salaries!rendez_vous_salarie_id_fkey(nom, profile_id), prestation:prestations(nom), client:clients(nom, telephone)",
     )
     .eq("id", rdvId)
     .maybeSingle();
@@ -88,7 +88,7 @@ export async function notifierConfirmationClient(rdvId: string): Promise<void> {
   const { data: rdv } = await admin
     .from("rendez_vous")
     .select(
-      "token, debut, statut, adresse_client, entreprise:entreprises(nom, telephone), salarie:salaries(nom), prestation:prestations(nom), client:clients(nom, email)",
+      "token, debut, statut, adresse_client, entreprise:entreprises(nom, telephone), salarie:salaries!rendez_vous_salarie_id_fkey(nom), prestation:prestations(nom), client:clients(nom, email)",
     )
     .eq("id", rdvId)
     .maybeSingle();

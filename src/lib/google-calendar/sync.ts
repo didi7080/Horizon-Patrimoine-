@@ -62,7 +62,7 @@ export async function synchroniserRdvGoogle(rdvId: string): Promise<void> {
   const { data: rdv } = await admin
     .from("rendez_vous")
     .select(
-      "id, debut, fin, statut, notes, adresse_client, google_event_id, salarie:salaries(google_refresh_token), client:clients(nom), prestation:prestations(nom)",
+      "id, debut, fin, statut, notes, adresse_client, google_event_id, salarie:salaries!rendez_vous_salarie_id_fkey(google_refresh_token), client:clients(nom), prestation:prestations(nom)",
     )
     .eq("id", rdvId)
     .maybeSingle();

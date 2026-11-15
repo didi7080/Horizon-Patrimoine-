@@ -1056,7 +1056,7 @@ async function outilListerRendezVous(ctx: ContexteOutils, input: { periode?: str
 
   let requete = admin
     .from("rendez_vous")
-    .select("id, debut, fin, statut, adresse_client, clients(nom), salaries(nom), prestations(nom)")
+    .select("id, debut, fin, statut, adresse_client, clients(nom), salaries!rendez_vous_salarie_id_fkey(nom), prestations(nom)")
     .eq("entreprise_id", ctx.entrepriseId)
     .gte("debut", maintenant.toISOString())
     .lt("debut", fin.toISOString());

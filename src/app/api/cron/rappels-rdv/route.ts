@@ -41,7 +41,7 @@ export async function GET(request: Request) {
   const { data: rdvs, error } = await admin
     .from("rendez_vous")
     .select(
-      "id, debut, adresse_client, client:clients(nom, email), prestation:prestations(nom), salarie:salaries(nom), entreprise:entreprises(nom, telephone)",
+      "id, debut, adresse_client, client:clients(nom, email), prestation:prestations(nom), salarie:salaries!rendez_vous_salarie_id_fkey(nom), entreprise:entreprises(nom, telephone)",
     )
     .eq("statut", "confirme")
     .eq("rappel_envoye", false)
