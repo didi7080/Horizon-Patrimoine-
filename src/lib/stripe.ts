@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import * as Sentry from "@sentry/nextjs";
 
 let instance: Stripe | null = null;
 
@@ -97,7 +98,10 @@ export async function getPrixAbonnementCents(
   try {
     const prix = await stripe.prices.retrieve(priceId);
     return prix.unit_amount ?? null;
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("getPrixAbonnementCents a échoué:", { plan, nbSalaries, intervalle, priceId, message });
+    Sentry.captureMessage("getPrixAbonnementCents a échoué", { extra: { plan, nbSalaries, intervalle, priceId, message } });
     return null;
   }
 }
