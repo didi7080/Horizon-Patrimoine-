@@ -463,6 +463,11 @@ export type Database = {
           parraine_par_id: string | null
           parrainage_recompense_le: string | null
           recap_actif: boolean
+          recap_avis_actif: boolean
+          recap_depenses_actif: boolean
+          recap_devis_actif: boolean
+          recap_factures_actif: boolean
+          recap_rdv_actif: boolean
           siret: string | null
           slug: string
           sms_actif: boolean
@@ -500,6 +505,11 @@ export type Database = {
           parraine_par_id?: string | null
           parrainage_recompense_le?: string | null
           recap_actif?: boolean
+          recap_avis_actif?: boolean
+          recap_depenses_actif?: boolean
+          recap_devis_actif?: boolean
+          recap_factures_actif?: boolean
+          recap_rdv_actif?: boolean
           siret?: string | null
           slug: string
           sms_actif?: boolean
@@ -537,6 +547,11 @@ export type Database = {
           parraine_par_id?: string | null
           parrainage_recompense_le?: string | null
           recap_actif?: boolean
+          recap_avis_actif?: boolean
+          recap_depenses_actif?: boolean
+          recap_devis_actif?: boolean
+          recap_factures_actif?: boolean
+          recap_rdv_actif?: boolean
           siret?: string | null
           slug?: string
           sms_actif?: boolean
@@ -1202,6 +1217,11 @@ export type Database = {
           parraine_par_id: string | null
           parrainage_recompense_le: string | null
           recap_actif: boolean
+          recap_avis_actif: boolean
+          recap_depenses_actif: boolean
+          recap_devis_actif: boolean
+          recap_factures_actif: boolean
+          recap_rdv_actif: boolean
           siret: string | null
           slug: string
           sms_actif: boolean
@@ -1258,6 +1278,11 @@ export type Database = {
           parraine_par_id: string | null
           parrainage_recompense_le: string | null
           recap_actif: boolean
+          recap_avis_actif: boolean
+          recap_depenses_actif: boolean
+          recap_devis_actif: boolean
+          recap_factures_actif: boolean
+          recap_rdv_actif: boolean
           siret: string | null
           slug: string
           sms_actif: boolean

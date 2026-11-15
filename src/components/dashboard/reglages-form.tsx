@@ -252,9 +252,41 @@ export function ReglagesForm({ entreprise }: { entreprise: Tables<"entreprises">
           <Interrupteur
             name="recapActif"
             label="Récapitulatif quotidien par e-mail"
-            description="Le programme du lendemain, envoyé chaque soir."
+            description="Envoyé chaque soir dès qu'une des catégories ci-dessous a quelque chose à signaler."
             defaultChecked={entreprise.recap_actif}
           />
+          <div className="divide-y divide-border pl-4">
+            <Interrupteur
+              name="recapRdvActif"
+              label="Rendez-vous de demain"
+              description=""
+              defaultChecked={entreprise.recap_rdv_actif}
+            />
+            <Interrupteur
+              name="recapDevisActif"
+              label="Devis sans réponse depuis plus de 5 jours"
+              description=""
+              defaultChecked={entreprise.recap_devis_actif}
+            />
+            <Interrupteur
+              name="recapFacturesActif"
+              label="Factures en retard de paiement"
+              description=""
+              defaultChecked={entreprise.recap_factures_actif}
+            />
+            <Interrupteur
+              name="recapAvisActif"
+              label="Nouveaux avis clients"
+              description=""
+              defaultChecked={entreprise.recap_avis_actif}
+            />
+            <Interrupteur
+              name="recapDepensesActif"
+              label="Notes de frais en attente de validation"
+              description=""
+              defaultChecked={entreprise.recap_depenses_actif}
+            />
+          </div>
         </div>
       </section>
 
