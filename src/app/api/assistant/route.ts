@@ -31,6 +31,7 @@ const OUTILS_CONFIRMATION_REQUISE = new Set([
   "ajouter_absence",
   "ajouter_participant_rdv",
   "retirer_participant_rdv",
+  "programmer_rappel",
 ]);
 
 const SEUIL_MONTANT_ELEVE_DOCUMENT_EUROS = 20_000;
@@ -79,6 +80,8 @@ function resumeAction(nom: string, input: Record<string, unknown>): string {
       return `Ajouter ${texte(input.salarie_nom)} en renfort sur ce rendez-vous.`;
     case "retirer_participant_rdv":
       return `Retirer ${texte(input.salarie_nom)} de ce rendez-vous.`;
+    case "programmer_rappel":
+      return `Programmer un rappel « ${texte(input.titre)} » pour ${texte(input.client_nom)} le ${texte(input.date_prevue)}.`;
     default:
       return `Exécuter l'action « ${nom} ».`;
   }
@@ -144,7 +147,7 @@ Nous sommes le ${libelle} (${iso}, heure de Paris). Utilise cette date comme ré
 Tu aides un artisan indépendant ou une petite entreprise du bâtiment/services en France avec :
 - des questions administratives, juridiques, techniques et réglementaires (TVA et taux applicables, mentions obligatoires sur devis/factures, assurance décennale et RC pro, statut juridique, URSSAF, auto-entrepreneur, RGE, garanties légales, DTU, normes du métier...) ;
 - des actions concrètes dans l'application, quelle que soit la taille de l'entreprise (un artisan seul ou une équipe de plusieurs salariés), via les outils à ta disposition :
-  - Facturation : bilan_mensuel (CA, encaissé, charges, résultat net), lister_clients, rechercher_client (coordonnées + historique d'un client précis), lister_documents_recents, creer_devis, creer_facture (facture directe, sans devis), convertir_devis_en_facture (transforme un devis accepté en facture avec les mêmes lignes), changer_statut_document (marquer payée, accepté, refusé...), lister_documents_impayes (factures en retard de paiement), relancer_document (relance un devis sans réponse ou une facture impayée, par e-mail automatique si configuré), envoyer_email_client (envoie un e-mail libre à un client déjà enregistré, pour toute autre demande — ex. informer d'un retard, confirmer un rendez-vous, répondre à une question), enregistrer_depense, lister_depenses (résumé des charges par catégorie, détail, et notes de frais de salariés en attente de validation).
+  - Facturation : bilan_mensuel (CA, encaissé, charges, résultat net), lister_clients, rechercher_client (coordonnées + historique d'un client précis), lister_documents_recents, creer_devis, creer_facture (facture directe, sans devis), convertir_devis_en_facture (transforme un devis accepté en facture avec les mêmes lignes), changer_statut_document (marquer payée, accepté, refusé...), lister_documents_impayes (factures en retard de paiement), relancer_document (relance un devis sans réponse ou une facture impayée, par e-mail automatique si configuré), envoyer_email_client (envoie un e-mail libre à un client déjà enregistré, pour toute autre demande — ex. informer d'un retard, confirmer un rendez-vous, répondre à une question), programmer_rappel (programme un rappel par e-mail à une date future précise, pour un suivi nécessitant plusieurs passages — ex. entretien annuel), enregistrer_depense, lister_depenses (résumé des charges par catégorie, détail, et notes de frais de salariés en attente de validation).
   - Planning : lister_rendez_vous, bloquer_creneau (créer un rendez-vous confirmé), modifier_statut_rendez_vous (annuler, marquer honoré/absent), ajouter_participant_rdv/retirer_participant_rdv (ajouter ou retirer un collègue en renfort sur un rendez-vous, en plus du salarié déjà assigné).
   - Équipe : lister_salaries, ajouter_absence (congé/indisponibilité), lister_prestations.
   - Outils de calcul (Premium) : lister_modules_calcul, creer_module_calcul (crée un module sur mesure — champs + formules — à partir d'une description libre de l'artisan), calculer_etude (calcule immédiatement avec un module existant, et enregistre le résultat comme étude si un client est précisé).

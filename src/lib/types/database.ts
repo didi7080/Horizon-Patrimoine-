@@ -1022,6 +1022,70 @@ export type Database = {
           },
         ]
       }
+      rappels_planifies: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          date_prevue: string
+          destinataire: string
+          entreprise_id: string
+          id: string
+          message: string | null
+          rendez_vous_id: string | null
+          statut: string
+          titre: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_prevue: string
+          destinataire?: string
+          entreprise_id: string
+          id?: string
+          message?: string | null
+          rendez_vous_id?: string | null
+          statut?: string
+          titre: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_prevue?: string
+          destinataire?: string
+          entreprise_id?: string
+          id?: string
+          message?: string | null
+          rendez_vous_id?: string | null
+          statut?: string
+          titre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rappels_planifies_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rappels_planifies_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rappels_planifies_rendez_vous_id_fkey"
+            columns: ["rendez_vous_id"]
+            isOneToOne: false
+            referencedRelation: "rendez_vous"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1398,6 +1462,7 @@ export type Database = {
       devis_par_token: { Args: { p_token: string }; Returns: Json }
       entreprise_active: { Args: { e: string }; Returns: boolean }
       envoyer_rappels: { Args: never; Returns: undefined }
+      envoyer_rappels_planifies: { Args: never; Returns: undefined }
       envoyer_recap_quotidien: { Args: never; Returns: undefined }
       envoyer_relances: { Args: never; Returns: undefined }
       envoyer_relances_factures: { Args: never; Returns: undefined }

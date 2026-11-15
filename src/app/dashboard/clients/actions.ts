@@ -119,3 +119,65 @@ export async function supprimerOuAnonymiserClient(clientId: string): Promise<Res
     return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
   }
 }
+
+// --- Rappels planifiés -------------------------------------------------------
+
+type Resultat = { ok: true } | { ok: false; erreur: string };
+
+export async function programmerRappel(input: {
+  clientId: string;
+  titre: string;
+  message: string;
+  datePrevue: string;
+  destinataire: "client" | "artisan";
+  rendezVousId?: string | null;
+}): Promise<Resultat> {
+  const { entreprise, userId } = await getEntrepriseContext();
+  try {
+    if (!input.titre.trim()) throw new Error("Le titre du rappel est requis.");
+    if (!input.datePrevue) throw new Error("La date du rappel est requise.");
+
+    const supabase = admin();
+    const { data: client } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("id", input.clientId)
+      .eq("entreprise_id", entreprise.id)
+      .maybeSingle();
+    if (!client) throw new Error("Client introuvable.");
+
+    const { error } = await supabase.from("rappels_planifies").insert({
+      entreprise_id: entreprise.id,
+      client_id: input.clientId,
+      rendez_vous_id: input.rendezVousId ?? null,
+      titre: input.titre.trim(),
+      message: input.message.trim() || null,
+      date_prevue: input.datePrevue,
+      destinataire: input.destinataire,
+      created_by: userId,
+    });
+    if (error) throw new Error(error.message);
+
+    revalidatePath(`/dashboard/clients/${input.clientId}`);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+export async function annulerRappel(rappelId: string, clientId: string): Promise<Resultat> {
+  const { entreprise } = await getEntrepriseContext();
+  try {
+    const supabase = admin();
+    const { error } = await supabase
+      .from("rappels_planifies")
+      .update({ statut: "annule" })
+      .eq("id", rappelId)
+      .eq("entreprise_id", entreprise.id);
+    if (error) throw new Error(error.message);
+    revalidatePath(`/dashboard/clients/${clientId}`);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}

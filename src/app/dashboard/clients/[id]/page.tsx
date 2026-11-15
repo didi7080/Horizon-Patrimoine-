@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ClientNotes } from "@/components/dashboard/client-notes";
 import { SupprimerClientBouton } from "@/components/dashboard/clients/supprimer-client-bouton";
 import { HistoriqueClient } from "@/components/dashboard/clients/historique-client";
+import { RappelsClient, type RappelAffiche } from "@/components/dashboard/clients/rappels-client";
 import { construireHistorique } from "@/lib/clients/historique";
 
 export const revalidate = 0;
@@ -20,7 +21,7 @@ export default async function ClientDetailPage({ params }: PageProps<"/dashboard
   const { data: client } = await admin.from("clients").select("*").eq("id", id).eq("entreprise_id", entreprise.id).maybeSingle();
   if (!client) notFound();
 
-  const [{ data: documents }, { data: rendezVous }] = await Promise.all([
+  const [{ data: documents }, { data: rendezVous }, { data: rappels }] = await Promise.all([
     admin
       .from("documents")
       .select("id, type, numero, statut, lignes, date_emission, notes")
@@ -33,6 +34,12 @@ export default async function ClientDetailPage({ params }: PageProps<"/dashboard
       .eq("client_id", id)
       .eq("entreprise_id", entreprise.id)
       .order("debut", { ascending: false }),
+    admin
+      .from("rappels_planifies")
+      .select("id, titre, message, date_prevue, destinataire, statut")
+      .eq("client_id", id)
+      .eq("entreprise_id", entreprise.id)
+      .order("date_prevue"),
   ]);
 
   const historique = construireHistorique(documents ?? [], rendezVous ?? []);
@@ -70,6 +77,11 @@ export default async function ClientDetailPage({ params }: PageProps<"/dashboard
       <Card className="space-y-2 p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notes internes</p>
         <ClientNotes clientId={client.id} notes={client.notes} />
+      </Card>
+
+      <Card className="space-y-3 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rappels programmés</p>
+        <RappelsClient clientId={client.id} rappels={(rappels ?? []) as RappelAffiche[]} />
       </Card>
 
       <div>

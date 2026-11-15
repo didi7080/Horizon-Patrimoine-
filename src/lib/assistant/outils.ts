@@ -158,6 +158,26 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "programmer_rappel",
+    description:
+      "Programme un rappel par e-mail à une date future précise pour un client (ex. « rappelle à M. Dupont dans 1 an pour l'entretien de la haie »). Entièrement configurable : titre, message, date, et destinataire (le client ou l'artisan lui-même). Le rappel est envoyé automatiquement à la date prévue, pas avant.",
+    input_schema: {
+      type: "object",
+      properties: {
+        client_nom: { type: "string", description: "Nom (ou partie du nom) du client concerné." },
+        titre: { type: "string", description: "Objet du rappel, ex. « Entretien annuel de la haie »." },
+        message: { type: "string", description: "Corps du message envoyé à l'échéance. Optionnel : un message par défaut est utilisé sinon." },
+        date_prevue: { type: "string", description: "Date à laquelle envoyer le rappel, au format AAAA-MM-JJ." },
+        destinataire: {
+          type: "string",
+          enum: ["client", "artisan"],
+          description: "Qui reçoit le rappel : 'client' (par défaut) ou 'artisan' (l'artisan lui-même, pour se rappeler de recontacter ce client).",
+        },
+      },
+      required: ["client_nom", "titre", "date_prevue"],
+    },
+  },
+  {
     name: "bloquer_creneau",
     description:
       "Bloque un créneau de rendez-vous dans le planning, directement confirmé (sans passer par la réservation publique). Si le client n'existe pas encore, il est ajouté au fichier clients. Si plusieurs salariés ou prestations existent et qu'il faut préciser lequel, l'outil renvoie la liste des choix possibles au lieu de deviner.",
@@ -1283,6 +1303,42 @@ async function outilChangerStatutDocument(ctx: ContexteOutils, input: { numero: 
   return { modifie: true, lien: `/dashboard/documents/${document.id}` };
 }
 
+async function outilProgrammerRappel(
+  ctx: ContexteOutils,
+  input: { client_nom: string; titre: string; message?: string; date_prevue: string; destinataire?: string },
+) {
+  if (!input.client_nom?.trim()) return { erreur: "Le nom du client est requis." };
+  if (!input.titre?.trim()) return { erreur: "Le titre du rappel est requis." };
+  if (!input.date_prevue?.trim()) return { erreur: "La date du rappel est requise." };
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+
+  const { data: clients, error } = await admin
+    .from("clients")
+    .select("id, nom")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .ilike("nom", `%${input.client_nom.trim()}%`)
+    .limit(5);
+  if (error) return { erreur: error.message };
+  if (!clients || clients.length === 0) return { erreur: "Aucun client ne correspond à ce nom." };
+  if (clients.length > 1) {
+    return { erreur: "Plusieurs clients correspondent, précise lequel.", clients_disponibles: clients.map((c) => c.nom) };
+  }
+
+  const { error: erreurInsert } = await admin.from("rappels_planifies").insert({
+    entreprise_id: ctx.entrepriseId,
+    client_id: clients[0].id,
+    titre: input.titre.trim(),
+    message: input.message?.trim() || null,
+    date_prevue: input.date_prevue.trim(),
+    destinataire: input.destinataire === "artisan" ? "artisan" : "client",
+    created_by: ctx.userId,
+  });
+  if (erreurInsert) return { erreur: erreurInsert.message };
+
+  return { programme: true, lien: `/dashboard/clients/${clients[0].id}` };
+}
+
 async function outilBloquerCreneau(
   ctx: ContexteOutils,
   input: {
@@ -1427,6 +1483,8 @@ export async function executerOutil(ctx: ContexteOutils, nom: string, input: unk
       return outilCreerModuleCalcul(ctx, entree as Parameters<typeof outilCreerModuleCalcul>[1]);
     case "calculer_etude":
       return outilCalculerEtude(ctx, entree as Parameters<typeof outilCalculerEtude>[1]);
+    case "programmer_rappel":
+      return outilProgrammerRappel(ctx, entree as Parameters<typeof outilProgrammerRappel>[1]);
     case "bloquer_creneau":
       return outilBloquerCreneau(ctx, entree as Parameters<typeof outilBloquerCreneau>[1]);
     case "lister_rendez_vous":
