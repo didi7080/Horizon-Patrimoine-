@@ -114,6 +114,32 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_appels: {
+        Row: {
+          compteur: number
+          entreprise_id: string
+          fenetre_debut: string
+        }
+        Insert: {
+          compteur?: number
+          entreprise_id: string
+          fenetre_debut?: string
+        }
+        Update: {
+          compteur?: number
+          entreprise_id?: string
+          fenetre_debut?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_appels_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: true
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avis: {
         Row: {
           auteur_nom: string | null
@@ -1342,6 +1368,10 @@ export type Database = {
       valider_demande_rdv: {
         Args: { p_accepter: boolean; p_rdv: string }
         Returns: undefined
+      }
+      verifier_limite_assistant: {
+        Args: { p_entreprise_id: string; p_fenetre_secondes?: number; p_max?: number }
+        Returns: number
       }
     }
     Enums: {

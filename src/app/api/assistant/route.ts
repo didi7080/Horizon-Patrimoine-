@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { planEffectif, accesOutilsCalcul } from "@/lib/stripe";
 import { getAnthropic, assistantConfigure, MODELE_ASSISTANT } from "@/lib/assistant/client";
 import { OUTILS_DEFINITIONS, executerOutil } from "@/lib/assistant/outils";
@@ -10,6 +11,81 @@ export const maxDuration = 60;
 
 const MAX_TOURS_OUTILS = 5;
 const MAX_MESSAGES_HISTORIQUE = 20;
+const MAX_APPELS_PAR_MINUTE = 20;
+
+/**
+ * Outils qui créent, modifient ou envoient quelque chose de réel (document,
+ * e-mail, rendez-vous...) : l'IA ne les exécute jamais directement, elle
+ * s'arrête et attend une confirmation explicite de l'artisan dans le chat.
+ */
+const OUTILS_CONFIRMATION_REQUISE = new Set([
+  "creer_devis",
+  "creer_facture",
+  "convertir_devis_en_facture",
+  "relancer_document",
+  "envoyer_email_client",
+  "bloquer_creneau",
+  "modifier_statut_rendez_vous",
+  "changer_statut_document",
+  "enregistrer_depense",
+  "ajouter_absence",
+]);
+
+const SEUIL_MONTANT_ELEVE_DOCUMENT_EUROS = 20_000;
+const SEUIL_MONTANT_ELEVE_DEPENSE_EUROS = 5_000;
+
+function totalApproximatifTTC(lignes: unknown): number {
+  if (!Array.isArray(lignes)) return 0;
+  return lignes.reduce((somme: number, l) => {
+    const ligne = l as { quantite?: number; prix_unitaire_euros?: number; taux_tva?: number };
+    const ht = (Number(ligne.quantite) || 0) * (Number(ligne.prix_unitaire_euros) || 0);
+    const tva = ligne.taux_tva ?? 20;
+    return somme + ht * (1 + tva / 100);
+  }, 0);
+}
+
+/** Résumé en français de l'action en attente, montré à l'artisan avant qu'il ne confirme ou annule. */
+function resumeAction(nom: string, input: Record<string, unknown>): string {
+  const texte = (v: unknown) => (typeof v === "string" ? v : "");
+  switch (nom) {
+    case "creer_devis":
+    case "creer_facture": {
+      const total = totalApproximatifTTC(input.lignes);
+      const alerte = total > SEUIL_MONTANT_ELEVE_DOCUMENT_EUROS ? " ⚠️ Montant important, vérifie-le bien avant de confirmer." : "";
+      return `Créer un ${nom === "creer_devis" ? "devis" : "facture"} d'environ ${total.toFixed(2)} € TTC pour ${texte(input.client_nom) || "ce client"}.${alerte}`;
+    }
+    case "convertir_devis_en_facture":
+      return `Convertir le devis ${texte(input.numero_devis)} en facture.`;
+    case "relancer_document":
+      return `Envoyer une relance par e-mail pour le document ${texte(input.numero)}.`;
+    case "envoyer_email_client":
+      return `Envoyer un e-mail à ${texte(input.client_nom)} — objet : « ${texte(input.objet)} ».`;
+    case "bloquer_creneau":
+      return `Bloquer un créneau le ${texte(input.date)} à ${texte(input.heure)} pour ${texte(input.client_nom)}.`;
+    case "modifier_statut_rendez_vous":
+      return `Changer le statut du rendez-vous vers « ${texte(input.nouveau_statut)} ».`;
+    case "changer_statut_document":
+      return `Changer le statut du document ${texte(input.numero)} vers « ${texte(input.nouveau_statut)} ».`;
+    case "enregistrer_depense": {
+      const montant = Number(input.montant_euros) || 0;
+      const alerte = montant > SEUIL_MONTANT_ELEVE_DEPENSE_EUROS ? " ⚠️ Montant important, vérifie-le bien avant de confirmer." : "";
+      return `Enregistrer une dépense de ${montant.toFixed(2)} € (${texte(input.categorie)}).${alerte}`;
+    }
+    case "ajouter_absence":
+      return `Marquer une absence du ${texte(input.date_debut)} au ${texte(input.date_fin)}.`;
+    default:
+      return `Exécuter l'action « ${nom} ».`;
+  }
+}
+
+type BlocOutilAttente = { id: string; name: string; input: Record<string, unknown> };
+
+type EntreeConfirmation = {
+  approuve: boolean;
+  suite: Anthropic.MessageParam[];
+  resultatsSurs: Anthropic.ToolResultBlockParam[];
+  blocsEnAttente: BlocOutilAttente[];
+};
 
 async function contexteRequete() {
   const supabase = await createClient();
@@ -103,18 +179,58 @@ export async function POST(request: Request) {
   }
   const anthropic = getAnthropic()!;
 
-  let messagesEntrants: MessageEntrant[];
+  const admin = createAdminClient();
+  if (admin) {
+    const { data: compteur } = await admin.rpc("verifier_limite_assistant", {
+      p_entreprise_id: contexte.entreprise.id,
+      p_max: MAX_APPELS_PAR_MINUTE,
+      p_fenetre_secondes: 60,
+    });
+    if (typeof compteur === "number" && compteur > MAX_APPELS_PAR_MINUTE) {
+      return NextResponse.json({ error: "Trop de messages envoyés d'affilée, réessaie dans une minute." }, { status: 429 });
+    }
+  }
+
+  let corps: { messages?: MessageEntrant[]; confirmation?: EntreeConfirmation };
   try {
-    const corps = await request.json();
-    messagesEntrants = corps.messages;
-    if (!Array.isArray(messagesEntrants)) throw new Error();
+    corps = await request.json();
   } catch {
     return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
   }
-  messagesEntrants = messagesEntrants.slice(-MAX_MESSAGES_HISTORIQUE);
 
-  const messages: Anthropic.MessageParam[] = messagesEntrants.map((m) => ({ role: m.role, content: m.content }));
   const ctxOutils = { entrepriseId: contexte.entreprise.id as string, userId: contexte.userId, role: contexte.role };
+
+  let messages: Anthropic.MessageParam[];
+  if (corps.confirmation) {
+    const { approuve, suite, resultatsSurs, blocsEnAttente } = corps.confirmation;
+    if (!Array.isArray(suite) || !Array.isArray(blocsEnAttente)) {
+      return NextResponse.json({ error: "Requête de confirmation invalide." }, { status: 400 });
+    }
+    const resultatsAttente: Anthropic.ToolResultBlockParam[] = [];
+    for (const bloc of blocsEnAttente) {
+      if (approuve) {
+        const resultat = await executerOutil(ctxOutils, bloc.name, bloc.input);
+        resultatsAttente.push({ type: "tool_result", tool_use_id: bloc.id, content: JSON.stringify(resultat) });
+      } else {
+        resultatsAttente.push({
+          type: "tool_result",
+          tool_use_id: bloc.id,
+          content: JSON.stringify({
+            annule: true,
+            message: "L'utilisateur a annulé cette action. Ne la relance pas sans qu'il le redemande explicitement.",
+          }),
+        });
+      }
+    }
+    messages = [...suite, { role: "user", content: [...(resultatsSurs ?? []), ...resultatsAttente] }];
+  } else {
+    let messagesEntrants = corps.messages;
+    if (!Array.isArray(messagesEntrants)) {
+      return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
+    }
+    messagesEntrants = messagesEntrants.slice(-MAX_MESSAGES_HISTORIQUE);
+    messages = messagesEntrants.map((m) => ({ role: m.role, content: m.content }));
+  }
 
   try {
     for (let tour = 0; tour < MAX_TOURS_OUTILS; tour++) {
@@ -138,6 +254,22 @@ export async function POST(request: Request) {
       }
 
       messages.push({ role: "assistant", content: reponse.content });
+
+      const blocsGates = blocsOutils.filter((b) => OUTILS_CONFIRMATION_REQUISE.has(b.name));
+      if (blocsGates.length > 0) {
+        const blocsSurs = blocsOutils.filter((b) => !OUTILS_CONFIRMATION_REQUISE.has(b.name));
+        const resultatsSurs: Anthropic.ToolResultBlockParam[] = [];
+        for (const bloc of blocsSurs) {
+          const resultat = await executerOutil(ctxOutils, bloc.name, bloc.input);
+          resultatsSurs.push({ type: "tool_result", tool_use_id: bloc.id, content: JSON.stringify(resultat) });
+        }
+        return NextResponse.json({
+          confirmation: { resume: blocsGates.map((b) => resumeAction(b.name, b.input as Record<string, unknown>)).join("\n") },
+          suite: messages,
+          resultatsSurs,
+          blocsEnAttente: blocsGates.map((b) => ({ id: b.id, name: b.name, input: b.input as Record<string, unknown> })),
+        });
+      }
 
       const resultats: Anthropic.ToolResultBlockParam[] = [];
       for (const bloc of blocsOutils) {

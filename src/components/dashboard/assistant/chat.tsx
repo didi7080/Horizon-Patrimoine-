@@ -9,6 +9,10 @@ import { cn } from "@/lib/utils";
 
 type Message = { role: "user" | "assistant"; content: string };
 
+/** Action en attente de confirmation par l'artisan. Le contenu de suite/resultatsSurs/blocsEnAttente
+ * n'est jamais lu côté client : il est juste renvoyé tel quel au serveur pour reprendre l'échange. */
+type Confirmation = { resume: string; suite: unknown; resultatsSurs: unknown; blocsEnAttente: unknown };
+
 const SUGGESTIONS = [
   "Quel est mon chiffre d'affaires de ce mois-ci ?",
   "Quelles sont les mentions obligatoires sur une facture ?",
@@ -20,15 +24,35 @@ export function AssistantChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [saisie, setSaisie] = useState("");
   const [pending, setPending] = useState(false);
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const finRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     finRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, pending]);
+  }, [messages, pending, confirmation]);
+
+  function traiterReponse(data: {
+    reply?: string;
+    confirmation?: { resume: string };
+    suite?: unknown;
+    resultatsSurs?: unknown;
+    blocsEnAttente?: unknown;
+  }) {
+    if (data.confirmation) {
+      setConfirmation({
+        resume: data.confirmation.resume,
+        suite: data.suite,
+        resultatsSurs: data.resultatsSurs,
+        blocsEnAttente: data.blocsEnAttente,
+      });
+    } else {
+      setMessages((m) => [...m, { role: "assistant", content: data.reply as string }]);
+    }
+  }
 
   async function envoyer(texte: string) {
     const contenu = texte.trim();
-    if (!contenu || pending) return;
+    if (!contenu || pending || confirmation) return;
     const nouveauxMessages: Message[] = [...messages, { role: "user", content: contenu }];
     setMessages(nouveauxMessages);
     setSaisie("");
@@ -41,11 +65,39 @@ export function AssistantChat() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Une erreur est survenue.");
-      setMessages((m) => [...m, { role: "assistant", content: data.reply as string }]);
+      traiterReponse(data);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
       setMessages((m) => m.slice(0, -1));
       setSaisie(contenu);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function resoudreConfirmation(approuve: boolean) {
+    if (!confirmation) return;
+    setPending(true);
+    try {
+      const res = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmation: {
+            approuve,
+            suite: confirmation.suite,
+            resultatsSurs: confirmation.resultatsSurs,
+            blocsEnAttente: confirmation.blocsEnAttente,
+          },
+        }),
+      });
+      const data = await res.json();
+      setConfirmation(null);
+      if (!res.ok) throw new Error(data.error ?? "Une erreur est survenue.");
+      traiterReponse(data);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
+      setConfirmation(null);
     } finally {
       setPending(false);
     }
@@ -97,6 +149,21 @@ export function AssistantChat() {
                 </div>
               </div>
             ))}
+            {confirmation && (
+              <div className="flex justify-start">
+                <div className="max-w-[85%] space-y-3 rounded-2xl border border-warning/30 bg-warning-light px-4 py-3 text-sm text-foreground">
+                  <p className="whitespace-pre-line font-medium">{confirmation.resume}</p>
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" disabled={pending} onClick={() => resoudreConfirmation(true)}>
+                      Confirmer
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => resoudreConfirmation(false)}>
+                      Annuler
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             {pending && (
               <div className="flex justify-start">
                 <div className="flex items-center gap-2 rounded-2xl bg-surface px-4 py-2.5 text-sm text-muted">
@@ -113,10 +180,11 @@ export function AssistantChat() {
         <input
           value={saisie}
           onChange={(e) => setSaisie(e.target.value)}
-          placeholder="Posez votre question ou décrivez l'action à faire..."
-          className="h-11 flex-1 rounded-lg border border-border-strong bg-background px-3 text-sm text-foreground outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20"
+          disabled={pending || !!confirmation}
+          placeholder={confirmation ? "Confirme ou annule l'action ci-dessus pour continuer..." : "Posez votre question ou décrivez l'action à faire..."}
+          className="h-11 flex-1 rounded-lg border border-border-strong bg-background px-3 text-sm text-foreground outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20 disabled:opacity-60"
         />
-        <Button type="submit" disabled={pending || !saisie.trim()}>
+        <Button type="submit" disabled={pending || !!confirmation || !saisie.trim()}>
           {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
         </Button>
       </form>

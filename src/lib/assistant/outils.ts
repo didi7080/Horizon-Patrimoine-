@@ -1229,6 +1229,7 @@ async function outilBloquerCreneau(
   const debutIso = parisVersIso(input.date, input.heure);
   const debut = new Date(debutIso);
   if (Number.isNaN(debut.getTime())) return { erreur: "Date ou heure invalide." };
+  if (debut.getTime() < Date.now()) return { erreur: "Impossible de bloquer un créneau dans le passé." };
   const fin = new Date(debut.getTime() + dureeMinutes * 60_000);
 
   const { data: entrepriseRow } = await admin.from("entreprises").select("battement_min").eq("id", ctx.entrepriseId).maybeSingle();
