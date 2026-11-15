@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatutBadge } from "@/components/statut-badge";
 import { ParticipantsRdv } from "@/components/dashboard/participants-rdv";
+import { PhotosIntervention } from "@/components/dashboard/photos-intervention";
 import { formatHeure, formatDateCourte } from "@/lib/utils";
 import { validerDemande, changerStatutRdv } from "@/app/dashboard/actions";
 import type { Tables } from "@/lib/types/database";
@@ -12,6 +13,7 @@ export type RdvAvecRelations = Tables<"rendez_vous"> & {
   salaries: Pick<Tables<"salaries">, "nom" | "couleur"> | null;
   clients: Pick<Tables<"clients">, "nom" | "telephone"> | null;
   rendez_vous_participants: { salarie_id: string; salaries: Pick<Tables<"salaries">, "nom" | "couleur"> | null }[];
+  photos_intervention: { id: string }[];
 };
 
 type Salarie = { id: string; nom: string; couleur?: string | null };
@@ -63,6 +65,7 @@ export function RdvRow({
               salariesDisponibles={salariesEquipe.filter((s) => s.id !== rdv.salarie_id)}
             />
           )}
+          <PhotosIntervention rdvId={rdv.id} nombrePhotos={rdv.photos_intervention.length} />
         </div>
       </div>
 

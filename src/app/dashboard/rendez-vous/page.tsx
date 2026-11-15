@@ -23,7 +23,7 @@ export default async function RendezVousPage({
   const supabase = await createClient();
 
   const selectRdv =
-    "*, prestations(nom), salaries!rendez_vous_salarie_id_fkey(nom, couleur), clients(nom, telephone), rendez_vous_participants(salarie_id, salaries(nom, couleur))";
+    "*, prestations(nom), salaries!rendez_vous_salarie_id_fkey(nom, couleur), clients(nom, telephone), rendez_vous_participants(salarie_id, salaries(nom, couleur)), photos_intervention(id)";
   let query = supabase
     .from("rendez_vous")
     .select(selectRdv)

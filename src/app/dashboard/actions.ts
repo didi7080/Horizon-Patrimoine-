@@ -109,6 +109,107 @@ export async function retirerParticipantRdv(rdvId: string, salarieId: string): P
   }
 }
 
+// --- Photos d'intervention ---------------------------------------------------
+
+const BUCKET_PHOTOS = "photos-interventions";
+
+export async function ajouterPhotoIntervention(
+  rdvId: string,
+  type: "avant" | "apres",
+  formData: FormData,
+): Promise<Resultat> {
+  const { entreprise, userId } = await getEntrepriseContext();
+  try {
+    const fichier = formData.get("photo");
+    if (!(fichier instanceof File) || fichier.size === 0) throw new Error("Aucune photo fournie.");
+    if (fichier.size > 8 * 1024 * 1024) throw new Error("La photo est trop volumineuse (8 Mo maximum).");
+
+    const admin = createAdminClient();
+    if (!admin) throw new Error("La connexion à la base de données n'est pas configurée.");
+
+    const { data: rdv } = await admin.from("rendez_vous").select("id").eq("id", rdvId).eq("entreprise_id", entreprise.id).maybeSingle();
+    if (!rdv) throw new Error("Rendez-vous introuvable.");
+
+    const extension = fichier.name.split(".").pop()?.toLowerCase() || "jpg";
+    const chemin = `${entreprise.id}/${rdvId}/${crypto.randomUUID()}.${extension}`;
+    const { error: erreurUpload } = await admin.storage
+      .from(BUCKET_PHOTOS)
+      .upload(chemin, fichier, { contentType: fichier.type || undefined });
+    if (erreurUpload) throw new Error("Impossible d'envoyer la photo : " + erreurUpload.message);
+
+    const { error } = await admin.from("photos_intervention").insert({
+      entreprise_id: entreprise.id,
+      rendez_vous_id: rdvId,
+      type,
+      chemin_stockage: chemin,
+      created_by: userId,
+    });
+    if (error) throw new Error(error.message);
+
+    revalidatePath("/dashboard/rendez-vous");
+    revalidatePath("/dashboard/ma-journee");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+export async function supprimerPhotoIntervention(photoId: string): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { data: photo, error: erreurLecture } = await supabase
+      .from("photos_intervention")
+      .select("chemin_stockage")
+      .eq("id", photoId)
+      .maybeSingle();
+    if (erreurLecture) throw new Error(erreurLecture.message);
+    if (!photo) throw new Error("Photo introuvable.");
+
+    const { error } = await supabase.from("photos_intervention").delete().eq("id", photoId);
+    if (error) throw new Error(error.message);
+
+    const admin = createAdminClient();
+    if (admin) await admin.storage.from(BUCKET_PHOTOS).remove([photo.chemin_stockage]);
+
+    revalidatePath("/dashboard/rendez-vous");
+    revalidatePath("/dashboard/ma-journee");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+export async function urlPhotoIntervention(chemin: string): Promise<string | null> {
+  const admin = createAdminClient();
+  if (!admin) return null;
+  const { data, error } = await admin.storage.from(BUCKET_PHOTOS).createSignedUrl(chemin, 300);
+  if (error) return null;
+  return data.signedUrl;
+}
+
+export type PhotoAffichee = { id: string; type: "avant" | "apres"; url: string };
+
+export async function listerPhotosIntervention(rdvId: string): Promise<PhotoAffichee[]> {
+  const supabase = await createClient();
+  const { data: photos } = await supabase
+    .from("photos_intervention")
+    .select("id, type, chemin_stockage")
+    .eq("rendez_vous_id", rdvId)
+    .order("created_at");
+  if (!photos || photos.length === 0) return [];
+
+  const admin = createAdminClient();
+  if (!admin) return [];
+
+  const resultats = await Promise.all(
+    photos.map(async (p) => {
+      const { data } = await admin.storage.from(BUCKET_PHOTOS).createSignedUrl(p.chemin_stockage, 300);
+      return data?.signedUrl ? { id: p.id, type: p.type as "avant" | "apres", url: data.signedUrl } : null;
+    }),
+  );
+  return resultats.filter((p): p is PhotoAffichee => p !== null);
+}
+
 // --- Google Calendar -------------------------------------------------------
 
 export async function deconnecterGoogleCalendar(salarieId: string): Promise<Resultat> {

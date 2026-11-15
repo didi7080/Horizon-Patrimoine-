@@ -897,6 +897,51 @@ export type Database = {
           },
         ]
       }
+      photos_intervention: {
+        Row: {
+          chemin_stockage: string
+          created_at: string
+          created_by: string | null
+          entreprise_id: string
+          id: string
+          rendez_vous_id: string
+          type: string
+        }
+        Insert: {
+          chemin_stockage: string
+          created_at?: string
+          created_by?: string | null
+          entreprise_id: string
+          id?: string
+          rendez_vous_id: string
+          type?: string
+        }
+        Update: {
+          chemin_stockage?: string
+          created_at?: string
+          created_by?: string | null
+          entreprise_id?: string
+          id?: string
+          rendez_vous_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photos_intervention_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photos_intervention_rendez_vous_id_fkey"
+            columns: ["rendez_vous_id"]
+            isOneToOne: false
+            referencedRelation: "rendez_vous"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prestation_salaries: {
         Row: {
           prestation_id: string
