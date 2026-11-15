@@ -63,7 +63,10 @@ export type Intervalle = "mois" | "annee";
 export const REDUCTION_ANNUELLE_POURCENT = 17;
 
 function idPrixEnv(nomBase: string, intervalle: Intervalle): string | undefined {
-  return process.env[intervalle === "annee" ? `${nomBase}_ANNUEL` : nomBase];
+  // .trim() car un copier-coller depuis un tableau ajoute parfois une tabulation
+  // ou un espace en fin de valeur, que Stripe rejette silencieusement (caractère
+  // de contrôle interdit dans l'URL) lors de la récupération du prix.
+  return process.env[intervalle === "annee" ? `${nomBase}_ANNUEL` : nomBase]?.trim() || undefined;
 }
 
 /**
