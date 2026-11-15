@@ -22,11 +22,19 @@ export default async function RendezVousPage({
   const { entreprise } = await getEntrepriseContext();
   const supabase = await createClient();
 
-  const selectRdv = "*, prestations(nom), salaries(nom, couleur), clients(nom, telephone)";
+  const selectRdv =
+    "*, prestations(nom), salaries(nom, couleur), clients(nom, telephone), rendez_vous_participants(salarie_id, salaries(nom, couleur))";
   let query = supabase
     .from("rendez_vous")
     .select(selectRdv)
     .eq("entreprise_id", entreprise.id);
+
+  const { data: salariesEquipe } = await supabase
+    .from("salaries")
+    .select("id, nom, couleur")
+    .eq("entreprise_id", entreprise.id)
+    .eq("actif", true)
+    .order("nom");
 
   const maintenant = new Date().toISOString();
 
@@ -81,7 +89,7 @@ export default async function RendezVousPage({
               <h2 className="mb-2 text-sm font-semibold capitalize text-muted-foreground">{date}</h2>
               <div className="space-y-2">
                 {rdvsDuJour.map((rdv) => (
-                  <RdvRow key={rdv.id} rdv={rdv} />
+                  <RdvRow key={rdv.id} rdv={rdv} salariesEquipe={salariesEquipe ?? []} />
                 ))}
               </div>
             </section>

@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { calculerTotaux, type LigneDocument } from "@/lib/documents/types";
 import { calculerBilanMensuel, bornesMois, moisCourant, libelleMois } from "@/lib/bilan/types";
 import { creerDocument, enregistrerLignesDocument, changerStatutDocument, convertirDevisEnFacture } from "@/app/dashboard/documents/actions";
-import { synchroniserRdvGoogle } from "@/lib/google-calendar/sync";
+import { synchroniserRdvGoogle, synchroniserRdvEtParticipantsGoogle, synchroniserParticipantGoogle } from "@/lib/google-calendar/sync";
 import { emailConfigure, envoyerEmail } from "@/lib/email/client";
 import { evaluerFormule, ErreurFormule } from "@/lib/calculs/evaluateur";
 import type { Champ, Formule, DonneesEtude } from "@/lib/calculs/types";
@@ -219,6 +219,31 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
         nouveau_statut: { type: "string", enum: ["confirme", "annule", "honore", "absent"] },
       },
       required: ["rendez_vous_id", "nouveau_statut"],
+    },
+  },
+  {
+    name: "ajouter_participant_rdv",
+    description:
+      "Ajoute un collègue en renfort sur un rendez-vous déjà existant (en plus du salarié déjà assigné), par exemple quand une intervention nécessite d'être à deux. Vérifie que ce collègue est disponible sur ce créneau avant de l'ajouter. Nécessite l'identifiant exact du rendez-vous, obtenu via lister_rendez_vous.",
+    input_schema: {
+      type: "object",
+      properties: {
+        rendez_vous_id: { type: "string" },
+        salarie_nom: { type: "string", description: "Nom du collègue à ajouter en renfort." },
+      },
+      required: ["rendez_vous_id", "salarie_nom"],
+    },
+  },
+  {
+    name: "retirer_participant_rdv",
+    description: "Retire un collègue précédemment ajouté en renfort sur un rendez-vous. N'affecte pas le salarié principal du rendez-vous.",
+    input_schema: {
+      type: "object",
+      properties: {
+        rendez_vous_id: { type: "string" },
+        salarie_nom: { type: "string", description: "Nom du collègue à retirer." },
+      },
+      required: ["rendez_vous_id", "salarie_nom"],
     },
   },
   {
@@ -1080,8 +1105,86 @@ async function outilModifierStatutRendezVous(ctx: ContexteOutils, input: { rende
     .select("id");
   if (error) return { erreur: error.message };
   if (!data || data.length === 0) return { erreur: "Rendez-vous introuvable." };
-  await synchroniserRdvGoogle(input.rendez_vous_id);
+  await synchroniserRdvEtParticipantsGoogle(input.rendez_vous_id);
   return { modifie: true, lien: "/dashboard/rendez-vous" };
+}
+
+async function outilAjouterParticipantRdv(ctx: ContexteOutils, input: { rendez_vous_id: string; salarie_nom: string }) {
+  if (!input.rendez_vous_id) return { erreur: "L'identifiant du rendez-vous est requis." };
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+
+  const { data: rdv, error } = await admin
+    .from("rendez_vous")
+    .select("debut, fin, salarie_id")
+    .eq("id", input.rendez_vous_id)
+    .eq("entreprise_id", ctx.entrepriseId)
+    .maybeSingle();
+  if (error) return { erreur: error.message };
+  if (!rdv) return { erreur: "Rendez-vous introuvable." };
+
+  const resolution = await resoudreSalarie(admin, ctx.entrepriseId, input.salarie_nom);
+  if (estErreurResolution(resolution)) return resolution;
+  const salarieId = resolution.id;
+  if (salarieId === rdv.salarie_id) return { erreur: "Ce salarié est déjà le salarié principal de ce rendez-vous." };
+
+  const debut = new Date(rdv.debut).getTime();
+  const fin = new Date(rdv.fin).getTime();
+  const { data: entrepriseRow } = await admin.from("entreprises").select("battement_min").eq("id", ctx.entrepriseId).maybeSingle();
+  const battementMs = (entrepriseRow?.battement_min ?? 0) * 60_000;
+
+  const [{ data: rdvsPrincipal }, { data: rdvsParticipant }, { data: absences }] = await Promise.all([
+    admin.from("rendez_vous").select("debut, fin").eq("salarie_id", salarieId).in("statut", ["confirme", "demande"]),
+    admin.from("rendez_vous_participants").select("rendez_vous:rendez_vous_id(debut, fin, statut)").eq("salarie_id", salarieId),
+    admin.from("absences").select("debut, fin").eq("salarie_id", salarieId),
+  ]);
+
+  const chevauche = (d: string, f: string) => new Date(d).getTime() - battementMs < fin && new Date(f).getTime() + battementMs > debut;
+  const conflitRdv = (rdvsPrincipal ?? []).some((r) => chevauche(r.debut, r.fin));
+  const conflitParticipation = (rdvsParticipant ?? []).some((p) => {
+    const autre = p.rendez_vous as unknown as { debut: string; fin: string; statut: string } | null;
+    return Boolean(autre) && ["confirme", "demande"].includes(autre!.statut) && chevauche(autre!.debut, autre!.fin);
+  });
+  const conflitAbsence = (absences ?? []).some((a) => new Date(a.debut).getTime() < fin && new Date(a.fin).getTime() > debut);
+  if (conflitRdv || conflitParticipation) return { erreur: "Ce collègue a déjà un rendez-vous sur ce créneau." };
+  if (conflitAbsence) return { erreur: "Ce collègue est marqué absent sur ce créneau." };
+
+  const { error: erreurInsert } = await admin
+    .from("rendez_vous_participants")
+    .upsert({ rendez_vous_id: input.rendez_vous_id, salarie_id: salarieId }, { onConflict: "rendez_vous_id,salarie_id" });
+  if (erreurInsert) return { erreur: erreurInsert.message };
+
+  await synchroniserParticipantGoogle(input.rendez_vous_id, salarieId);
+  return { ajoute: true, lien: "/dashboard/rendez-vous" };
+}
+
+async function outilRetirerParticipantRdv(ctx: ContexteOutils, input: { rendez_vous_id: string; salarie_nom: string }) {
+  if (!input.rendez_vous_id) return { erreur: "L'identifiant du rendez-vous est requis." };
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+
+  const { data: rdv, error } = await admin
+    .from("rendez_vous")
+    .select("id")
+    .eq("id", input.rendez_vous_id)
+    .eq("entreprise_id", ctx.entrepriseId)
+    .maybeSingle();
+  if (error) return { erreur: error.message };
+  if (!rdv) return { erreur: "Rendez-vous introuvable." };
+
+  const resolution = await resoudreSalarie(admin, ctx.entrepriseId, input.salarie_nom);
+  if (estErreurResolution(resolution)) return resolution;
+
+  const { error: erreurDelete, count } = await admin
+    .from("rendez_vous_participants")
+    .delete({ count: "exact" })
+    .eq("rendez_vous_id", input.rendez_vous_id)
+    .eq("salarie_id", resolution.id);
+  if (erreurDelete) return { erreur: erreurDelete.message };
+  if (!count) return { erreur: "Ce collègue n'était pas ajouté en renfort sur ce rendez-vous." };
+
+  await synchroniserParticipantGoogle(input.rendez_vous_id, resolution.id, true);
+  return { retire: true, lien: "/dashboard/rendez-vous" };
 }
 
 async function outilAjouterAbsence(
@@ -1330,6 +1433,10 @@ export async function executerOutil(ctx: ContexteOutils, nom: string, input: unk
       return outilListerRendezVous(ctx, entree as Parameters<typeof outilListerRendezVous>[1]);
     case "modifier_statut_rendez_vous":
       return outilModifierStatutRendezVous(ctx, entree as Parameters<typeof outilModifierStatutRendezVous>[1]);
+    case "ajouter_participant_rdv":
+      return outilAjouterParticipantRdv(ctx, entree as Parameters<typeof outilAjouterParticipantRdv>[1]);
+    case "retirer_participant_rdv":
+      return outilRetirerParticipantRdv(ctx, entree as Parameters<typeof outilRetirerParticipantRdv>[1]);
     case "ajouter_absence":
       return outilAjouterAbsence(ctx, entree as Parameters<typeof outilAjouterAbsence>[1]);
     case "lister_salaries":

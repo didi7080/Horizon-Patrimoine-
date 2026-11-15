@@ -1114,6 +1114,42 @@ export type Database = {
           },
         ]
       }
+      rendez_vous_participants: {
+        Row: {
+          created_at: string
+          google_event_id: string | null
+          rendez_vous_id: string
+          salarie_id: string
+        }
+        Insert: {
+          created_at?: string
+          google_event_id?: string | null
+          rendez_vous_id: string
+          salarie_id: string
+        }
+        Update: {
+          created_at?: string
+          google_event_id?: string | null
+          rendez_vous_id?: string
+          salarie_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rendez_vous_participants_rendez_vous_id_fkey"
+            columns: ["rendez_vous_id"]
+            isOneToOne: false
+            referencedRelation: "rendez_vous"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rendez_vous_participants_salarie_id_fkey"
+            columns: ["salarie_id"]
+            isOneToOne: false
+            referencedRelation: "salaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salaries: {
         Row: {
           actif: boolean

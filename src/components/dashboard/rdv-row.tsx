@@ -2,6 +2,7 @@ import { Check, X, MapPin, Phone } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatutBadge } from "@/components/statut-badge";
+import { ParticipantsRdv } from "@/components/dashboard/participants-rdv";
 import { formatHeure, formatDateCourte } from "@/lib/utils";
 import { validerDemande, changerStatutRdv } from "@/app/dashboard/actions";
 import type { Tables } from "@/lib/types/database";
@@ -10,9 +11,20 @@ export type RdvAvecRelations = Tables<"rendez_vous"> & {
   prestations: Pick<Tables<"prestations">, "nom"> | null;
   salaries: Pick<Tables<"salaries">, "nom" | "couleur"> | null;
   clients: Pick<Tables<"clients">, "nom" | "telephone"> | null;
+  rendez_vous_participants: { salarie_id: string; salaries: Pick<Tables<"salaries">, "nom" | "couleur"> | null }[];
 };
 
-export function RdvRow({ rdv, showDate = false }: { rdv: RdvAvecRelations; showDate?: boolean }) {
+type Salarie = { id: string; nom: string; couleur?: string | null };
+
+export function RdvRow({
+  rdv,
+  showDate = false,
+  salariesEquipe = [],
+}: {
+  rdv: RdvAvecRelations;
+  showDate?: boolean;
+  salariesEquipe?: Salarie[];
+}) {
   const enAttente = rdv.statut === "demande";
   const passe = new Date(rdv.debut) < new Date();
 
@@ -42,6 +54,15 @@ export function RdvRow({ rdv, showDate = false }: { rdv: RdvAvecRelations; showD
               </span>
             )}
           </div>
+          {rdv.statut !== "annule" && (
+            <ParticipantsRdv
+              rdvId={rdv.id}
+              participants={rdv.rendez_vous_participants.flatMap((p) =>
+                p.salaries ? [{ id: p.salarie_id, nom: p.salaries.nom, couleur: p.salaries.couleur }] : [],
+              )}
+              salariesDisponibles={salariesEquipe.filter((s) => s.id !== rdv.salarie_id)}
+            />
+          )}
         </div>
       </div>
 

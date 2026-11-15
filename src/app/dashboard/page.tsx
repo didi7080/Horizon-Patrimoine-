@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   finJour.setHours(23, 59, 59, 999);
 
   const selectRdv =
-    "*, prestations(nom), salaries(nom, couleur), clients(nom, telephone)";
+    "*, prestations(nom), salaries(nom, couleur), clients(nom, telephone), rendez_vous_participants(salarie_id, salaries(nom, couleur))";
 
   const admin = createAdminClient();
 

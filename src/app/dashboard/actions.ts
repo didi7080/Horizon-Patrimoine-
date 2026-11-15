@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
-import { synchroniserRdvGoogle } from "@/lib/google-calendar/sync";
+import { synchroniserRdvEtParticipantsGoogle, synchroniserParticipantGoogle } from "@/lib/google-calendar/sync";
 
 // --- Rendez-vous ---------------------------------------------------------
 
@@ -15,7 +15,7 @@ export async function validerDemande(rdvId: string, accepter: boolean): Promise<
     const supabase = await createClient();
     const { error } = await supabase.rpc("valider_demande_rdv", { p_rdv: rdvId, p_accepter: accepter });
     if (error) throw new Error(error.message);
-    if (accepter) await synchroniserRdvGoogle(rdvId);
+    if (accepter) await synchroniserRdvEtParticipantsGoogle(rdvId);
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/rendez-vous");
     return { ok: true };
@@ -32,8 +32,76 @@ export async function changerStatutRdv(
     const supabase = await createClient();
     const { error } = await supabase.from("rendez_vous").update({ statut }).eq("id", rdvId);
     if (error) throw new Error(error.message);
-    await synchroniserRdvGoogle(rdvId);
+    await synchroniserRdvEtParticipantsGoogle(rdvId);
     revalidatePath("/dashboard");
+    revalidatePath("/dashboard/rendez-vous");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+export async function ajouterParticipantRdv(rdvId: string, salarieId: string): Promise<Resultat> {
+  const { entreprise } = await getEntrepriseContext();
+  try {
+    const supabase = await createClient();
+    const { data: rdv, error: erreurRdv } = await supabase
+      .from("rendez_vous")
+      .select("debut, fin")
+      .eq("id", rdvId)
+      .eq("entreprise_id", entreprise.id)
+      .maybeSingle();
+    if (erreurRdv) throw new Error(erreurRdv.message);
+    if (!rdv) throw new Error("Rendez-vous introuvable.");
+
+    const debut = new Date(rdv.debut).getTime();
+    const fin = new Date(rdv.fin).getTime();
+    const battementMs = entreprise.battement_min * 60_000;
+
+    const [{ data: rdvsPrincipal }, { data: rdvsParticipant }, { data: absences }] = await Promise.all([
+      supabase.from("rendez_vous").select("debut, fin").eq("salarie_id", salarieId).in("statut", ["confirme", "demande"]),
+      supabase
+        .from("rendez_vous_participants")
+        .select("rendez_vous:rendez_vous_id(debut, fin, statut)")
+        .eq("salarie_id", salarieId),
+      supabase.from("absences").select("debut, fin").eq("salarie_id", salarieId),
+    ]);
+
+    const chevauche = (debutAutre: string, finAutre: string) =>
+      new Date(debutAutre).getTime() - battementMs < fin && new Date(finAutre).getTime() + battementMs > debut;
+
+    const conflitRdv = (rdvsPrincipal ?? []).some((r) => chevauche(r.debut, r.fin));
+    const conflitParticipation = (rdvsParticipant ?? []).some((p) => {
+      const autre = p.rendez_vous as unknown as { debut: string; fin: string; statut: string } | null;
+      return autre && ["confirme", "demande"].includes(autre.statut) && chevauche(autre.debut, autre.fin);
+    });
+    const conflitAbsence = (absences ?? []).some((a) => new Date(a.debut).getTime() < fin && new Date(a.fin).getTime() > debut);
+
+    if (conflitRdv || conflitParticipation) throw new Error("Ce collègue a déjà un rendez-vous sur ce créneau.");
+    if (conflitAbsence) throw new Error("Ce collègue est marqué absent sur ce créneau.");
+
+    const { error } = await supabase.from("rendez_vous_participants").insert({ rendez_vous_id: rdvId, salarie_id: salarieId });
+    if (error) throw new Error(error.message);
+
+    await synchroniserParticipantGoogle(rdvId, salarieId);
+    revalidatePath("/dashboard/rendez-vous");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+export async function retirerParticipantRdv(rdvId: string, salarieId: string): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("rendez_vous_participants")
+      .delete()
+      .eq("rendez_vous_id", rdvId)
+      .eq("salarie_id", salarieId);
+    if (error) throw new Error(error.message);
+
+    await synchroniserParticipantGoogle(rdvId, salarieId, true);
     revalidatePath("/dashboard/rendez-vous");
     return { ok: true };
   } catch (err) {
