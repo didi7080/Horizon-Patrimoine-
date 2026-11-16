@@ -63,8 +63,9 @@ export function NotificationsPush() {
       }
       setEtat("actif");
       toast.success("Notifications activées sur cet appareil.");
-    } catch {
-      toast.error("Impossible d'activer les notifications sur cet appareil.");
+    } catch (err) {
+      const detail = err instanceof Error ? `${err.name} : ${err.message}` : String(err);
+      toast.error(`Impossible d'activer les notifications : ${detail}`, { duration: 15000 });
     } finally {
       setPending(false);
     }
