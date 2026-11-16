@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, BellOff, Loader2 } from "lucide-react";
+import { Bell, BellOff, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { enregistrerAbonnementPush, supprimerAbonnementPush } from "@/app/dashboard/actions";
+import { enregistrerAbonnementPush, supprimerAbonnementPush, envoyerNotificationTestPush } from "@/app/dashboard/actions";
 
 function urlBase64VersUint8Array(base64: string): Uint8Array {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -20,6 +20,7 @@ type Etat = "verification" | "non_supporte" | "inactif" | "actif";
 export function NotificationsPush() {
   const [etat, setEtat] = useState<Etat>("verification");
   const [pending, setPending] = useState(false);
+  const [testEnvoi, setTestEnvoi] = useState(false);
 
   useEffect(() => {
     let annule = false;
@@ -71,6 +72,17 @@ export function NotificationsPush() {
     }
   }
 
+  async function envoyerTest() {
+    setTestEnvoi(true);
+    try {
+      const resultat = await envoyerNotificationTestPush();
+      if (!resultat.ok) toast.error(resultat.erreur);
+      else toast.success("Notification de test envoyée.");
+    } finally {
+      setTestEnvoi(false);
+    }
+  }
+
   async function desactiver() {
     setPending(true);
     try {
@@ -94,10 +106,16 @@ export function NotificationsPush() {
   }
 
   return etat === "actif" ? (
-    <Button type="button" size="sm" variant="outline" disabled={pending} onClick={desactiver}>
-      {pending ? <Loader2 className="size-3.5 animate-spin" /> : <BellOff className="size-3.5" />}
-      Désactiver sur cet appareil
-    </Button>
+    <div className="flex flex-wrap gap-2">
+      <Button type="button" size="sm" variant="outline" disabled={testEnvoi} onClick={envoyerTest}>
+        {testEnvoi ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+        Envoyer un test
+      </Button>
+      <Button type="button" size="sm" variant="outline" disabled={pending} onClick={desactiver}>
+        {pending ? <Loader2 className="size-3.5 animate-spin" /> : <BellOff className="size-3.5" />}
+        Désactiver sur cet appareil
+      </Button>
+    </div>
   ) : (
     <Button type="button" size="sm" disabled={pending} onClick={activer}>
       {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Bell className="size-3.5" />}

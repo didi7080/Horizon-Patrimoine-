@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { synchroniserRdvEtParticipantsGoogle, synchroniserParticipantGoogle } from "@/lib/google-calendar/sync";
+import { envoyerNotificationPush } from "@/lib/push/client";
 
 // --- Rendez-vous ---------------------------------------------------------
 
@@ -523,6 +524,25 @@ export async function supprimerAbonnementPush(endpoint: string): Promise<Resulta
     const supabase = await createClient();
     const { error } = await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
     if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+export async function envoyerNotificationTestPush(): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Non authentifié.");
+
+    await envoyerNotificationPush([user.id], {
+      title: "Test ArtisanRDV",
+      body: "Si vous voyez ceci, les notifications fonctionnent sur cet appareil.",
+      url: "/dashboard/reglages",
+    });
     return { ok: true };
   } catch (err) {
     return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
