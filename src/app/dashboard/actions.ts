@@ -252,6 +252,7 @@ export async function enregistrerPrestation(formData: FormData): Promise<Resulta
         ? null
         : Math.round(Number(acompteEuros) * 100);
     const salarieIds = formData.getAll("salarieIds").map(String);
+    const urgenceActive = formData.get("urgenceActive") === "on";
 
     if (!nom) throw new Error("Le nom de la prestation est requis.");
     if (acompteCents !== null && prixCents !== null && acompteCents > prixCents) {
@@ -262,7 +263,14 @@ export async function enregistrerPrestation(formData: FormData): Promise<Resulta
     if (id) {
       const { error } = await supabase
         .from("prestations")
-        .update({ nom, description: description || null, duree_min: dureeMin, prix_cents: prixCents, acompte_cents: acompteCents })
+        .update({
+          nom,
+          description: description || null,
+          duree_min: dureeMin,
+          prix_cents: prixCents,
+          acompte_cents: acompteCents,
+          urgence_active: urgenceActive,
+        })
         .eq("id", id)
         .eq("entreprise_id", entreprise.id);
       if (error) throw new Error(error.message);
@@ -276,6 +284,7 @@ export async function enregistrerPrestation(formData: FormData): Promise<Resulta
           duree_min: dureeMin,
           prix_cents: prixCents,
           acompte_cents: acompteCents,
+          urgence_active: urgenceActive,
         })
         .select("id")
         .single();
@@ -475,6 +484,45 @@ export async function mettreAJourReglages(formData: FormData): Promise<Resultat>
     if (error) throw new Error(error.message);
     revalidatePath("/dashboard/reglages");
     revalidatePath(`/e/${entreprise.slug}`);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+// --- Notifications push (par appareil) -----------------------------------
+
+export type AbonnementPush = { endpoint: string; keys: { p256dh: string; auth: string } };
+
+export async function enregistrerAbonnementPush(abonnement: AbonnementPush): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Non authentifié.");
+
+    const { error } = await supabase.from("push_subscriptions").upsert(
+      {
+        profile_id: user.id,
+        endpoint: abonnement.endpoint,
+        p256dh: abonnement.keys.p256dh,
+        cle_auth: abonnement.keys.auth,
+      },
+      { onConflict: "profile_id,endpoint" },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+export async function supprimerAbonnementPush(endpoint: string): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    if (error) throw new Error(error.message);
     return { ok: true };
   } catch (err) {
     return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };

@@ -67,3 +67,34 @@ async function cacheSinonReseau(request, nomCache) {
   if (reponse && reponse.ok) cache.put(request, reponse.clone());
   return reponse;
 }
+
+self.addEventListener("push", (event) => {
+  let donnees = { title: "ArtisanRDV", body: "Nouvelle notification." };
+  try {
+    if (event.data) donnees = { ...donnees, ...event.data.json() };
+  } catch {
+    // Charge utile non-JSON : on garde le message par défaut.
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(donnees.title, {
+      body: donnees.body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url: donnees.url || "/dashboard" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/dashboard";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window" }).then((clients) => {
+      for (const client of clients) {
+        if (client.url.includes(url) && "focus" in client) return client.focus();
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
+});

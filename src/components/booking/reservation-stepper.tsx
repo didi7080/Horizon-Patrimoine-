@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -106,7 +107,10 @@ export function ReservationStepper({
       {/* Récap prestation */}
       <Card className="mt-4 flex items-center justify-between gap-3 p-4">
         <div>
-          <p className="font-medium text-foreground">{prestation.nom}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-foreground">{prestation.nom}</p>
+            {prestation.urgence_active && <Badge variant="danger">🚨 Urgence</Badge>}
+          </div>
           <p className="text-sm text-muted">
             {formatDuree(prestation.duree_min)} · chez {entreprise.nom}
           </p>

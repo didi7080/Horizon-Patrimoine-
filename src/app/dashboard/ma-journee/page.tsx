@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MapPin, Phone } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatutBadge } from "@/components/statut-badge";
 import { PhotosIntervention } from "@/components/dashboard/photos-intervention";
@@ -16,7 +17,7 @@ import type { Tables } from "@/lib/types/database";
 export const revalidate = 0;
 
 type RdvJournee = Pick<Tables<"rendez_vous">, "id" | "debut" | "fin" | "statut" | "notes" | "adresse_client"> & {
-  prestations: Pick<Tables<"prestations">, "nom"> | null;
+  prestations: Pick<Tables<"prestations">, "nom" | "urgence_active"> | null;
   salaries: Pick<Tables<"salaries">, "nom" | "couleur"> | null;
   clients: Pick<Tables<"clients">, "nom" | "telephone"> | null;
   photos_intervention: { id: string }[];
@@ -41,7 +42,7 @@ export default async function MaJourneePage() {
   const debutIso = parisVersIso(aujourdhui, "00:00");
   const finIso = parisVersIso(aujourdhui, "23:59");
   const selectRdv =
-    "id, debut, fin, statut, notes, adresse_client, prestations(nom), salaries!rendez_vous_salarie_id_fkey(nom, couleur), clients(nom, telephone), photos_intervention(id)";
+    "id, debut, fin, statut, notes, adresse_client, prestations(nom, urgence_active), salaries!rendez_vous_salarie_id_fkey(nom, couleur), clients(nom, telephone), photos_intervention(id)";
 
   let rdvs: RdvJournee[];
   if (monSalarie) {
@@ -108,7 +109,10 @@ export default async function MaJourneePage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-lg font-semibold text-foreground">{formatHeure(rdv.debut)}</p>
-                    <p className="font-medium text-foreground">{rdv.prestations?.nom ?? "Rendez-vous"}</p>
+                    <p className="flex items-center gap-2 font-medium text-foreground">
+                      <span>{rdv.prestations?.nom ?? "Rendez-vous"}</span>
+                      {rdv.prestations?.urgence_active && <Badge variant="danger">🚨 Urgence</Badge>}
+                    </p>
                     <p className="text-muted">{rdv.clients?.nom ?? "Client"}</p>
                     {!monSalarie && rdv.salaries?.nom && (
                       <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">

@@ -52,6 +52,7 @@ export default async function PrestationsPage() {
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-foreground">{p.nom}</p>
                   {!p.actif && <Badge variant="neutral">Masquée</Badge>}
+                  {p.urgence_active && <Badge variant="danger">🚨 Urgence</Badge>}
                 </div>
                 <p className="text-sm text-muted">
                   {formatDuree(p.duree_min)} · {formatPrix(p.prix_cents)}

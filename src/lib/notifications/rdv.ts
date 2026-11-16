@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emailConfigure, envoyerEmail } from "@/lib/email/client";
+import { envoyerNotificationPush } from "@/lib/push/client";
 import { baseUrl } from "@/lib/widget";
 
 type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
@@ -20,16 +21,15 @@ function labelDateHeure(iso: string): string {
   }).format(new Date(iso));
 }
 
-/** Prévient l'artisan (propriétaire + salarié concerné s'il a son propre accès) d'un nouveau rendez-vous public. */
+/** Prévient l'artisan (propriétaire + salarié concerné, ou toute l'équipe si urgence) d'un nouveau rendez-vous public. */
 export async function notifierNouveauRdv(rdvId: string): Promise<void> {
-  if (!emailConfigure()) return;
   const admin = createAdminClient();
   if (!admin) return;
 
   const { data: rdv } = await admin
     .from("rendez_vous")
     .select(
-      "debut, statut, adresse_client, entreprise:entreprises(id, nom), salarie:salaries!rendez_vous_salarie_id_fkey(nom, profile_id), prestation:prestations(nom), client:clients(nom, telephone)",
+      "debut, statut, adresse_client, entreprise:entreprises(id, nom), salarie:salaries!rendez_vous_salarie_id_fkey(nom, profile_id), prestation:prestations(nom, urgence_active), client:clients(nom, telephone)",
     )
     .eq("id", rdvId)
     .maybeSingle();
@@ -37,32 +37,34 @@ export async function notifierNouveauRdv(rdvId: string): Promise<void> {
 
   const entreprise = rdv.entreprise as unknown as { id: string; nom: string } | null;
   const salarie = rdv.salarie as unknown as { nom: string; profile_id: string | null } | null;
-  const prestation = rdv.prestation as unknown as { nom: string } | null;
+  const prestation = rdv.prestation as unknown as { nom: string; urgence_active: boolean } | null;
   const client = rdv.client as unknown as { nom: string; telephone: string | null } | null;
   if (!entreprise) return;
 
-  const { data: owner } = await admin
-    .from("memberships")
-    .select("profile_id")
-    .eq("entreprise_id", entreprise.id)
-    .eq("role", "owner")
-    .limit(1)
-    .maybeSingle();
+  const urgence = prestation?.urgence_active ?? false;
 
-  const destinataires = new Set<string>();
-  if (owner?.profile_id) {
-    const email = await emailParProfileId(admin, owner.profile_id);
-    if (email) destinataires.add(email);
+  let profileIds: string[];
+  if (urgence) {
+    const { data: membres } = await admin.from("memberships").select("profile_id").eq("entreprise_id", entreprise.id);
+    profileIds = (membres ?? []).map((m) => m.profile_id);
+  } else {
+    const { data: owner } = await admin
+      .from("memberships")
+      .select("profile_id")
+      .eq("entreprise_id", entreprise.id)
+      .eq("role", "owner")
+      .limit(1)
+      .maybeSingle();
+    profileIds = [...(owner?.profile_id ? [owner.profile_id] : []), ...(salarie?.profile_id ? [salarie.profile_id] : [])];
   }
-  if (salarie?.profile_id) {
-    const email = await emailParProfileId(admin, salarie.profile_id);
-    if (email) destinataires.add(email);
-  }
-  if (destinataires.size === 0) return;
+  profileIds = [...new Set(profileIds)];
+  if (profileIds.length === 0) return;
 
   const demandeValidation = rdv.statut === "demande";
-  const sujet = `${demandeValidation ? "Nouvelle demande de rendez-vous" : "Nouveau rendez-vous confirmé"} — ${entreprise.nom}`;
+  const prefixeUrgence = urgence ? "🚨 URGENCE — " : "";
+  const sujet = `${prefixeUrgence}${demandeValidation ? "Nouvelle demande de rendez-vous" : "Nouveau rendez-vous confirmé"} — ${entreprise.nom}`;
   const message = [
+    ...(urgence ? ["Intervention d'urgence / dépannage.", ""] : []),
     client?.nom ? `Client : ${client.nom}${client.telephone ? ` (${client.telephone})` : ""}` : "Client : non renseigné",
     `Prestation : ${prestation?.nom ?? "non renseignée"}`,
     `Avec : ${salarie?.nom ?? "non assigné"}`,
@@ -74,8 +76,19 @@ export async function notifierNouveauRdv(rdvId: string): Promise<void> {
       : "Ce rendez-vous est automatiquement confirmé.",
   ].join("\n");
 
-  for (const email of destinataires) {
-    await envoyerEmail({ to: email, subject: sujet, text: message });
+  if (emailConfigure()) {
+    for (const profileId of profileIds) {
+      const email = await emailParProfileId(admin, profileId);
+      if (email) await envoyerEmail({ to: email, subject: sujet, text: message });
+    }
+  }
+
+  if (urgence) {
+    await envoyerNotificationPush(profileIds, {
+      title: `🚨 Urgence — ${client?.nom ?? "nouveau client"}`,
+      body: `${prestation?.nom ?? "Intervention"} · ${labelDateHeure(rdv.debut)}`,
+      url: "/dashboard/rendez-vous",
+    });
   }
 }
 

@@ -985,6 +985,7 @@ export type Database = {
           nom: string
           prix_cents: number | null
           relance_jours: number | null
+          urgence_active: boolean
         }
         Insert: {
           acompte_cents?: number | null
@@ -998,6 +999,7 @@ export type Database = {
           nom: string
           prix_cents?: number | null
           relance_jours?: number | null
+          urgence_active?: boolean
         }
         Update: {
           acompte_cents?: number | null
@@ -1011,6 +1013,7 @@ export type Database = {
           nom?: string
           prix_cents?: number | null
           relance_jours?: number | null
+          urgence_active?: boolean
         }
         Relationships: [
           {
@@ -1106,6 +1109,41 @@ export type Database = {
           phone?: string | null
         }
         Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          cle_auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          profile_id: string
+        }
+        Insert: {
+          cle_auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          profile_id: string
+        }
+        Update: {
+          cle_auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rate_limits: {
         Row: {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Clock3, ArrowRight, ShieldCheck } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDuree, formatPrix } from "@/lib/utils";
 import type { Tables } from "@/lib/types/database";
@@ -17,7 +18,15 @@ export function PrestationCard({
   return (
     <Card className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h3 className="font-medium text-foreground">{prestation.nom}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-medium text-foreground">{prestation.nom}</h3>
+          {prestation.urgence_active && <Badge variant="danger">🚨 Urgence</Badge>}
+        </div>
+        {prestation.urgence_active && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Disponible sans délai minimum, y compris en dehors des horaires habituels.
+          </p>
+        )}
         {prestation.description && (
           <p className="mt-1 text-sm text-muted">{prestation.description}</p>
         )}

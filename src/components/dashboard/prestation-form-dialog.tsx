@@ -121,6 +121,22 @@ export function PrestationFormDialog({
               Le client pourra le régler en ligne depuis sa page de suivi de rendez-vous (nécessite Stripe connecté).
             </p>
           </div>
+          <label className="flex items-start gap-2.5 rounded-lg border border-border-strong p-3 has-[:checked]:border-danger has-[:checked]:bg-danger-light/40">
+            <input
+              type="checkbox"
+              name="urgenceActive"
+              defaultChecked={prestation?.urgence_active}
+              className="mt-0.5 accent-danger"
+            />
+            <span>
+              <span className="block font-medium text-foreground">Intervention d&apos;urgence / dépannage</span>
+              <span className="block text-xs text-muted-foreground">
+                Affiche un badge « Urgence » sur la page publique, ignore le délai minimum et les horaires habituels
+                pour cette prestation (seules les disponibilités réelles du salarié sont vérifiées), et déclenche une
+                alerte immédiate à toute l&apos;équipe à chaque réservation.
+              </span>
+            </span>
+          </label>
           {salaries.length > 0 && (
             <div className="space-y-1.5">
               <Label>Réalisée par</Label>

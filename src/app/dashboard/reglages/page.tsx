@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReglagesForm } from "@/components/dashboard/reglages-form";
+import { NotificationsPush } from "@/components/dashboard/notifications-push";
 import { AbonnementBouton } from "@/components/dashboard/abonnement-bouton";
 import { ChoixAbonnement } from "@/components/dashboard/choix-abonnement";
 import { CarteParrainage } from "@/components/dashboard/carte-parrainage";
@@ -105,6 +106,15 @@ export default async function ReglagesPage() {
           )}
         </Card>
       )}
+
+      <Card className="space-y-2 p-5">
+        <p className="text-sm font-medium text-foreground">Notifications sur cet appareil</p>
+        <p className="text-sm text-muted">
+          Recevez une alerte immédiate (ex. intervention d’urgence) même quand le tableau de bord n’est pas ouvert.
+          Propre à ce navigateur/téléphone : à activer sur chaque appareil que vous utilisez.
+        </p>
+        <NotificationsPush />
+      </Card>
 
       <CarteParrainage entrepriseId={entreprise.id} />
 

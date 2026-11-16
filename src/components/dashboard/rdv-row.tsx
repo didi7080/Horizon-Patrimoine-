@@ -1,5 +1,6 @@
 import { Check, X, MapPin, Phone } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatutBadge } from "@/components/statut-badge";
 import { ParticipantsRdv } from "@/components/dashboard/participants-rdv";
@@ -9,7 +10,7 @@ import { validerDemande, changerStatutRdv } from "@/app/dashboard/actions";
 import type { Tables } from "@/lib/types/database";
 
 export type RdvAvecRelations = Tables<"rendez_vous"> & {
-  prestations: Pick<Tables<"prestations">, "nom"> | null;
+  prestations: Pick<Tables<"prestations">, "nom" | "urgence_active"> | null;
   salaries: Pick<Tables<"salaries">, "nom" | "couleur"> | null;
   clients: Pick<Tables<"clients">, "nom" | "telephone"> | null;
   rendez_vous_participants: { salarie_id: string; salaries: Pick<Tables<"salaries">, "nom" | "couleur"> | null }[];
@@ -38,9 +39,12 @@ export function RdvRow({
           style={{ backgroundColor: rdv.salaries?.couleur ?? "#94a3b8" }}
         />
         <div>
-          <p className="font-medium text-foreground">
-            {showDate ? `${formatDateCourte(rdv.debut)} · ` : ""}
-            {formatHeure(rdv.debut)} — {rdv.prestations?.nom ?? "Rendez-vous"}
+          <p className="flex items-center gap-2 font-medium text-foreground">
+            <span>
+              {showDate ? `${formatDateCourte(rdv.debut)} · ` : ""}
+              {formatHeure(rdv.debut)} — {rdv.prestations?.nom ?? "Rendez-vous"}
+            </span>
+            {rdv.prestations?.urgence_active && <Badge variant="danger">🚨 Urgence</Badge>}
           </p>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
             <span>{rdv.clients?.nom ?? "Client"}</span>
