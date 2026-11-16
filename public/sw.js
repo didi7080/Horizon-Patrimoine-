@@ -2,7 +2,7 @@
 // Portée volontairement restreinte : on ne met en cache ni les données
 // sensibles, ni le reste du tableau de bord — seulement ce qu'il faut pour
 // qu'un salarié puisse consulter son planning du jour sans réseau.
-const VERSION = "ardv-offline-v1";
+const VERSION = "ardv-offline-v2";
 const CACHE_PAGES = `${VERSION}-pages`;
 const CACHE_STATIQUE = `${VERSION}-statique`;
 const PAGE_HORS_CONNEXION = "/dashboard/ma-journee";
@@ -31,7 +31,11 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  if (request.mode === "navigate") {
+  // On ne sert depuis le cache que la navigation exacte vers "Ma journée" :
+  // servir cette page en réponse à une AUTRE URL perturbe l'hydratation
+  // côté client de Next.js (le routeur détecte l'écart avec l'URL réelle).
+  // Pour toute autre page, on laisse le comportement réseau normal.
+  if (request.mode === "navigate" && url.pathname === PAGE_HORS_CONNEXION) {
     event.respondWith(gererNavigation(request));
     return;
   }
@@ -42,22 +46,16 @@ self.addEventListener("fetch", (event) => {
 });
 
 async function gererNavigation(request) {
-  const url = new URL(request.url);
   const cache = await caches.open(CACHE_PAGES);
 
   try {
     const reponse = await fetch(request);
-    if (reponse && reponse.ok && url.pathname === PAGE_HORS_CONNEXION) {
-      cache.put(PAGE_HORS_CONNEXION, reponse.clone());
-    }
+    if (reponse && reponse.ok) await cache.put(request, reponse.clone());
     return reponse;
-  } catch {
-    // Hors connexion : on sert en priorité la page exacte demandée si elle a
-    // déjà été mise en cache, sinon on retombe sur "Ma journée" (seule page
-    // conçue pour être lue sans réseau) pour éviter l'écran d'erreur natif.
-    const enCache = (await cache.match(url.pathname)) ?? (await cache.match(PAGE_HORS_CONNEXION));
+  } catch (erreur) {
+    const enCache = await cache.match(request);
     if (enCache) return enCache;
-    throw new Error("hors-connexion-sans-cache");
+    throw erreur;
   }
 }
 
