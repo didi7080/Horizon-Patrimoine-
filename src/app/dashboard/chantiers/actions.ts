@@ -161,6 +161,14 @@ export async function supprimerEtape(etapeId: string, chantierId: string): Promi
   }
 }
 
+export async function lierChantierRdv(chantierId: string, rdvId: string): Promise<Resultat> {
+  return lierRdvChantier(rdvId, chantierId);
+}
+
+export async function lierChantierDocument(chantierId: string, documentId: string): Promise<Resultat> {
+  return lierDocumentChantier(documentId, chantierId);
+}
+
 export async function lierRdvChantier(rdvId: string, chantierId: string | null): Promise<Resultat> {
   try {
     const supabase = await createClient();

@@ -79,7 +79,7 @@ export function RdvRow({
             <ChantierLien
               chantiers={chantiersEquipe}
               chantierActuel={rdv.chantiers}
-              onChange={(chantierId) => lierRdvChantier(rdv.id, chantierId)}
+              onChange={lierRdvChantier.bind(null, rdv.id)}
             />
           )}
         </div>

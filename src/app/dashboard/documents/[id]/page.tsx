@@ -47,7 +47,7 @@ export default async function DocumentPage({ params }: PageProps<"/dashboard/doc
           <ChantierLien
             chantiers={chantiersEquipe}
             chantierActuel={document.chantiers}
-            onChange={(chantierId) => lierDocumentChantier(document.id, chantierId)}
+            onChange={lierDocumentChantier.bind(null, document.id)}
           />
         )}
       </div>

@@ -8,7 +8,7 @@ import { ChantierFormDialog } from "@/components/dashboard/chantiers/chantier-fo
 import { EtapesChantier } from "@/components/dashboard/chantiers/etapes-chantier";
 import { LierExistant } from "@/components/dashboard/chantiers/lier-existant";
 import { StatutChantierBoutons } from "@/components/dashboard/chantiers/statut-chantier-boutons";
-import { lierRdvChantier, lierDocumentChantier } from "@/app/dashboard/chantiers/actions";
+import { lierChantierRdv, lierChantierDocument } from "@/app/dashboard/chantiers/actions";
 import { formatDateCourte, formatHeure, formatPrix } from "@/lib/utils";
 import { calculerTotaux, type LigneDocument } from "@/lib/documents/types";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
@@ -138,7 +138,7 @@ export default async function ChantierPage({ params }: PageProps<"/dashboard/cha
             label: `${formatDateCourte(r.debut)} à ${formatHeure(r.debut)} — ${r.prestations?.nom ?? "Rendez-vous"}`,
           }))}
           placeholder="Lier un rendez-vous existant…"
-          onLier={(rdvId) => lierRdvChantier(rdvId, chantier.id)}
+          onLier={lierChantierRdv.bind(null, chantier.id)}
         />
       </Card>
 
@@ -171,7 +171,7 @@ export default async function ChantierPage({ params }: PageProps<"/dashboard/cha
             label: `${d.numero} (${d.type === "devis" ? "Devis" : "Facture"})`,
           }))}
           placeholder="Lier un devis/facture existant…"
-          onLier={(documentId) => lierDocumentChantier(documentId, chantier.id)}
+          onLier={lierChantierDocument.bind(null, chantier.id)}
         />
       </Card>
     </div>
