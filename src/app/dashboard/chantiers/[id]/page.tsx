@@ -13,6 +13,7 @@ import { formatDateCourte, formatHeure, formatPrix } from "@/lib/utils";
 import { calculerTotaux, type LigneDocument } from "@/lib/documents/types";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const revalidate = 0;
 
@@ -38,37 +39,45 @@ export default async function ChantierPage({ params }: PageProps<"/dashboard/cha
     .maybeSingle();
   if (!chantier) notFound();
 
-  const [{ data: etapes }, { data: rdvLies }, { data: rdvDelies }, { data: documentsLies }, { data: documentsDelies }, { data: clients }] =
-    await Promise.all([
-      supabase.from("etapes_chantier").select("*").eq("chantier_id", id).order("ordre"),
-      supabase
-        .from("rendez_vous")
-        .select("id, debut, statut, prestations(nom)")
-        .eq("chantier_id", id)
-        .order("debut", { ascending: false }),
-      supabase
-        .from("rendez_vous")
-        .select("id, debut, prestations(nom)")
-        .eq("entreprise_id", entreprise.id)
-        .eq("client_id", chantier.client_id)
-        .is("chantier_id", null)
-        .order("debut", { ascending: false })
-        .limit(20),
-      supabase
-        .from("documents")
-        .select("id, numero, type, statut, lignes, date_emission")
-        .eq("chantier_id", id)
-        .order("date_emission", { ascending: false }),
-      supabase
-        .from("documents")
-        .select("id, numero, type, date_emission")
-        .eq("entreprise_id", entreprise.id)
-        .eq("client_id", chantier.client_id)
-        .is("chantier_id", null)
-        .order("date_emission", { ascending: false })
-        .limit(20),
-      supabase.from("clients").select("id, nom").eq("entreprise_id", entreprise.id).order("nom"),
-    ]);
+  const admin = createAdminClient();
+
+  const [{ data: etapes }, { data: rdvLies }, { data: rdvDelies }, { data: clients }] = await Promise.all([
+    supabase.from("etapes_chantier").select("*").eq("chantier_id", id).order("ordre"),
+    supabase
+      .from("rendez_vous")
+      .select("id, debut, statut, prestations(nom)")
+      .eq("chantier_id", id)
+      .order("debut", { ascending: false }),
+    supabase
+      .from("rendez_vous")
+      .select("id, debut, prestations(nom)")
+      .eq("entreprise_id", entreprise.id)
+      .eq("client_id", chantier.client_id)
+      .is("chantier_id", null)
+      .order("debut", { ascending: false })
+      .limit(20),
+    supabase.from("clients").select("id, nom").eq("entreprise_id", entreprise.id).order("nom"),
+  ]);
+
+  // La table `documents` n'a aucune policy RLS pour les utilisateurs authentifiés :
+  // son accès passe toujours par le client admin, comme partout ailleurs dans l'app.
+  const [{ data: documentsLies }, { data: documentsDelies }] = admin
+    ? await Promise.all([
+        admin
+          .from("documents")
+          .select("id, numero, type, statut, lignes, date_emission")
+          .eq("chantier_id", id)
+          .order("date_emission", { ascending: false }),
+        admin
+          .from("documents")
+          .select("id, numero, type, date_emission")
+          .eq("entreprise_id", entreprise.id)
+          .eq("client_id", chantier.client_id)
+          .is("chantier_id", null)
+          .order("date_emission", { ascending: false })
+          .limit(20),
+      ])
+    : [{ data: null }, { data: null }];
 
   return (
     <div className="max-w-3xl space-y-6">

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 
 type Resultat = { ok: true } | { ok: false; erreur: string };
@@ -186,9 +187,17 @@ export async function lierRdvChantier(rdvId: string, chantierId: string | null):
 }
 
 export async function lierDocumentChantier(documentId: string, chantierId: string | null): Promise<Resultat> {
+  const { entreprise } = await getEntrepriseContext();
   try {
-    const supabase = await createClient();
-    const { error } = await supabase.from("documents").update({ chantier_id: chantierId }).eq("id", documentId);
+    // La table `documents` n'a aucune policy RLS pour les utilisateurs authentifiés :
+    // on passe par le client admin, en filtrant nous-mêmes sur l'entreprise appelante.
+    const admin = createAdminClient();
+    if (!admin) throw new Error("Service indisponible.");
+    const { error } = await admin
+      .from("documents")
+      .update({ chantier_id: chantierId })
+      .eq("id", documentId)
+      .eq("entreprise_id", entreprise.id);
     if (error) throw new Error(error.message);
 
     revalidatePath("/dashboard/documents");
