@@ -204,6 +204,63 @@ export type Database = {
           },
         ]
       }
+      chantiers: {
+        Row: {
+          adresse: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          date_debut_prevue: string | null
+          date_fin_prevue: string | null
+          entreprise_id: string
+          id: string
+          notes: string | null
+          statut: Database["public"]["Enums"]["statut_chantier"]
+          titre: string
+        }
+        Insert: {
+          adresse?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          date_debut_prevue?: string | null
+          date_fin_prevue?: string | null
+          entreprise_id: string
+          id?: string
+          notes?: string | null
+          statut?: Database["public"]["Enums"]["statut_chantier"]
+          titre: string
+        }
+        Update: {
+          adresse?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          date_debut_prevue?: string | null
+          date_fin_prevue?: string | null
+          entreprise_id?: string
+          id?: string
+          notes?: string | null
+          statut?: Database["public"]["Enums"]["statut_chantier"]
+          titre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chantiers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chantiers_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           adresse: string | null
@@ -344,6 +401,7 @@ export type Database = {
           client_id: string | null
           client_nom: string
           client_telephone: string | null
+          chantier_id: string | null
           created_at: string
           created_by: string | null
           date_echeance: string | null
@@ -368,6 +426,7 @@ export type Database = {
           client_id?: string | null
           client_nom: string
           client_telephone?: string | null
+          chantier_id?: string | null
           created_at?: string
           created_by?: string | null
           date_echeance?: string | null
@@ -392,6 +451,7 @@ export type Database = {
           client_id?: string | null
           client_nom?: string
           client_telephone?: string | null
+          chantier_id?: string | null
           created_at?: string
           created_by?: string | null
           date_echeance?: string | null
@@ -411,6 +471,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_client_id_fkey"
             columns: ["client_id"]
@@ -562,6 +629,47 @@ export type Database = {
           zone_codes?: string[]
         }
         Relationships: []
+      }
+      etapes_chantier: {
+        Row: {
+          chantier_id: string
+          created_at: string
+          fait: boolean
+          fait_le: string | null
+          fait_par: string | null
+          id: string
+          ordre: number
+          titre: string
+        }
+        Insert: {
+          chantier_id: string
+          created_at?: string
+          fait?: boolean
+          fait_le?: string | null
+          fait_par?: string | null
+          id?: string
+          ordre?: number
+          titre: string
+        }
+        Update: {
+          chantier_id?: string
+          created_at?: string
+          fait?: boolean
+          fait_le?: string | null
+          fait_par?: string | null
+          id?: string
+          ordre?: number
+          titre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "etapes_chantier_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       etudes: {
         Row: {
@@ -1169,6 +1277,7 @@ export type Database = {
           adresse_client: string | null
           avis_demande: boolean
           champs_perso: Json
+          chantier_id: string | null
           client_id: string | null
           code_postal_client: string | null
           created_at: string
@@ -1191,6 +1300,7 @@ export type Database = {
           adresse_client?: string | null
           avis_demande?: boolean
           champs_perso?: Json
+          chantier_id?: string | null
           client_id?: string | null
           code_postal_client?: string | null
           created_at?: string
@@ -1213,6 +1323,7 @@ export type Database = {
           adresse_client?: string | null
           avis_demande?: boolean
           champs_perso?: Json
+          chantier_id?: string | null
           client_id?: string | null
           code_postal_client?: string | null
           created_at?: string
@@ -1231,6 +1342,13 @@ export type Database = {
           token?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rendez_vous_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rendez_vous_client_id_fkey"
             columns: ["client_id"]
@@ -1586,6 +1704,7 @@ export type Database = {
     Enums: {
       role_membre: "owner" | "admin" | "salarie"
       statut_abonnement: "essai" | "actif" | "impaye" | "annule"
+      statut_chantier: "en_cours" | "termine" | "annule"
       statut_depense: "en_attente" | "validee" | "refusee"
       statut_rdv: "confirme" | "annule" | "honore" | "absent" | "demande"
     }
@@ -1717,6 +1836,7 @@ export const Constants = {
     Enums: {
       role_membre: ["owner", "admin", "salarie"],
       statut_abonnement: ["essai", "actif", "impaye", "annule"],
+      statut_chantier: ["en_cours", "termine", "annule"],
       statut_depense: ["en_attente", "validee", "refusee"],
       statut_rdv: ["confirme", "annule", "honore", "absent", "demande"],
     },

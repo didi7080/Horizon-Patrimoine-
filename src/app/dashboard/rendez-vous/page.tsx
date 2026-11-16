@@ -23,18 +23,22 @@ export default async function RendezVousPage({
   const supabase = await createClient();
 
   const selectRdv =
-    "*, prestations(nom, urgence_active), salaries!rendez_vous_salarie_id_fkey(nom, couleur), clients(nom, telephone), rendez_vous_participants(salarie_id, salaries(nom, couleur)), photos_intervention(id)";
+    "*, prestations(nom, urgence_active), salaries!rendez_vous_salarie_id_fkey(nom, couleur), clients(nom, telephone), chantiers(id, titre), rendez_vous_participants(salarie_id, salaries(nom, couleur)), photos_intervention(id)";
   let query = supabase
     .from("rendez_vous")
     .select(selectRdv)
     .eq("entreprise_id", entreprise.id);
 
-  const { data: salariesEquipe } = await supabase
-    .from("salaries")
-    .select("id, nom, couleur")
-    .eq("entreprise_id", entreprise.id)
-    .eq("actif", true)
-    .order("nom");
+  const [{ data: salariesEquipe }, { data: chantiersEntreprise }] = await Promise.all([
+    supabase.from("salaries").select("id, nom, couleur").eq("entreprise_id", entreprise.id).eq("actif", true).order("nom"),
+    supabase
+      .from("chantiers")
+      .select("id, titre, clients(nom)")
+      .eq("entreprise_id", entreprise.id)
+      .eq("statut", "en_cours")
+      .order("titre"),
+  ]);
+  const chantiersEquipe = (chantiersEntreprise ?? []).map((c) => ({ id: c.id, titre: `${c.titre} — ${c.clients?.nom ?? ""}` }));
 
   const maintenant = new Date().toISOString();
 
@@ -89,7 +93,7 @@ export default async function RendezVousPage({
               <h2 className="mb-2 text-sm font-semibold capitalize text-muted-foreground">{date}</h2>
               <div className="space-y-2">
                 {rdvsDuJour.map((rdv) => (
-                  <RdvRow key={rdv.id} rdv={rdv} salariesEquipe={salariesEquipe ?? []} />
+                  <RdvRow key={rdv.id} rdv={rdv} salariesEquipe={salariesEquipe ?? []} chantiersEquipe={chantiersEquipe} />
                 ))}
               </div>
             </section>

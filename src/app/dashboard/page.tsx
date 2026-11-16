@@ -22,11 +22,11 @@ export default async function DashboardPage() {
   finJour.setHours(23, 59, 59, 999);
 
   const selectRdv =
-    "*, prestations(nom, urgence_active), salaries!rendez_vous_salarie_id_fkey(nom, couleur), clients(nom, telephone), rendez_vous_participants(salarie_id, salaries(nom, couleur)), photos_intervention(id)";
+    "*, prestations(nom, urgence_active), salaries!rendez_vous_salarie_id_fkey(nom, couleur), clients(nom, telephone), chantiers(id, titre), rendez_vous_participants(salarie_id, salaries(nom, couleur)), photos_intervention(id)";
 
   const admin = createAdminClient();
 
-  const [{ data: demandes }, { data: rdvAujourdhui }, { count: nbPrestations }, { count: nbHoraires }] = await Promise.all([
+  const [{ data: demandes }, { data: rdvAujourdhui }, { count: nbPrestations }, { count: nbHoraires }, { data: chantiersEntreprise }] = await Promise.all([
     supabase
       .from("rendez_vous")
       .select(selectRdv)
@@ -49,7 +49,14 @@ export default async function DashboardPage() {
       .from("horaires")
       .select("id, salaries!inner(entreprise_id)", { count: "exact", head: true })
       .eq("salaries.entreprise_id", entreprise.id),
+    supabase
+      .from("chantiers")
+      .select("id, titre, clients(nom)")
+      .eq("entreprise_id", entreprise.id)
+      .eq("statut", "en_cours")
+      .order("titre"),
   ]);
+  const chantiersEquipe = (chantiersEntreprise ?? []).map((c) => ({ id: c.id, titre: `${c.titre} — ${c.clients?.nom ?? ""}` }));
 
   const { data: facturesEnRetard } = admin
     ? await admin
@@ -95,7 +102,7 @@ export default async function DashboardPage() {
           </h2>
           <div className="space-y-2">
             {(demandes as RdvAvecRelations[]).map((rdv) => (
-              <RdvRow key={rdv.id} rdv={rdv} />
+              <RdvRow key={rdv.id} rdv={rdv} chantiersEquipe={chantiersEquipe} />
             ))}
           </div>
         </section>
@@ -140,7 +147,7 @@ export default async function DashboardPage() {
         {rdvAujourdhui && rdvAujourdhui.length > 0 ? (
           <div className="space-y-2">
             {(rdvAujourdhui as RdvAvecRelations[]).map((rdv) => (
-              <RdvRow key={rdv.id} rdv={rdv} />
+              <RdvRow key={rdv.id} rdv={rdv} chantiersEquipe={chantiersEquipe} />
             ))}
           </div>
         ) : (

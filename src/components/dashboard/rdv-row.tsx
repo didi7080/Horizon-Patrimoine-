@@ -5,14 +5,17 @@ import { Button } from "@/components/ui/button";
 import { StatutBadge } from "@/components/statut-badge";
 import { ParticipantsRdv } from "@/components/dashboard/participants-rdv";
 import { PhotosIntervention } from "@/components/dashboard/photos-intervention";
+import { ChantierLien } from "@/components/dashboard/chantiers/chantier-lien";
 import { formatHeure, formatDateCourte } from "@/lib/utils";
 import { validerDemande, changerStatutRdv } from "@/app/dashboard/actions";
+import { lierRdvChantier } from "@/app/dashboard/chantiers/actions";
 import type { Tables } from "@/lib/types/database";
 
 export type RdvAvecRelations = Tables<"rendez_vous"> & {
   prestations: Pick<Tables<"prestations">, "nom" | "urgence_active"> | null;
   salaries: Pick<Tables<"salaries">, "nom" | "couleur"> | null;
   clients: Pick<Tables<"clients">, "nom" | "telephone"> | null;
+  chantiers: Pick<Tables<"chantiers">, "id" | "titre"> | null;
   rendez_vous_participants: { salarie_id: string; salaries: Pick<Tables<"salaries">, "nom" | "couleur"> | null }[];
   photos_intervention: { id: string }[];
 };
@@ -23,10 +26,12 @@ export function RdvRow({
   rdv,
   showDate = false,
   salariesEquipe = [],
+  chantiersEquipe = [],
 }: {
   rdv: RdvAvecRelations;
   showDate?: boolean;
   salariesEquipe?: Salarie[];
+  chantiersEquipe?: { id: string; titre: string }[];
 }) {
   const enAttente = rdv.statut === "demande";
   const passe = new Date(rdv.debut) < new Date();
@@ -70,6 +75,13 @@ export function RdvRow({
             />
           )}
           <PhotosIntervention rdvId={rdv.id} nombrePhotos={rdv.photos_intervention.length} />
+          {chantiersEquipe.length > 0 && (
+            <ChantierLien
+              chantiers={chantiersEquipe}
+              chantierActuel={rdv.chantiers}
+              onChange={(chantierId) => lierRdvChantier(rdv.id, chantierId)}
+            />
+          )}
         </div>
       </div>
 

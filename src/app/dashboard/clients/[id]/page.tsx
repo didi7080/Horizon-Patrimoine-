@@ -8,6 +8,8 @@ import { ClientNotes } from "@/components/dashboard/client-notes";
 import { SupprimerClientBouton } from "@/components/dashboard/clients/supprimer-client-bouton";
 import { HistoriqueClient } from "@/components/dashboard/clients/historique-client";
 import { RappelsClient, type RappelAffiche } from "@/components/dashboard/clients/rappels-client";
+import { ChantierFormDialog } from "@/components/dashboard/chantiers/chantier-form-dialog";
+import { ChantierCarte } from "@/components/dashboard/chantiers/chantier-carte";
 import { construireHistorique } from "@/lib/clients/historique";
 
 export const revalidate = 0;
@@ -21,7 +23,7 @@ export default async function ClientDetailPage({ params }: PageProps<"/dashboard
   const { data: client } = await admin.from("clients").select("*").eq("id", id).eq("entreprise_id", entreprise.id).maybeSingle();
   if (!client) notFound();
 
-  const [{ data: documents }, { data: rendezVous }, { data: rappels }] = await Promise.all([
+  const [{ data: documents }, { data: rendezVous }, { data: rappels }, { data: chantiers }] = await Promise.all([
     admin
       .from("documents")
       .select("id, type, numero, statut, lignes, date_emission, notes")
@@ -40,6 +42,12 @@ export default async function ClientDetailPage({ params }: PageProps<"/dashboard
       .eq("client_id", id)
       .eq("entreprise_id", entreprise.id)
       .order("date_prevue"),
+    admin
+      .from("chantiers")
+      .select("id, titre, statut, date_fin_prevue, etapes_chantier(fait)")
+      .eq("client_id", id)
+      .eq("entreprise_id", entreprise.id)
+      .order("date_fin_prevue", { ascending: true, nullsFirst: false }),
   ]);
 
   const historique = construireHistorique(documents ?? [], rendezVous ?? []);
@@ -83,6 +91,22 @@ export default async function ClientDetailPage({ params }: PageProps<"/dashboard
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rappels programmés</p>
         <RappelsClient clientId={client.id} rappels={(rappels ?? []) as RappelAffiche[]} />
       </Card>
+
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-medium text-foreground">Chantiers</h2>
+          <ChantierFormDialog clients={[]} clientIdFixe={client.id} />
+        </div>
+        {chantiers && chantiers.length > 0 ? (
+          <div className="space-y-2">
+            {chantiers.map((c) => (
+              <ChantierCarte key={c.id} chantier={c} afficherClient={false} />
+            ))}
+          </div>
+        ) : (
+          <Card className="p-6 text-center text-sm text-muted">Aucun chantier pour ce client.</Card>
+        )}
+      </div>
 
       <div>
         <h2 className="mb-3 font-medium text-foreground">Historique</h2>

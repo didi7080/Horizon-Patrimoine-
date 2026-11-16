@@ -2,8 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DocumentEditeur } from "@/components/dashboard/documents/document-editeur";
+import { ChantierLien } from "@/components/dashboard/chantiers/chantier-lien";
+import { lierDocumentChantier } from "@/app/dashboard/chantiers/actions";
 import type { LigneDocument, TypeDocument } from "@/lib/documents/types";
 
 export const revalidate = 0;
@@ -14,22 +17,39 @@ export default async function DocumentPage({ params }: PageProps<"/dashboard/doc
   const admin = createAdminClient();
   if (!admin) notFound();
 
-  const [{ data: document }, { data: bibliotheque }] = await Promise.all([
-    admin.from("documents").select("*").eq("id", id).eq("entreprise_id", entreprise.id).maybeSingle(),
+  const supabase = await createClient();
+  const [{ data: document }, { data: bibliotheque }, { data: chantiersEntreprise }] = await Promise.all([
+    admin.from("documents").select("*, chantiers(id, titre)").eq("id", id).eq("entreprise_id", entreprise.id).maybeSingle(),
     admin.from("lignes_bibliotheque").select("*").eq("entreprise_id", entreprise.id).order("designation"),
+    supabase
+      .from("chantiers")
+      .select("id, titre, clients(nom)")
+      .eq("entreprise_id", entreprise.id)
+      .eq("statut", "en_cours")
+      .order("titre"),
   ]);
   if (!document) notFound();
+  const chantiersEquipe = (chantiersEntreprise ?? []).map((c) => ({ id: c.id, titre: `${c.titre} — ${c.clients?.nom ?? ""}` }));
 
   return (
     <div className="max-w-3xl space-y-6">
       <Link href="/dashboard/documents" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground">
         <ArrowLeft className="size-3.5" /> Retour aux devis & factures
       </Link>
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          {document.type === "devis" ? "Devis" : "Facture"} {document.numero}
-        </h1>
-        <p className="mt-1 text-muted">Client : {document.client_nom}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {document.type === "devis" ? "Devis" : "Facture"} {document.numero}
+          </h1>
+          <p className="mt-1 text-muted">Client : {document.client_nom}</p>
+        </div>
+        {chantiersEquipe.length > 0 && (
+          <ChantierLien
+            chantiers={chantiersEquipe}
+            chantierActuel={document.chantiers}
+            onChange={(chantierId) => lierDocumentChantier(document.id, chantierId)}
+          />
+        )}
       </div>
 
       <DocumentEditeur
