@@ -2,7 +2,7 @@
 // Portée volontairement restreinte : on ne met en cache ni les données
 // sensibles, ni le reste du tableau de bord — seulement ce qu'il faut pour
 // qu'un salarié puisse consulter son planning du jour sans réseau.
-const VERSION = "ardv-offline-v2";
+const VERSION = "ardv-offline-v3";
 const CACHE_PAGES = `${VERSION}-pages`;
 const CACHE_STATIQUE = `${VERSION}-statique`;
 const PAGE_HORS_CONNEXION = "/dashboard/ma-journee";
