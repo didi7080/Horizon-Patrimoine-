@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus } from "lucide-react";
+import { Calculator, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,17 @@ import { enregistrerEtude } from "@/app/dashboard/outils/actions";
 const classeSelect =
   "flex h-10 w-full rounded-lg border border-border-strong bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20";
 
-export function EtudeFormDialog({ modules }: { modules: { id: string; nom: string }[] }) {
+export function EtudeFormDialog({
+  modules,
+  moduleIdDefaut,
+  libelle = "Nouvelle étude",
+  taille = "default",
+}: {
+  modules: { id: string; nom: string }[];
+  moduleIdDefaut?: string;
+  libelle?: string;
+  taille?: "default" | "sm";
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -41,8 +51,9 @@ export function EtudeFormDialog({ modules }: { modules: { id: string; nom: strin
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button type="button" onClick={() => setOpen(true)}>
-        <Plus className="size-4" /> Nouvelle étude
+      <Button type="button" size={taille} onClick={() => setOpen(true)}>
+        {moduleIdDefaut ? <Calculator className="size-3.5" /> : <Plus className="size-4" />}
+        {libelle}
       </Button>
       <DialogContent>
         <DialogHeader>
@@ -55,7 +66,7 @@ export function EtudeFormDialog({ modules }: { modules: { id: string; nom: strin
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="etude-module">Module de calcul</Label>
-            <select id="etude-module" name="moduleId" className={classeSelect} defaultValue="">
+            <select id="etude-module" name="moduleId" className={classeSelect} defaultValue={moduleIdDefaut ?? ""}>
               <option value="">Aucun pour le moment</option>
               {modules.map((m) => (
                 <option key={m.id} value={m.id}>

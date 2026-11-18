@@ -7,6 +7,7 @@ import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { modelesPourMetier } from "@/lib/calculs/modeles";
 import { CreerDepuisModeleBouton } from "@/components/dashboard/outils/creer-depuis-modele-bouton";
+import { EtudeFormDialog } from "@/components/dashboard/outils/etude-form-dialog";
 import { BoutonSupprimer } from "@/components/dashboard/outils/bouton-supprimer";
 import { supprimerModule } from "@/app/dashboard/outils/actions";
 import type { Champ } from "@/lib/calculs/types";
@@ -56,7 +57,12 @@ export default async function OutilsPage() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-medium text-foreground">Mes modules</h2>
+          <div>
+            <h2 className="font-medium text-foreground">Mes modules</h2>
+            <p className="text-sm text-muted">
+              Un module définit les champs et la formule. Pour calculer chez un client, cliquez sur « Nouvelle étude ».
+            </p>
+          </div>
           <Button asChild size="sm">
             <Link href="/dashboard/outils/modules/nouveau">
               <Plus className="size-3.5" /> Créer un module personnalisé
@@ -78,6 +84,12 @@ export default async function OutilsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
+                    <EtudeFormDialog
+                      modules={modulesExistants.map((mod) => ({ id: mod.id, nom: mod.nom }))}
+                      moduleIdDefaut={m.id}
+                      libelle="Nouvelle étude"
+                      taille="sm"
+                    />
                     <Button asChild variant="outline" size="sm">
                       <Link href={`/dashboard/outils/modules/${m.id}`}>
                         <Pencil className="size-3.5" /> Modifier
