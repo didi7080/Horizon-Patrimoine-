@@ -57,7 +57,10 @@ export function EtudeEditeur({
   const portee: Record<string, number> = {};
   for (const champ of moduleChamps) {
     if (champ.type === "nombre") {
-      portee[champ.id] = valeurs[champ.id] !== undefined && valeurs[champ.id] !== "" ? Number(valeurs[champ.id]) : 0;
+      portee[champ.id] =
+        valeurs[champ.id] !== undefined && valeurs[champ.id] !== ""
+          ? Number(valeurs[champ.id])
+          : Number(champ.defaut ?? 0);
     }
   }
   const resultats: { formule: Formule; valeur?: number; erreur?: string }[] = [];
