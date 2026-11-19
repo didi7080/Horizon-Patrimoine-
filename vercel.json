@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/rappels-rdv",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/rappels-stock",
+      "schedule": "0 18 * * *"
     }
   ]
 }

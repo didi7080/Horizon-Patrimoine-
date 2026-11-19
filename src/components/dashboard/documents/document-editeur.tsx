@@ -82,6 +82,7 @@ export function DocumentEditeur({
   notesInitiales,
   devisOrigineId,
   bibliotheque,
+  materielCatalogue,
 }: {
   documentId: string;
   type: TypeDocument;
@@ -98,6 +99,7 @@ export function DocumentEditeur({
   notesInitiales: string | null;
   devisOrigineId: string | null;
   bibliotheque: Tables<"lignes_bibliotheque">[];
+  materielCatalogue: Pick<Tables<"materiel_catalogue">, "id" | "designation" | "unite" | "prix_achat_cents" | "coefficient">[];
 }) {
   const router = useRouter();
   const [lignes, setLignes] = useState<LigneDocument[]>(lignesInitiales);
@@ -119,6 +121,7 @@ export function DocumentEditeur({
   const [pendingDuplication, startTransitionDuplication] = useTransition();
   const [pendingBibliotheque, startTransitionBibliotheque] = useTransition();
   const [choixBibliotheque, setChoixBibliotheque] = useState("");
+  const [choixMateriel, setChoixMateriel] = useState("");
   const [pendingRelance, startTransitionRelance] = useTransition();
   const [pendingLien, startTransitionLien] = useTransition();
   const [pendingEnvoiLien, startTransitionEnvoiLien] = useTransition();
@@ -160,6 +163,23 @@ export function DocumentEditeur({
       },
     ]);
     setChoixBibliotheque("");
+  }
+
+  function ajouterDepuisMateriel(id: string) {
+    const article = materielCatalogue.find((m) => m.id === id);
+    if (!article) return;
+    setLignes((l) => [
+      ...l,
+      {
+        id: idAleatoire(),
+        designation: article.designation,
+        unite: article.unite,
+        quantite: 1,
+        prixUnitaireCents: article.prix_achat_cents !== null ? Math.round(article.prix_achat_cents * article.coefficient) : 0,
+        tauxTva: 20,
+      },
+    ]);
+    setChoixMateriel("");
   }
 
   function enregistrerDansBibliotheque(ligne: LigneDocument) {
@@ -393,6 +413,20 @@ export function DocumentEditeur({
                 {bibliotheque.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.designation} · {formatPrix(b.prix_unitaire_cents)}
+                  </option>
+                ))}
+              </select>
+            )}
+            {materielCatalogue.length > 0 && (
+              <select
+                value={choixMateriel}
+                onChange={(e) => ajouterDepuisMateriel(e.target.value)}
+                className="h-10 w-full rounded-lg border border-border-strong bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20 sm:w-64"
+              >
+                <option value="">+ Depuis le catalogue matériel…</option>
+                {materielCatalogue.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.designation} · {formatPrix(m.prix_achat_cents !== null ? Math.round(m.prix_achat_cents * m.coefficient) : null)}
                   </option>
                 ))}
               </select>

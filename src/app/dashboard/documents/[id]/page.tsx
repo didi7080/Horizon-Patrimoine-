@@ -18,7 +18,7 @@ export default async function DocumentPage({ params }: PageProps<"/dashboard/doc
   if (!admin) notFound();
 
   const supabase = await createClient();
-  const [{ data: document }, { data: bibliotheque }, { data: chantiersEntreprise }] = await Promise.all([
+  const [{ data: document }, { data: bibliotheque }, { data: chantiersEntreprise }, { data: materielCatalogue }] = await Promise.all([
     admin.from("documents").select("*, chantiers(id, titre)").eq("id", id).eq("entreprise_id", entreprise.id).maybeSingle(),
     admin.from("lignes_bibliotheque").select("*").eq("entreprise_id", entreprise.id).order("designation"),
     supabase
@@ -27,6 +27,12 @@ export default async function DocumentPage({ params }: PageProps<"/dashboard/doc
       .eq("entreprise_id", entreprise.id)
       .eq("statut", "en_cours")
       .order("titre"),
+    admin
+      .from("materiel_catalogue")
+      .select("id, designation, unite, prix_achat_cents, coefficient")
+      .eq("entreprise_id", entreprise.id)
+      .eq("actif", true)
+      .order("designation"),
   ]);
   if (!document) notFound();
   const chantiersEquipe = (chantiersEntreprise ?? []).map((c) => ({ id: c.id, titre: `${c.titre} — ${c.clients?.nom ?? ""}` }));
@@ -68,6 +74,7 @@ export default async function DocumentPage({ params }: PageProps<"/dashboard/doc
         notesInitiales={document.notes}
         devisOrigineId={document.devis_origine_id}
         bibliotheque={bibliotheque ?? []}
+        materielCatalogue={materielCatalogue ?? []}
       />
     </div>
   );

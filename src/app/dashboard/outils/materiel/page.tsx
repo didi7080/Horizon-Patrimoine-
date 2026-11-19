@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatPrix } from "@/lib/utils";
 import { MaterielFormDialog } from "@/components/dashboard/outils/materiel-form-dialog";
 import { ToggleMaterielActifBouton } from "@/components/dashboard/outils/toggle-materiel-actif-bouton";
+import { AjusterStockDialog } from "@/components/dashboard/outils/ajuster-stock-dialog";
 
 export const revalidate = 0;
 
@@ -14,9 +15,14 @@ export default async function MaterielPage() {
   const { entreprise } = await getEntrepriseContext();
   const admin = createAdminClient();
 
-  const { data: articles } = admin
-    ? await admin.from("materiel_catalogue").select("*").eq("entreprise_id", entreprise.id).order("designation")
-    : { data: null };
+  const [{ data: articles }, { data: stockDepot }] = admin
+    ? await Promise.all([
+        admin.from("materiel_catalogue").select("*").eq("entreprise_id", entreprise.id).order("designation"),
+        admin.from("stocks").select("materiel_id, quantite").eq("entreprise_id", entreprise.id).is("salarie_id", null),
+      ])
+    : [{ data: null }, { data: null }];
+
+  const depotParId = new Map((stockDepot ?? []).map((s) => [s.materiel_id, s.quantite]));
 
   return (
     <div className="space-y-6">
@@ -48,8 +54,12 @@ export default async function MaterielPage() {
                   Achat {formatPrix(a.prix_achat_cents)} / {a.unite} · Vente conseillée{" "}
                   {formatPrix(a.prix_achat_cents !== null ? Math.round(a.prix_achat_cents * a.coefficient) : null)}
                 </p>
+                <p className="text-sm text-muted">
+                  Stock dépôt : <span className="font-medium text-foreground">{depotParId.get(a.id) ?? 0}</span> {a.unite}
+                </p>
               </div>
               <div className="flex items-center gap-2">
+                <AjusterStockDialog materielId={a.id} designation={a.designation} />
                 <ToggleMaterielActifBouton id={a.id} actif={a.actif} />
                 <MaterielFormDialog article={a} />
               </div>

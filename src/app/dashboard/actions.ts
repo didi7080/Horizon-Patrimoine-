@@ -472,6 +472,7 @@ export async function mettreAJourReglages(formData: FormData): Promise<Resultat>
         recap_factures_actif: formData.get("recapFacturesActif") === "on",
         recap_avis_actif: formData.get("recapAvisActif") === "on",
         recap_depenses_actif: formData.get("recapDepensesActif") === "on",
+        recap_stock_actif: formData.get("recapStockActif") === "on",
         siret: String(formData.get("siret") ?? "").trim() || null,
         forme_juridique: String(formData.get("formeJuridique") ?? "").trim() || null,
         assujetti_tva: formData.get("assujettiTva") === "on",

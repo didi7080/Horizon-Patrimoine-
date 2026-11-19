@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Calculator, ListChecks, Package, Pencil, Plus } from "lucide-react";
+import { Calculator, ListChecks, Package, Pencil, Plus, Truck } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,11 @@ export default async function OutilsPage() {
           <Button asChild variant="outline">
             <Link href="/dashboard/outils/materiel">
               <Package className="size-4" /> Catalogue matériel
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/dashboard/outils/mon-camion">
+              <Truck className="size-4" /> Mon camion
             </Link>
           </Button>
           <Button asChild variant="outline">

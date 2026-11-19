@@ -8,7 +8,7 @@ import { modelesPourMetier } from "@/lib/calculs/modeles";
 import { formuleValide } from "@/lib/calculs/evaluateur";
 import type { Champ, DonneesEtude, Formule } from "@/lib/calculs/types";
 
-type Resultat<T extends object = object> = ({ ok: true } & T) | { ok: false; erreur: string };
+export type Resultat<T extends object = object> = ({ ok: true } & T) | { ok: false; erreur: string };
 type ContexteOutils = ({ ok: true } & EntrepriseContext) | { ok: false; erreur: string };
 
 function admin() {
@@ -24,7 +24,7 @@ function admin() {
  * try/catch, ici et chez chaque appelant — un redirect() intercepté par un catch ne
  * redirige plus.
  */
-async function getEntrepriseAvecOutils(): Promise<ContexteOutils> {
+export async function getEntrepriseAvecOutils(): Promise<ContexteOutils> {
   const contexte = await getEntrepriseContext();
   const plan = await planActuelEntreprise(contexte.entreprise.id, contexte.entreprise.nb_salaries);
   if (!accesOutilsCalcul(plan)) {

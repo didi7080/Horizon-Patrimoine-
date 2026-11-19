@@ -287,6 +287,12 @@ export function ReglagesForm({ entreprise }: { entreprise: Tables<"entreprises">
               defaultChecked={entreprise.recap_depenses_actif}
             />
           </div>
+          <Interrupteur
+            name="recapStockActif"
+            label="Récapitulatif stock hebdomadaire"
+            description="Envoyé chaque lundi : pièces utilisées sur 7 jours et stock dépôt restant."
+            defaultChecked={entreprise.recap_stock_actif}
+          />
         </div>
       </section>
 

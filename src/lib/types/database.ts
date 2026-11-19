@@ -396,12 +396,12 @@ export type Database = {
       }
       documents: {
         Row: {
+          chantier_id: string | null
           client_adresse: string | null
           client_email: string | null
           client_id: string | null
           client_nom: string
           client_telephone: string | null
-          chantier_id: string | null
           created_at: string
           created_by: string | null
           date_echeance: string | null
@@ -421,12 +421,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          chantier_id?: string | null
           client_adresse?: string | null
           client_email?: string | null
           client_id?: string | null
           client_nom: string
           client_telephone?: string | null
-          chantier_id?: string | null
           created_at?: string
           created_by?: string | null
           date_echeance?: string | null
@@ -446,12 +446,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          chantier_id?: string | null
           client_adresse?: string | null
           client_email?: string | null
           client_id?: string | null
           client_nom?: string
           client_telephone?: string | null
-          chantier_id?: string | null
           created_at?: string
           created_by?: string | null
           date_echeance?: string | null
@@ -527,14 +527,15 @@ export type Database = {
           nb_salaries: number
           nom: string
           numero_tva: string | null
-          parraine_par_id: string | null
           parrainage_recompense_le: string | null
+          parraine_par_id: string | null
           recap_actif: boolean
           recap_avis_actif: boolean
           recap_depenses_actif: boolean
           recap_devis_actif: boolean
           recap_factures_actif: boolean
           recap_rdv_actif: boolean
+          recap_stock_actif: boolean
           siret: string | null
           slug: string
           sms_actif: boolean
@@ -569,14 +570,15 @@ export type Database = {
           nb_salaries?: number
           nom: string
           numero_tva?: string | null
-          parraine_par_id?: string | null
           parrainage_recompense_le?: string | null
+          parraine_par_id?: string | null
           recap_actif?: boolean
           recap_avis_actif?: boolean
           recap_depenses_actif?: boolean
           recap_devis_actif?: boolean
           recap_factures_actif?: boolean
           recap_rdv_actif?: boolean
+          recap_stock_actif?: boolean
           siret?: string | null
           slug: string
           sms_actif?: boolean
@@ -611,14 +613,15 @@ export type Database = {
           nb_salaries?: number
           nom?: string
           numero_tva?: string | null
-          parraine_par_id?: string | null
           parrainage_recompense_le?: string | null
+          parraine_par_id?: string | null
           recap_actif?: boolean
           recap_avis_actif?: boolean
           recap_depenses_actif?: boolean
           recap_devis_actif?: boolean
           recap_factures_actif?: boolean
           recap_rdv_actif?: boolean
+          recap_stock_actif?: boolean
           siret?: string | null
           slug?: string
           sms_actif?: boolean
@@ -628,7 +631,15 @@ export type Database = {
           ville?: string | null
           zone_codes?: string[]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "entreprises_parraine_par_id_fkey"
+            columns: ["parraine_par_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       etapes_chantier: {
         Row: {
@@ -1005,6 +1016,61 @@ export type Database = {
           },
         ]
       }
+      mouvements_stock: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          entreprise_id: string
+          id: string
+          materiel_id: string
+          quantite: number
+          salarie_id: string | null
+          type: Database["public"]["Enums"]["type_mouvement_stock"]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          entreprise_id: string
+          id?: string
+          materiel_id: string
+          quantite: number
+          salarie_id?: string | null
+          type: Database["public"]["Enums"]["type_mouvement_stock"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          entreprise_id?: string
+          id?: string
+          materiel_id?: string
+          quantite?: number
+          salarie_id?: string | null
+          type?: Database["public"]["Enums"]["type_mouvement_stock"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mouvements_stock_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_stock_materiel_id_fkey"
+            columns: ["materiel_id"]
+            isOneToOne: false
+            referencedRelation: "materiel_catalogue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_stock_salarie_id_fkey"
+            columns: ["salarie_id"]
+            isOneToOne: false
+            referencedRelation: "salaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       photos_intervention: {
         Row: {
           chemin_stockage: string
@@ -1133,6 +1199,62 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          cle_auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          profile_id: string
+        }
+        Insert: {
+          cle_auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          profile_id: string
+        }
+        Update: {
+          cle_auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rappels_planifies: {
         Row: {
           client_id: string | null
@@ -1193,62 +1315,6 @@ export type Database = {
             columns: ["rendez_vous_id"]
             isOneToOne: false
             referencedRelation: "rendez_vous"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      profiles: {
-        Row: {
-          created_at: string
-          full_name: string | null
-          id: string
-          phone: string | null
-        }
-        Insert: {
-          created_at?: string
-          full_name?: string | null
-          id: string
-          phone?: string | null
-        }
-        Update: {
-          created_at?: string
-          full_name?: string | null
-          id?: string
-          phone?: string | null
-        }
-        Relationships: []
-      }
-      push_subscriptions: {
-        Row: {
-          cle_auth: string
-          created_at: string
-          endpoint: string
-          id: string
-          p256dh: string
-          profile_id: string
-        }
-        Insert: {
-          cle_auth: string
-          created_at?: string
-          endpoint: string
-          id?: string
-          p256dh: string
-          profile_id: string
-        }
-        Update: {
-          cle_auth?: string
-          created_at?: string
-          endpoint?: string
-          id?: string
-          p256dh?: string
-          profile_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "push_subscriptions_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1472,73 +1538,190 @@ export type Database = {
           },
         ]
       }
+      stocks: {
+        Row: {
+          entreprise_id: string
+          id: string
+          materiel_id: string
+          quantite: number
+          salarie_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          entreprise_id: string
+          id?: string
+          materiel_id: string
+          quantite?: number
+          salarie_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          entreprise_id?: string
+          id?: string
+          materiel_id?: string
+          quantite?: number
+          salarie_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stocks_entreprise_id_fkey"
+            columns: ["entreprise_id"]
+            isOneToOne: false
+            referencedRelation: "entreprises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocks_materiel_id_fkey"
+            columns: ["materiel_id"]
+            isOneToOne: false
+            referencedRelation: "materiel_catalogue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocks_salarie_id_fkey"
+            columns: ["salarie_id"]
+            isOneToOne: false
+            referencedRelation: "salaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      ajuster_stock_depot: {
+        Args: { p_materiel: string; p_quantite: number }
+        Returns: undefined
+      }
       annuler_rdv_public: { Args: { p_token: string }; Returns: undefined }
       avis_entreprise: { Args: { p_slug: string }; Returns: Json }
-      creer_entreprise: {
-        Args: {
-          p_adresse: string
-          p_code_postal: string
-          p_metier: string
-          p_nb_salaries?: number
-          p_nom: string
-          p_slug: string
-          p_telephone: string
-          p_ville: string
-        }
-        Returns: {
-          adresse: string | null
-          assujetti_tva: boolean
-          assurance_nom: string | null
-          assurance_zone: string | null
-          avis_actif: boolean
-          battement_min: number
-          code_postal: string | null
-          couleur: string
-          created_at: string
-          created_by: string | null
-          delai_min_heures: number
-          description: string | null
-          domaine_personnalise: string | null
-          email: string | null
-          email_bienvenue_envoye: boolean
-          fenetre_max_jours: number
-          forme_juridique: string | null
-          id: string
-          logo_url: string | null
-          mentions_legales: string | null
-          metier: string | null
-          nb_salaries: number
-          nom: string
-          numero_tva: string | null
-          parraine_par_id: string | null
-          parrainage_recompense_le: string | null
-          recap_actif: boolean
-          recap_avis_actif: boolean
-          recap_depenses_actif: boolean
-          recap_devis_actif: boolean
-          recap_factures_actif: boolean
-          recap_rdv_actif: boolean
-          siret: string | null
-          slug: string
-          sms_actif: boolean
-          stripe_connect_account_id: string | null
-          telephone: string | null
-          validation_manuelle: boolean
-          ville: string | null
-          zone_codes: string[]
-        }
-        SetofOptions: {
-          from: "*"
-          to: "entreprises"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      creer_entreprise:
+        | {
+            Args: {
+              p_adresse: string
+              p_code_postal: string
+              p_metier: string
+              p_nb_salaries?: number
+              p_nom: string
+              p_slug: string
+              p_telephone: string
+              p_ville: string
+            }
+            Returns: {
+              adresse: string | null
+              assujetti_tva: boolean
+              assurance_nom: string | null
+              assurance_zone: string | null
+              avis_actif: boolean
+              battement_min: number
+              code_postal: string | null
+              couleur: string
+              created_at: string
+              created_by: string | null
+              delai_min_heures: number
+              description: string | null
+              domaine_personnalise: string | null
+              email: string | null
+              email_bienvenue_envoye: boolean
+              fenetre_max_jours: number
+              forme_juridique: string | null
+              id: string
+              logo_url: string | null
+              mentions_legales: string | null
+              metier: string | null
+              nb_salaries: number
+              nom: string
+              numero_tva: string | null
+              parrainage_recompense_le: string | null
+              parraine_par_id: string | null
+              recap_actif: boolean
+              recap_avis_actif: boolean
+              recap_depenses_actif: boolean
+              recap_devis_actif: boolean
+              recap_factures_actif: boolean
+              recap_rdv_actif: boolean
+              recap_stock_actif: boolean
+              siret: string | null
+              slug: string
+              sms_actif: boolean
+              stripe_connect_account_id: string | null
+              telephone: string | null
+              validation_manuelle: boolean
+              ville: string | null
+              zone_codes: string[]
+            }
+            SetofOptions: {
+              from: "*"
+              to: "entreprises"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_adresse: string
+              p_code_postal: string
+              p_metier: string
+              p_nb_salaries?: number
+              p_nom: string
+              p_parraine_par_id?: string
+              p_slug: string
+              p_telephone: string
+              p_ville: string
+            }
+            Returns: {
+              adresse: string | null
+              assujetti_tva: boolean
+              assurance_nom: string | null
+              assurance_zone: string | null
+              avis_actif: boolean
+              battement_min: number
+              code_postal: string | null
+              couleur: string
+              created_at: string
+              created_by: string | null
+              delai_min_heures: number
+              description: string | null
+              domaine_personnalise: string | null
+              email: string | null
+              email_bienvenue_envoye: boolean
+              fenetre_max_jours: number
+              forme_juridique: string | null
+              id: string
+              logo_url: string | null
+              mentions_legales: string | null
+              metier: string | null
+              nb_salaries: number
+              nom: string
+              numero_tva: string | null
+              parrainage_recompense_le: string | null
+              parraine_par_id: string | null
+              recap_actif: boolean
+              recap_avis_actif: boolean
+              recap_depenses_actif: boolean
+              recap_devis_actif: boolean
+              recap_factures_actif: boolean
+              recap_rdv_actif: boolean
+              recap_stock_actif: boolean
+              siret: string | null
+              slug: string
+              sms_actif: boolean
+              stripe_connect_account_id: string | null
+              telephone: string | null
+              validation_manuelle: boolean
+              ville: string | null
+              zone_codes: string[]
+            }
+            SetofOptions: {
+              from: "*"
+              to: "entreprises"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       creer_entreprise_avec_parrainage: {
         Args: {
           p_adresse: string
@@ -1576,14 +1759,15 @@ export type Database = {
           nb_salaries: number
           nom: string
           numero_tva: string | null
-          parraine_par_id: string | null
           parrainage_recompense_le: string | null
+          parraine_par_id: string | null
           recap_actif: boolean
           recap_avis_actif: boolean
           recap_depenses_actif: boolean
           recap_devis_actif: boolean
           recap_factures_actif: boolean
           recap_rdv_actif: boolean
+          recap_stock_actif: boolean
           siret: string | null
           slug: string
           sms_actif: boolean
@@ -1643,7 +1827,15 @@ export type Database = {
         Args: { p_secret: string; p_token: string }
         Returns: undefined
       }
+      prendre_piece_camion: {
+        Args: { p_materiel: string; p_quantite: number; p_salarie: string }
+        Returns: undefined
+      }
       rdv_par_token: { Args: { p_token: string }; Returns: Json }
+      reapprovisionner_camion: {
+        Args: { p_materiel: string; p_quantite: number; p_salarie: string }
+        Returns: undefined
+      }
       rejoindre_liste_attente: {
         Args: {
           p_email: string
@@ -1697,7 +1889,11 @@ export type Database = {
         Returns: undefined
       }
       verifier_limite_assistant: {
-        Args: { p_entreprise_id: string; p_fenetre_secondes?: number; p_max?: number }
+        Args: {
+          p_entreprise_id: string
+          p_fenetre_secondes?: number
+          p_max?: number
+        }
         Returns: number
       }
     }
@@ -1707,6 +1903,7 @@ export type Database = {
       statut_chantier: "en_cours" | "termine" | "annule"
       statut_depense: "en_attente" | "validee" | "refusee"
       statut_rdv: "confirme" | "annule" | "honore" | "absent" | "demande"
+      type_mouvement_stock: "prise" | "reappro" | "ajustement_depot"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1839,6 +2036,7 @@ export const Constants = {
       statut_chantier: ["en_cours", "termine", "annule"],
       statut_depense: ["en_attente", "validee", "refusee"],
       statut_rdv: ["confirme", "annule", "honore", "absent", "demande"],
+      type_mouvement_stock: ["prise", "reappro", "ajustement_depot"],
     },
   },
 } as const
