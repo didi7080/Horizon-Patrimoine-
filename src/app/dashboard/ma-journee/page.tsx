@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MapPin, Phone } from "lucide-react";
+import { Clock, MapPin, Phone } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,16 +7,19 @@ import { StatutBadge } from "@/components/statut-badge";
 import { PhotosIntervention } from "@/components/dashboard/photos-intervention";
 import { BoutonHorsConnexion } from "@/components/dashboard/bouton-hors-connexion";
 import { BanniereHorsConnexion } from "@/components/dashboard/banniere-hors-connexion";
-import { changerStatutRdv } from "@/app/dashboard/actions";
+import { changerStatutRdv, demarrerIntervention, terminerIntervention } from "@/app/dashboard/actions";
 import { parisVersIso } from "@/lib/assistant/outils";
-import { formatHeure } from "@/lib/utils";
+import { formatHeure, formatDuree } from "@/lib/utils";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/types/database";
 
 export const revalidate = 0;
 
-type RdvJournee = Pick<Tables<"rendez_vous">, "id" | "debut" | "fin" | "statut" | "notes" | "adresse_client"> & {
+type RdvJournee = Pick<
+  Tables<"rendez_vous">,
+  "id" | "debut" | "fin" | "statut" | "notes" | "adresse_client" | "debut_reel" | "fin_reel"
+> & {
   prestations: Pick<Tables<"prestations">, "nom" | "urgence_active"> | null;
   salaries: Pick<Tables<"salaries">, "nom" | "couleur"> | null;
   clients: Pick<Tables<"clients">, "nom" | "telephone"> | null;
@@ -42,7 +45,7 @@ export default async function MaJourneePage() {
   const debutIso = parisVersIso(aujourdhui, "00:00");
   const finIso = parisVersIso(aujourdhui, "23:59");
   const selectRdv =
-    "id, debut, fin, statut, notes, adresse_client, prestations(nom, urgence_active), salaries!rendez_vous_salarie_id_fkey(nom, couleur), clients(nom, telephone), photos_intervention(id)";
+    "id, debut, fin, statut, notes, adresse_client, debut_reel, fin_reel, prestations(nom, urgence_active), salaries!rendez_vous_salarie_id_fkey(nom, couleur), clients(nom, telephone), photos_intervention(id)";
 
   let rdvs: RdvJournee[];
   if (monSalarie) {
@@ -142,6 +145,32 @@ export default async function MaJourneePage() {
                     </Button>
                   )}
                 </div>
+
+                {rdv.statut === "confirme" && (
+                  <div className="flex items-center gap-2">
+                    {!rdv.debut_reel ? (
+                      <form action={async () => { "use server"; await demarrerIntervention(rdv.id); }}>
+                        <BoutonHorsConnexion size="sm" type="submit">
+                          <Clock className="size-3.5" /> Démarrer l’intervention
+                        </BoutonHorsConnexion>
+                      </form>
+                    ) : !rdv.fin_reel ? (
+                      <>
+                        <Badge variant="info">En cours depuis {formatHeure(rdv.debut_reel)}</Badge>
+                        <form action={async () => { "use server"; await terminerIntervention(rdv.id); }}>
+                          <BoutonHorsConnexion size="sm" type="submit">
+                            Terminer
+                          </BoutonHorsConnexion>
+                        </form>
+                      </>
+                    ) : (
+                      <Badge variant="success">
+                        Durée réelle :{" "}
+                        {formatDuree(Math.round((new Date(rdv.fin_reel).getTime() - new Date(rdv.debut_reel).getTime()) / 60000))}
+                      </Badge>
+                    )}
+                  </div>
+                )}
 
                 <PhotosIntervention rdvId={rdv.id} nombrePhotos={rdv.photos_intervention.length} modifiable />
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileText, Receipt } from "lucide-react";
+import { ArrowLeft, FileText, Receipt, Package } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatutBadge } from "@/components/statut-badge";
@@ -41,7 +41,7 @@ export default async function ChantierPage({ params }: PageProps<"/dashboard/cha
 
   const admin = createAdminClient();
 
-  const [{ data: etapes }, { data: rdvLies }, { data: rdvDelies }, { data: clients }] = await Promise.all([
+  const [{ data: etapes }, { data: rdvLies }, { data: rdvDelies }, { data: clients }, { data: materielConsomme }] = await Promise.all([
     supabase.from("etapes_chantier").select("*").eq("chantier_id", id).order("ordre"),
     supabase
       .from("rendez_vous")
@@ -57,6 +57,12 @@ export default async function ChantierPage({ params }: PageProps<"/dashboard/cha
       .order("debut", { ascending: false })
       .limit(20),
     supabase.from("clients").select("id, nom").eq("entreprise_id", entreprise.id).order("nom"),
+    supabase
+      .from("mouvements_stock")
+      .select("id, quantite, salaries(nom), materiel_catalogue(designation, unite, prix_achat_cents, coefficient)")
+      .eq("chantier_id", id)
+      .eq("type", "prise")
+      .order("created_at", { ascending: false }),
   ]);
 
   // La table `documents` n'a aucune policy RLS pour les utilisateurs authentifiés :
@@ -149,6 +155,37 @@ export default async function ChantierPage({ params }: PageProps<"/dashboard/cha
           placeholder="Lier un rendez-vous existant…"
           onLier={lierChantierRdv.bind(null, chantier.id)}
         />
+      </Card>
+
+      <Card className="space-y-3 p-5">
+        <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+          <Package className="size-4" /> Matériel consommé
+        </p>
+        {(materielConsomme ?? []).length === 0 ? (
+          <p className="text-sm text-muted">Aucune pièce prise en stock pour ce chantier pour le moment.</p>
+        ) : (
+          <ul className="space-y-1.5 text-sm">
+            {(materielConsomme ?? []).map((m) => {
+              const article = m.materiel_catalogue;
+              const prixVente =
+                article?.prix_achat_cents !== null && article?.prix_achat_cents !== undefined
+                  ? Math.round(article.prix_achat_cents * article.coefficient * m.quantite)
+                  : null;
+              return (
+                <li key={m.id} className="flex items-center justify-between gap-2">
+                  <span className="text-foreground">
+                    {m.quantite} {article?.unite ?? ""} — {article?.designation ?? "Article"}
+                    {m.salaries?.nom && <span className="text-muted"> · {m.salaries.nom}</span>}
+                  </span>
+                  {prixVente !== null && <span className="text-muted">{formatPrix(prixVente)}</span>}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <p className="text-xs text-muted">
+          Pour facturer ces pièces, ouvrez un devis/facture lié et utilisez le sélecteur « Depuis le catalogue matériel ».
+        </p>
       </Card>
 
       <Card className="space-y-3 p-5">

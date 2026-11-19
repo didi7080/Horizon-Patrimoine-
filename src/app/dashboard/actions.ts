@@ -42,6 +42,45 @@ export async function changerStatutRdv(
   }
 }
 
+export async function reaffecterRdv(rdvId: string, salarieId: string): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("rendez_vous").update({ salarie_id: salarieId }).eq("id", rdvId);
+    if (error) throw new Error(error.message);
+    await synchroniserRdvEtParticipantsGoogle(rdvId);
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/rendez-vous");
+    revalidatePath("/dashboard/ma-journee");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+export async function demarrerIntervention(rdvId: string): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("rendez_vous").update({ debut_reel: new Date().toISOString() }).eq("id", rdvId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/ma-journee");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
+export async function terminerIntervention(rdvId: string): Promise<Resultat> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("rendez_vous").update({ fin_reel: new Date().toISOString() }).eq("id", rdvId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/ma-journee");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, erreur: err instanceof Error ? err.message : "Une erreur est survenue." };
+  }
+}
+
 export async function ajouterParticipantRdv(rdvId: string, salarieId: string): Promise<Resultat> {
   const { entreprise } = await getEntrepriseContext();
   try {

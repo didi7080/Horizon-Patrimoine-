@@ -21,16 +21,25 @@ export default async function MonCamionPage() {
 
   const admin = createAdminClient();
 
-  const { data: articles } = admin
-    ? await admin
-        .from("materiel_catalogue")
-        .select("id, designation, unite")
-        .eq("entreprise_id", entreprise.id)
-        .eq("actif", true)
-        .order("designation")
-    : { data: null };
+  const [{ data: articles }, { data: chantiersEnCours }] = admin
+    ? await Promise.all([
+        admin
+          .from("materiel_catalogue")
+          .select("id, designation, unite")
+          .eq("entreprise_id", entreprise.id)
+          .eq("actif", true)
+          .order("designation"),
+        supabase
+          .from("chantiers")
+          .select("id, titre, clients(nom)")
+          .eq("entreprise_id", entreprise.id)
+          .eq("statut", "en_cours")
+          .order("titre"),
+      ])
+    : [{ data: null }, { data: null }];
 
   const articlesListe = articles ?? [];
+  const chantiersListe = (chantiersEnCours ?? []).map((c) => ({ id: c.id, titre: `${c.titre} — ${c.clients?.nom ?? ""}` }));
 
   let stockCamion: { materiel_id: string; quantite: number }[] = [];
   let stockDepot: { materiel_id: string; quantite: number }[] = [];
@@ -74,7 +83,7 @@ export default async function MonCamionPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <PrendrePieceForm articles={articlesListe} salarieId={monSalarie.id} />
+            <PrendrePieceForm articles={articlesListe} salarieId={monSalarie.id} chantiers={chantiersListe} />
             <ReapprovisionnerForm articles={articlesListe} salarieId={monSalarie.id} />
           </div>
 

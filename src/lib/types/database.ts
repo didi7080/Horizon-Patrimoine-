@@ -897,6 +897,7 @@ export type Database = {
           id: string
           prix_achat_cents: number | null
           reference: string | null
+          seuil_alerte: number | null
           unite: string
         }
         Insert: {
@@ -909,6 +910,7 @@ export type Database = {
           id?: string
           prix_achat_cents?: number | null
           reference?: string | null
+          seuil_alerte?: number | null
           unite?: string
         }
         Update: {
@@ -921,6 +923,7 @@ export type Database = {
           id?: string
           prix_achat_cents?: number | null
           reference?: string | null
+          seuil_alerte?: number | null
           unite?: string
         }
         Relationships: [
@@ -1018,6 +1021,7 @@ export type Database = {
       }
       mouvements_stock: {
         Row: {
+          chantier_id: string | null
           created_at: string
           created_by: string | null
           entreprise_id: string
@@ -1028,6 +1032,7 @@ export type Database = {
           type: Database["public"]["Enums"]["type_mouvement_stock"]
         }
         Insert: {
+          chantier_id?: string | null
           created_at?: string
           created_by?: string | null
           entreprise_id: string
@@ -1038,6 +1043,7 @@ export type Database = {
           type: Database["public"]["Enums"]["type_mouvement_stock"]
         }
         Update: {
+          chantier_id?: string | null
           created_at?: string
           created_by?: string | null
           entreprise_id?: string
@@ -1048,6 +1054,13 @@ export type Database = {
           type?: Database["public"]["Enums"]["type_mouvement_stock"]
         }
         Relationships: [
+          {
+            foreignKeyName: "mouvements_stock_chantier_id_fkey"
+            columns: ["chantier_id"]
+            isOneToOne: false
+            referencedRelation: "chantiers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mouvements_stock_entreprise_id_fkey"
             columns: ["entreprise_id"]
@@ -1349,8 +1362,10 @@ export type Database = {
           created_at: string
           cree_par: string | null
           debut: string
+          debut_reel: string | null
           entreprise_id: string
           fin: string
+          fin_reel: string | null
           google_event_id: string | null
           id: string
           notes: string | null
@@ -1372,8 +1387,10 @@ export type Database = {
           created_at?: string
           cree_par?: string | null
           debut: string
+          debut_reel?: string | null
           entreprise_id: string
           fin: string
+          fin_reel?: string | null
           google_event_id?: string | null
           id?: string
           notes?: string | null
@@ -1395,8 +1412,10 @@ export type Database = {
           created_at?: string
           cree_par?: string | null
           debut?: string
+          debut_reel?: string | null
           entreprise_id?: string
           fin?: string
+          fin_reel?: string | null
           google_event_id?: string | null
           id?: string
           notes?: string | null
@@ -1594,7 +1613,10 @@ export type Database = {
     Functions: {
       ajuster_stock_depot: {
         Args: { p_materiel: string; p_quantite: number }
-        Returns: undefined
+        Returns: {
+          alerte_franchie: boolean
+          nouvelle_quantite_depot: number
+        }[]
       }
       annuler_rdv_public: { Args: { p_token: string }; Returns: undefined }
       avis_entreprise: { Args: { p_slug: string }; Returns: Json }
@@ -1803,6 +1825,7 @@ export type Database = {
       entreprise_active: { Args: { e: string }; Returns: boolean }
       envoyer_rappels: { Args: never; Returns: undefined }
       envoyer_rappels_planifies: { Args: never; Returns: undefined }
+      envoyer_recap_hebdo_stock: { Args: never; Returns: undefined }
       envoyer_recap_quotidien: { Args: never; Returns: undefined }
       envoyer_relances: { Args: never; Returns: undefined }
       envoyer_relances_factures: { Args: never; Returns: undefined }
@@ -1827,14 +1850,27 @@ export type Database = {
         Args: { p_secret: string; p_token: string }
         Returns: undefined
       }
-      prendre_piece_camion: {
-        Args: { p_materiel: string; p_quantite: number; p_salarie: string }
-        Returns: undefined
-      }
+      prendre_piece_camion:
+        | {
+            Args: { p_materiel: string; p_quantite: number; p_salarie: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_chantier?: string
+              p_materiel: string
+              p_quantite: number
+              p_salarie: string
+            }
+            Returns: undefined
+          }
       rdv_par_token: { Args: { p_token: string }; Returns: Json }
       reapprovisionner_camion: {
         Args: { p_materiel: string; p_quantite: number; p_salarie: string }
-        Returns: undefined
+        Returns: {
+          alerte_franchie: boolean
+          nouvelle_quantite_depot: number
+        }[]
       }
       rejoindre_liste_attente: {
         Args: {

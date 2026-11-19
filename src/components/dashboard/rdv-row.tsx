@@ -6,8 +6,9 @@ import { StatutBadge } from "@/components/statut-badge";
 import { ParticipantsRdv } from "@/components/dashboard/participants-rdv";
 import { PhotosIntervention } from "@/components/dashboard/photos-intervention";
 import { ChantierLien } from "@/components/dashboard/chantiers/chantier-lien";
+import { ReaffecterSalarie } from "@/components/dashboard/reaffecter-salarie";
 import { formatHeure, formatDateCourte } from "@/lib/utils";
-import { validerDemande, changerStatutRdv } from "@/app/dashboard/actions";
+import { validerDemande, changerStatutRdv, reaffecterRdv } from "@/app/dashboard/actions";
 import { lierRdvChantier } from "@/app/dashboard/chantiers/actions";
 import type { Tables } from "@/lib/types/database";
 
@@ -72,6 +73,13 @@ export function RdvRow({
                 p.salaries ? [{ id: p.salarie_id, nom: p.salaries.nom, couleur: p.salaries.couleur }] : [],
               )}
               salariesDisponibles={salariesEquipe.filter((s) => s.id !== rdv.salarie_id)}
+            />
+          )}
+          {rdv.statut !== "annule" && salariesEquipe.length > 1 && (
+            <ReaffecterSalarie
+              salarieActuelId={rdv.salarie_id}
+              salariesDisponibles={salariesEquipe}
+              onChange={reaffecterRdv.bind(null, rdv.id)}
             />
           )}
           <PhotosIntervention rdvId={rdv.id} nombrePhotos={rdv.photos_intervention.length} />

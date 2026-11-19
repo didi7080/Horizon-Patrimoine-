@@ -270,12 +270,14 @@ export async function enregistrerMateriel(formData: FormData): Promise<Resultat>
         ? null
         : Math.round(Number(prixAchatEuros) * 100);
     const coefficient = Number(formData.get("coefficient") ?? 1.4);
+    const seuilAlerteBrut = String(formData.get("seuilAlerte") ?? "").trim();
+    const seuilAlerte = seuilAlerteBrut === "" ? null : Number(seuilAlerteBrut);
 
     const supabase = admin();
     if (id) {
       const { error } = await supabase
         .from("materiel_catalogue")
-        .update({ designation, reference, famille, unite, prix_achat_cents: prixAchatCents, coefficient })
+        .update({ designation, reference, famille, unite, prix_achat_cents: prixAchatCents, coefficient, seuil_alerte: seuilAlerte })
         .eq("id", id)
         .eq("entreprise_id", entreprise.id);
       if (error) throw new Error(error.message);
@@ -288,6 +290,7 @@ export async function enregistrerMateriel(formData: FormData): Promise<Resultat>
         unite,
         prix_achat_cents: prixAchatCents,
         coefficient,
+        seuil_alerte: seuilAlerte,
       });
       if (error) throw new Error(error.message);
     }

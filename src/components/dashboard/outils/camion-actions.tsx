@@ -11,12 +11,14 @@ import { Card } from "@/components/ui/card";
 import { prendrePieceCamion, reapprovisionnerCamion } from "@/app/dashboard/outils/stock-actions";
 
 type Article = { id: string; designation: string; unite: string };
+type Chantier = { id: string; titre: string };
 
 function FormulairePiece({
   titre,
   description,
   icone,
   articles,
+  chantiers,
   salarieId,
   action,
 }: {
@@ -24,12 +26,14 @@ function FormulairePiece({
   description: string;
   icone: React.ReactNode;
   articles: Article[];
+  chantiers?: Chantier[];
   salarieId: string;
-  action: (materielId: string, salarieId: string, quantite: number) => Promise<{ ok: boolean; erreur?: string }>;
+  action: (materielId: string, salarieId: string, quantite: number, chantierId?: string | null) => Promise<{ ok: boolean; erreur?: string }>;
 }) {
   const router = useRouter();
   const [materielId, setMaterielId] = useState("");
   const [quantite, setQuantite] = useState("1");
+  const [chantierId, setChantierId] = useState("");
   const [pending, startTransition] = useTransition();
 
   function onSubmit(e: React.FormEvent) {
@@ -44,7 +48,7 @@ function FormulairePiece({
       return;
     }
     startTransition(async () => {
-      const resultat = await action(materielId, salarieId, q);
+      const resultat = await action(materielId, salarieId, q, chantierId || null);
       if (!resultat.ok) {
         toast.error(resultat.erreur ?? "Une erreur est survenue.");
         return;
@@ -52,6 +56,7 @@ function FormulairePiece({
       toast.success("Enregistré.");
       setMaterielId("");
       setQuantite("1");
+      setChantierId("");
       router.refresh();
     });
   }
@@ -63,7 +68,7 @@ function FormulairePiece({
         <h2 className="font-medium text-foreground">{titre}</h2>
       </div>
       <p className="text-sm text-muted">{description}</p>
-      <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end sm:flex-wrap">
         <div className="flex-1 space-y-1.5">
           <Label>Pièce</Label>
           <select
@@ -83,6 +88,23 @@ function FormulairePiece({
           <Label>Quantité</Label>
           <Input type="number" min="0" step="any" value={quantite} onChange={(e) => setQuantite(e.target.value)} />
         </div>
+        {chantiers && chantiers.length > 0 && (
+          <div className="w-full space-y-1.5 sm:flex-1">
+            <Label>Chantier (optionnel)</Label>
+            <select
+              value={chantierId}
+              onChange={(e) => setChantierId(e.target.value)}
+              className="flex h-10 w-full rounded-lg border border-border-strong bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20"
+            >
+              <option value="">Aucun chantier précis</option>
+              {chantiers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.titre}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <Button type="submit" disabled={pending}>
           {pending ? <Loader2 className="size-4 animate-spin" /> : icone}
           Valider
@@ -92,13 +114,22 @@ function FormulairePiece({
   );
 }
 
-export function PrendrePieceForm({ articles, salarieId }: { articles: Article[]; salarieId: string }) {
+export function PrendrePieceForm({
+  articles,
+  salarieId,
+  chantiers,
+}: {
+  articles: Article[];
+  salarieId: string;
+  chantiers?: Chantier[];
+}) {
   return (
     <FormulairePiece
       titre="J'ai pris une pièce dans mon camion"
       description="Pour un chantier en cours — ça décompte votre stock camion."
       icone={<PackageMinus className="size-4 text-brand" />}
       articles={articles}
+      chantiers={chantiers}
       salarieId={salarieId}
       action={prendrePieceCamion}
     />

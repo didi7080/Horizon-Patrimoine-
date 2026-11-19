@@ -93,6 +93,20 @@ export function MaterielFormDialog({ article }: { article?: Tables<"materiel_cat
               />
             </div>
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="mat-seuil">Seuil d’alerte stock dépôt (optionnel)</Label>
+            <Input
+              id="mat-seuil"
+              name="seuilAlerte"
+              type="number"
+              step="any"
+              defaultValue={article?.seuil_alerte ?? ""}
+              placeholder="Ex. 5"
+            />
+            <p className="text-xs text-muted-foreground">
+              Vous êtes prévenu dès que le stock dépôt passe sous cette quantité.
+            </p>
+          </div>
           {erreur && <p className="text-sm text-destructive">{erreur}</p>}
           <DialogFooter>
             <DialogClose asChild>
