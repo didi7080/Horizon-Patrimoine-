@@ -87,6 +87,10 @@ export default async function ChantierPage({ params }: PageProps<"/dashboard/cha
     : [{ data: null }, { data: null }, { data: null }];
 
   return (
+    <>
+      <pre style={{ fontSize: 10, whiteSpace: "pre-wrap", background: "#fee", padding: 8 }}>
+        DEBUG: {JSON.stringify(materielConsomme)}
+      </pre>
     <div className="max-w-3xl space-y-6">
       <Link href="/dashboard/chantiers" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground">
         <ArrowLeft className="size-3.5" /> Retour aux chantiers
@@ -222,5 +226,6 @@ export default async function ChantierPage({ params }: PageProps<"/dashboard/cha
         />
       </Card>
     </div>
+    </>
   );
 }
