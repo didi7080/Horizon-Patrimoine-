@@ -1,21 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { getEntrepriseAvecOutils, type Resultat } from "@/app/dashboard/outils/actions";
-
-function admin() {
-  const client = createAdminClient();
-  if (!client) throw new Error("La connexion à la base de données n'est pas configurée.");
-  return client;
-}
 
 export async function prendrePieceCamion(materielId: string, salarieId: string, quantite: number): Promise<Resultat> {
   const contexte = await getEntrepriseAvecOutils();
   if (!contexte.ok) return contexte;
   try {
     if (!Number.isFinite(quantite) || quantite <= 0) throw new Error("La quantité doit être positive.");
-    const { error } = await admin().rpc("prendre_piece_camion", {
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("prendre_piece_camion", {
       p_materiel: materielId,
       p_salarie: salarieId,
       p_quantite: quantite,
@@ -33,7 +28,8 @@ export async function reapprovisionnerCamion(materielId: string, salarieId: stri
   if (!contexte.ok) return contexte;
   try {
     if (!Number.isFinite(quantite) || quantite <= 0) throw new Error("La quantité doit être positive.");
-    const { error } = await admin().rpc("reapprovisionner_camion", {
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("reapprovisionner_camion", {
       p_materiel: materielId,
       p_salarie: salarieId,
       p_quantite: quantite,
@@ -52,7 +48,8 @@ export async function ajusterStockDepot(materielId: string, quantite: number): P
   if (!contexte.ok) return contexte;
   try {
     if (!Number.isFinite(quantite) || quantite === 0) throw new Error("La quantité ne peut pas être nulle.");
-    const { error } = await admin().rpc("ajuster_stock_depot", {
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("ajuster_stock_depot", {
       p_materiel: materielId,
       p_quantite: quantite,
     });
