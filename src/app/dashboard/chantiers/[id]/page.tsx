@@ -41,7 +41,7 @@ export default async function ChantierPage({ params }: PageProps<"/dashboard/cha
 
   const admin = createAdminClient();
 
-  const [{ data: etapes }, { data: rdvLies }, { data: rdvDelies }, { data: clients }, { data: materielConsomme }] = await Promise.all([
+  const [{ data: etapes }, { data: rdvLies }, { data: rdvDelies }, { data: clients }] = await Promise.all([
     supabase.from("etapes_chantier").select("*").eq("chantier_id", id).order("ordre"),
     supabase
       .from("rendez_vous")
@@ -57,17 +57,12 @@ export default async function ChantierPage({ params }: PageProps<"/dashboard/cha
       .order("debut", { ascending: false })
       .limit(20),
     supabase.from("clients").select("id, nom").eq("entreprise_id", entreprise.id).order("nom"),
-    supabase
-      .from("mouvements_stock")
-      .select("id, quantite, salaries(nom), materiel_catalogue(designation, unite, prix_achat_cents, coefficient)")
-      .eq("chantier_id", id)
-      .eq("type", "prise")
-      .order("created_at", { ascending: false }),
   ]);
 
-  // La table `documents` n'a aucune policy RLS pour les utilisateurs authentifiés :
-  // son accès passe toujours par le client admin, comme partout ailleurs dans l'app.
-  const [{ data: documentsLies }, { data: documentsDelies }] = admin
+  // Les tables `documents` et `materiel_catalogue` n'ont aucune policy RLS pour les
+  // utilisateurs authentifiés : leur accès passe toujours par le client admin,
+  // comme partout ailleurs dans l'app.
+  const [{ data: documentsLies }, { data: documentsDelies }, { data: materielConsomme }] = admin
     ? await Promise.all([
         admin
           .from("documents")
@@ -82,8 +77,14 @@ export default async function ChantierPage({ params }: PageProps<"/dashboard/cha
           .is("chantier_id", null)
           .order("date_emission", { ascending: false })
           .limit(20),
+        admin
+          .from("mouvements_stock")
+          .select("id, quantite, salaries(nom), materiel_catalogue(designation, unite, prix_achat_cents, coefficient)")
+          .eq("chantier_id", id)
+          .eq("type", "prise")
+          .order("created_at", { ascending: false }),
       ])
-    : [{ data: null }, { data: null }];
+    : [{ data: null }, { data: null }, { data: null }];
 
   return (
     <div className="max-w-3xl space-y-6">
