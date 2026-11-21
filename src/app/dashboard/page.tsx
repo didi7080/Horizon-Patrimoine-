@@ -92,7 +92,7 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold capitalize text-foreground">{aujourdhui}</h1>
-        <p className="mt-1 text-muted">Vue du jour pour {entreprise.nom}.</p>
+        <p className="mt-1 text-muted">Tableau de bord de {entreprise.nom}.</p>
       </div>
 
       <OnboardingChecklist etapes={etapesOnboarding} />

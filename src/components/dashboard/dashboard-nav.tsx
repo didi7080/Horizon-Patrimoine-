@@ -46,24 +46,25 @@ const LIENS = [
   { href: "/dashboard/reglages", label: "Réglages", icon: Settings },
 ];
 
+/** Vrai si `pathname` est `href` ou une sous-page de `href` (pas juste un préfixe de texte : /dashboard/outils ne doit pas correspondre à /dashboard/outils-premium). */
+function correspondAuChemin(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function DashboardNav({ afficherBadgePremium = false }: { afficherBadgePremium?: boolean }) {
   const pathname = usePathname();
 
   // Plusieurs liens peuvent correspondre au même chemin (ex. /dashboard/outils et
   // /dashboard/outils/materiel) : seul le plus précis doit être surligné.
   const lienActif = LIENS.reduce<(typeof LIENS)[number] | null>((meilleur, lien) => {
-    const correspond = lien.exact ? pathname === lien.href : pathname.startsWith(lien.href);
+    const correspond = lien.exact ? pathname === lien.href : correspondAuChemin(pathname, lien.href);
     if (!correspond) return meilleur;
     if (!meilleur || lien.href.length > meilleur.href.length) return lien;
     return meilleur;
   }, null);
 
   return (
-    <nav
-      data-debug-pathname={pathname}
-      data-debug-actif={lienActif?.href}
-      className="flex gap-1 overflow-x-auto px-2 py-2 lg:flex-col lg:overflow-visible lg:px-3 lg:py-4"
-    >
+    <nav className="flex gap-1 overflow-x-auto px-2 py-2 lg:flex-col lg:overflow-visible lg:px-3 lg:py-4">
       {LIENS.map((lien) => {
         const actif = lien === lienActif;
         return (
