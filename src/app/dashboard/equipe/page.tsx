@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Lock, ShieldCheck, X } from "lucide-react";
+import { Lock, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { accesInvitationMembres } from "@/lib/stripe";
 import { toggleSalarieActif } from "@/app/dashboard/actions";
 import { revoquerMembre } from "@/app/dashboard/equipe/invite-actions";
+import type { Tables } from "@/lib/types/database";
 
 export const revalidate = 0;
 
@@ -26,6 +27,18 @@ const LABEL_ROLE: Record<string, string> = {
   owner: "Propriétaire",
   admin: "Administrateur",
   salarie: "Salarié",
+};
+
+type SalarieAvecHoraires = Tables<"salaries"> & { horaires: Tables<"horaires">[] };
+
+type PersonneEquipe = {
+  cle: string;
+  nom: string;
+  email: string | null;
+  role: string | null;
+  membershipId: string | null;
+  estSoiMeme: boolean;
+  salarie: SalarieAvecHoraires | null;
 };
 
 export default async function EquipePage() {
@@ -52,25 +65,53 @@ export default async function EquipePage() {
     }),
   );
 
-  const salariesSansAcces = (salaries ?? [])
-    .filter((s) => !s.profile_id)
-    .map((s) => ({ id: s.id, nom: s.nom }));
+  // Une personne peut avoir un accès de connexion (membership), une fiche planning (salarié), ou les deux :
+  // on les réunit en une seule liste par personne plutôt que deux listes séparées sans lien visible entre elles.
+  const salariesParProfil = new Map<string, SalarieAvecHoraires>();
+  for (const s of salaries ?? []) {
+    if (s.profile_id) salariesParProfil.set(s.profile_id, s);
+  }
+
+  const personnesAvecAcces: PersonneEquipe[] = membresAvecEmail.map((m) => ({
+    cle: m.id,
+    nom: salariesParProfil.get(m.profile_id)?.nom ?? m.email ?? "Membre",
+    email: m.email,
+    role: m.role,
+    membershipId: m.id,
+    estSoiMeme: m.profile_id === userId,
+    salarie: salariesParProfil.get(m.profile_id) ?? null,
+  }));
+
+  const profilsAvecAcces = new Set(membresAvecEmail.map((m) => m.profile_id));
+  const personnesSansAcces: PersonneEquipe[] = (salaries ?? [])
+    .filter((s) => !s.profile_id || !profilsAvecAcces.has(s.profile_id))
+    .map((s) => ({
+      cle: s.id,
+      nom: s.nom,
+      email: null,
+      role: null,
+      membershipId: null,
+      estSoiMeme: false,
+      salarie: s as SalarieAvecHoraires,
+    }));
+
+  const personnes = [...personnesAvecAcces, ...personnesSansAcces].sort((a, b) => a.nom.localeCompare(b.nom));
+  const salariesSansAcces = personnesSansAcces
+    .filter((p) => p.salarie)
+    .map((p) => ({ id: p.salarie!.id, nom: p.salarie!.nom }));
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       <Suspense fallback={null}>
         <GoogleCalendarStatut />
       </Suspense>
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Équipe</h1>
-        <p className="mt-1 text-muted">Vos salariés, leurs horaires, et l’accès au tableau de bord.</p>
-      </div>
-
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 font-semibold text-foreground">
-            <ShieldCheck className="size-4 text-brand" /> Accès au tableau de bord
-          </h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Équipe</h1>
+          <p className="mt-1 text-muted">Vos salariés, leurs horaires, et l’accès au tableau de bord.</p>
+        </div>
+        <div className="flex gap-2">
+          <SalarieFormDialog />
           {peutInviter ? (
             <InviteMembreDialog salariesSansAcces={salariesSansAcces} />
           ) : (
@@ -81,87 +122,96 @@ export default async function EquipePage() {
             </Button>
           )}
         </div>
-        <div className="space-y-2">
-          {membresAvecEmail.map((m) => (
-            <Card key={m.id} className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  {m.email ?? "Adresse e-mail non disponible"}
-                </p>
-                <Badge variant="neutral" className="mt-1 capitalize">
-                  {LABEL_ROLE[m.role] ?? m.role}
-                </Badge>
+      </div>
+
+      {personnes.length > 0 ? (
+        <div className="space-y-4">
+          {personnes.map((p) => (
+            <Card key={p.cle} className="p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Avatar>
+                    <AvatarFallback
+                      style={{ backgroundColor: `${p.salarie?.couleur ?? "#94a3b8"}22`, color: p.salarie?.couleur ?? "#64748b" }}
+                    >
+                      {initiales(p.nom)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-foreground">{p.nom}</p>
+                      {p.role && (
+                        <Badge variant="neutral" className="capitalize">
+                          {LABEL_ROLE[p.role] ?? p.role}
+                        </Badge>
+                      )}
+                      {p.salarie && !p.salarie.actif && <Badge variant="neutral">Inactif</Badge>}
+                    </div>
+                    {p.email && <p className="text-sm text-muted">{p.email}</p>}
+                    {p.salarie?.fonction && <p className="text-sm text-muted">{p.salarie.fonction}</p>}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {p.salarie && (
+                    <>
+                      <IcalLinkButton token={p.salarie.ical_token} />
+                      <GoogleCalendarButton salarieId={p.salarie.id} emailConnecte={p.salarie.google_email} />
+                      <form action={async () => { "use server"; await toggleSalarieActif(p.salarie!.id, !p.salarie!.actif); }}>
+                        <Button size="sm" variant="ghost" type="submit">
+                          {p.salarie.actif ? "Désactiver" : "Réactiver"}
+                        </Button>
+                      </form>
+                      <SalarieFormDialog salarie={p.salarie} />
+                    </>
+                  )}
+                  {!p.membershipId && p.salarie && (
+                    peutInviter ? (
+                      <InviteMembreDialog
+                        salariesSansAcces={salariesSansAcces}
+                        salarieParDefaut={{ id: p.salarie.id, nom: p.salarie.nom }}
+                        libelleBouton="Donner un accès"
+                        tailleBouton="sm"
+                      />
+                    ) : (
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/dashboard/reglages">
+                          <Lock className="size-3.5" /> Accès — formule Équipe
+                        </Link>
+                      </Button>
+                    )
+                  )}
+                  {p.membershipId && !p.estSoiMeme && p.role !== "owner" && (
+                    <form action={async () => { "use server"; await revoquerMembre(p.membershipId!); }}>
+                      <Button size="sm" variant="ghost" type="submit">
+                        <X className="size-3.5" /> Retirer l’accès
+                      </Button>
+                    </form>
+                  )}
+                </div>
               </div>
-              {m.profile_id !== userId && m.role !== "owner" && (
-                <form action={async () => { "use server"; await revoquerMembre(m.id); }}>
-                  <Button size="sm" variant="ghost" type="submit">
-                    <X className="size-3.5" /> Retirer
-                  </Button>
-                </form>
+              {p.salarie && (
+                <>
+                  <Separator className="my-4" />
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Horaires de travail
+                  </p>
+                  <HorairesEditor salarieId={p.salarie.id} horaires={p.salarie.horaires} />
+                </>
               )}
             </Card>
           ))}
         </div>
-        {!admin && (
-          <p className="text-xs text-muted-foreground">
-            Configurez SUPABASE_SERVICE_ROLE_KEY pour afficher les e-mails et activer les
-            invitations.
-          </p>
-        )}
-      </section>
+      ) : (
+        <Card className="p-10 text-center text-sm text-muted">
+          Ajoutez les membres de votre équipe pour répartir les rendez-vous.
+        </Card>
+      )}
 
-      <Separator />
-
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-foreground">Salariés et horaires</h2>
-          <SalarieFormDialog />
-        </div>
-
-        <div className="space-y-4">
-          {salaries && salaries.length > 0 ? (
-            salaries.map((s) => (
-              <Card key={s.id} className="p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarFallback style={{ backgroundColor: `${s.couleur}22`, color: s.couleur }}>
-                        {initiales(s.nom)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-foreground">{s.nom}</p>
-                        {!s.actif && <Badge variant="neutral">Inactif</Badge>}
-                      </div>
-                      {s.fonction && <p className="text-sm text-muted">{s.fonction}</p>}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <IcalLinkButton token={s.ical_token} />
-                    <GoogleCalendarButton salarieId={s.id} emailConnecte={s.google_email} />
-                    <form action={async () => { "use server"; await toggleSalarieActif(s.id, !s.actif); }}>
-                      <Button size="sm" variant="ghost" type="submit">
-                        {s.actif ? "Désactiver" : "Réactiver"}
-                      </Button>
-                    </form>
-                    <SalarieFormDialog salarie={s} />
-                  </div>
-                </div>
-                <Separator className="my-4" />
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Horaires de travail
-                </p>
-                <HorairesEditor salarieId={s.id} horaires={s.horaires} />
-              </Card>
-            ))
-          ) : (
-            <Card className="p-10 text-center text-sm text-muted">
-              Ajoutez les membres de votre équipe pour répartir les rendez-vous.
-            </Card>
-          )}
-        </div>
-      </section>
+      {!admin && (
+        <p className="text-xs text-muted-foreground">
+          Les e-mails et les invitations ne sont pas disponibles sur cette installation.
+        </p>
+      )}
     </div>
   );
 }

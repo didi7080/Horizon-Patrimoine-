@@ -477,6 +477,16 @@ export async function repondreAvis(id: string, reponse: string): Promise<Resulta
 
 // --- Réglages ---------------------------------------------------------
 
+export async function changerMotDePasse(nouveauMotDePasse: string): Promise<Resultat> {
+  if (nouveauMotDePasse.length < 8) {
+    return { ok: false, erreur: "8 caractères minimum." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: nouveauMotDePasse });
+  if (error) return { ok: false, erreur: error.message };
+  return { ok: true };
+}
+
 export async function mettreAJourReglages(formData: FormData): Promise<Resultat> {
   const { entreprise } = await getEntrepriseContext();
   try {

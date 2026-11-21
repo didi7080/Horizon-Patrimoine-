@@ -26,7 +26,7 @@ export default async function DashboardPage() {
 
   const admin = createAdminClient();
 
-  const [{ data: demandes }, { data: rdvAujourdhui }, { count: nbPrestations }, { count: nbHoraires }, { data: chantiersEntreprise }] = await Promise.all([
+  const [{ data: demandes }, { data: rdvAujourdhui }, { count: nbPrestations }, { count: nbHoraires }, { data: chantiersEntreprise }, { data: salariesEntreprise }] = await Promise.all([
     supabase
       .from("rendez_vous")
       .select(selectRdv)
@@ -55,8 +55,10 @@ export default async function DashboardPage() {
       .eq("entreprise_id", entreprise.id)
       .eq("statut", "en_cours")
       .order("titre"),
+    supabase.from("salaries").select("id, nom, couleur").eq("entreprise_id", entreprise.id).eq("actif", true).order("nom"),
   ]);
   const chantiersEquipe = (chantiersEntreprise ?? []).map((c) => ({ id: c.id, titre: `${c.titre} — ${c.clients?.nom ?? ""}` }));
+  const salariesEquipe = salariesEntreprise ?? [];
 
   const { data: facturesEnRetard } = admin
     ? await admin
@@ -102,7 +104,7 @@ export default async function DashboardPage() {
           </h2>
           <div className="space-y-2">
             {(demandes as RdvAvecRelations[]).map((rdv) => (
-              <RdvRow key={rdv.id} rdv={rdv} chantiersEquipe={chantiersEquipe} />
+              <RdvRow key={rdv.id} rdv={rdv} salariesEquipe={salariesEquipe} chantiersEquipe={chantiersEquipe} />
             ))}
           </div>
         </section>
@@ -147,7 +149,7 @@ export default async function DashboardPage() {
         {rdvAujourdhui && rdvAujourdhui.length > 0 ? (
           <div className="space-y-2">
             {(rdvAujourdhui as RdvAvecRelations[]).map((rdv) => (
-              <RdvRow key={rdv.id} rdv={rdv} chantiersEquipe={chantiersEquipe} />
+              <RdvRow key={rdv.id} rdv={rdv} salariesEquipe={salariesEquipe} chantiersEquipe={chantiersEquipe} />
             ))}
           </div>
         ) : (

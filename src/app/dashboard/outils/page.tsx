@@ -35,9 +35,9 @@ export default async function OutilsPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Outils de calcul</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Études & calculs</h1>
           <p className="mt-1 text-muted">
-            Vos propres modules de calcul pour vos études chantier, adaptés à votre métier
+            Vos calculs sur mesure pour chiffrer un chantier, adaptés à votre métier
             {entreprise.metier ? ` (${entreprise.metier})` : ""}.
           </p>
         </div>
@@ -63,9 +63,10 @@ export default async function OutilsPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-medium text-foreground">Mes modules</h2>
+            <h2 className="font-medium text-foreground">Mes calculs</h2>
             <p className="text-sm text-muted">
-              Un module définit les champs et la formule. Pour calculer chez un client, cliquez sur « Nouvelle étude ».
+              Réglez une fois ce que vous calculez d’habitude (surface, quantité de matériel, prix...). Ensuite, pour chaque
+              client, cliquez sur « Nouvelle étude » et remplissez juste les mesures du jour.
             </p>
           </div>
           <Button asChild size="sm">

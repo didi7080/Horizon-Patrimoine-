@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReglagesForm } from "@/components/dashboard/reglages-form";
+import { ChangerMotDePasseForm } from "@/components/dashboard/changer-mot-de-passe-form";
 import { NotificationsPush } from "@/components/dashboard/notifications-push";
 import { AbonnementBouton } from "@/components/dashboard/abonnement-bouton";
 import { ChoixAbonnement } from "@/components/dashboard/choix-abonnement";
@@ -114,6 +115,11 @@ export default async function ReglagesPage() {
           Propre à ce navigateur/téléphone : à activer sur chaque appareil que vous utilisez.
         </p>
         <NotificationsPush />
+      </Card>
+
+      <Card className="space-y-3 p-5">
+        <p className="text-sm font-medium text-foreground">Mot de passe</p>
+        <ChangerMotDePasseForm />
       </Card>
 
       <CarteParrainage entrepriseId={entreprise.id} />

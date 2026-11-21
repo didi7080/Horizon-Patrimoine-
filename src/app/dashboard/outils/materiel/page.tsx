@@ -28,7 +28,7 @@ export default async function MaterielPage() {
     <div className="space-y-6">
       <div>
         <Link href="/dashboard/outils" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground">
-          <ArrowLeft className="size-3.5" /> Retour aux outils de calcul
+          <ArrowLeft className="size-3.5" /> Retour aux outils
         </Link>
       </div>
       <div className="flex items-center justify-between">

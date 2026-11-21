@@ -36,7 +36,7 @@ export default async function ModuleCalculPage({ params }: PageProps<"/dashboard
     <div className="max-w-4xl space-y-6">
       <div>
         <Link href="/dashboard/outils" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground">
-          <ArrowLeft className="size-3.5" /> Retour aux outils de calcul
+          <ArrowLeft className="size-3.5" /> Retour aux études & calculs
         </Link>
         <h1 className="mt-2 text-2xl font-semibold text-foreground">
           {nouveau ? "Nouveau module de calcul" : "Modifier le module"}

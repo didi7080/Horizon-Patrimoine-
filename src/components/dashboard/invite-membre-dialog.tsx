@@ -25,21 +25,28 @@ import { inviterMembre, type EtatInvitation } from "@/app/dashboard/equipe/invit
 
 export function InviteMembreDialog({
   salariesSansAcces,
+  salarieParDefaut,
+  libelleBouton = "Inviter un membre",
+  tailleBouton,
 }: {
   salariesSansAcces: { id: string; nom: string }[];
+  /** Pré-remplit l'invitation pour un salarié déjà connu (ex. bouton "Donner un accès" sur sa fiche). */
+  salarieParDefaut?: { id: string; nom: string };
+  libelleBouton?: string;
+  tailleBouton?: "sm" | "default";
 }) {
   const [etat, action, enCours] = useActionState<EtatInvitation, FormData>(inviterMembre, null);
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline">
-          <UserPlus className="size-4" /> Inviter un membre
+        <Button type="button" variant="outline" size={tailleBouton}>
+          <UserPlus className="size-4" /> {libelleBouton}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Inviter un membre de l’équipe</DialogTitle>
+          <DialogTitle>{salarieParDefaut ? `Donner un accès à ${salarieParDefaut.nom}` : "Inviter un membre de l’équipe"}</DialogTitle>
         </DialogHeader>
 
         {etat?.success ? (
@@ -58,7 +65,7 @@ export function InviteMembreDialog({
           <form action={action} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="inv-nom">Nom</Label>
-              <Input id="inv-nom" name="nom" />
+              <Input id="inv-nom" name="nom" defaultValue={salarieParDefaut?.nom} readOnly={Boolean(salarieParDefaut)} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="inv-email">E-mail</Label>
@@ -76,25 +83,29 @@ export function InviteMembreDialog({
                 </SelectContent>
               </Select>
             </div>
-            {salariesSansAcces.length > 0 && (
-              <div className="space-y-1.5">
-                <Label htmlFor="inv-salarie">Associer à un membre de l’équipe existant</Label>
-                <Select name="salarie_id">
-                  <SelectTrigger id="inv-salarie">
-                    <SelectValue placeholder="Aucun (optionnel)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {salariesSansAcces.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.nom}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Permet à cette personne de gérer directement ses propres rendez-vous.
-                </p>
-              </div>
+            {salarieParDefaut ? (
+              <input type="hidden" name="salarie_id" value={salarieParDefaut.id} />
+            ) : (
+              salariesSansAcces.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="inv-salarie">Associer à un membre de l’équipe existant</Label>
+                  <Select name="salarie_id">
+                    <SelectTrigger id="inv-salarie">
+                      <SelectValue placeholder="Aucun (optionnel)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {salariesSansAcces.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.nom}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Permet à cette personne de gérer directement ses propres rendez-vous.
+                  </p>
+                </div>
+              )
             )}
 
             {etat?.error && <p className="text-sm text-danger">{etat.error}</p>}
