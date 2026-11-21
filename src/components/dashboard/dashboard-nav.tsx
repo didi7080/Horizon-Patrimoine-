@@ -35,7 +35,7 @@ const LIENS = [
   { href: "/dashboard/prestations", label: "Prestations", icon: Wrench },
   { href: "/dashboard/documents", label: "Devis & factures", icon: FileText },
   { href: "/dashboard/chantiers", label: "Chantiers", icon: Hammer },
-  { href: "/dashboard/outils/materiel", label: "Matériel & stock", icon: Package, premium: true },
+  { href: "/dashboard/outils/materiel", label: "Matériel & stock", icon: Package, premium: true, aussi: "/dashboard/outils/mon-camion" },
   { href: "/dashboard/outils", label: "Études & calculs", icon: Calculator, premium: true },
   { href: "/dashboard/assistant", label: "Assistant IA", icon: Sparkles, premium: true },
   { href: "/dashboard/paiements", label: "Paiements", icon: Landmark },
@@ -51,15 +51,24 @@ function correspondAuChemin(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/** Longueur du chemin le plus précis de `lien` qui correspond à `pathname`, ou null si aucun ne correspond. */
+function longueurCorrespondance(pathname: string, lien: (typeof LIENS)[number]): number | null {
+  if (lien.exact) return pathname === lien.href ? lien.href.length : null;
+  const chemins = "aussi" in lien && lien.aussi ? [lien.href, lien.aussi] : [lien.href];
+  const longueurs = chemins.filter((chemin) => correspondAuChemin(pathname, chemin)).map((chemin) => chemin.length);
+  return longueurs.length > 0 ? Math.max(...longueurs) : null;
+}
+
 export function DashboardNav({ afficherBadgePremium = false }: { afficherBadgePremium?: boolean }) {
   const pathname = usePathname();
 
   // Plusieurs liens peuvent correspondre au même chemin (ex. /dashboard/outils et
   // /dashboard/outils/materiel) : seul le plus précis doit être surligné.
   const lienActif = LIENS.reduce<(typeof LIENS)[number] | null>((meilleur, lien) => {
-    const correspond = lien.exact ? pathname === lien.href : correspondAuChemin(pathname, lien.href);
-    if (!correspond) return meilleur;
-    if (!meilleur || lien.href.length > meilleur.href.length) return lien;
+    const longueur = longueurCorrespondance(pathname, lien);
+    if (longueur === null) return meilleur;
+    const longueurMeilleur = meilleur ? longueurCorrespondance(pathname, meilleur) : null;
+    if (longueurMeilleur === null || longueur > longueurMeilleur) return lien;
     return meilleur;
   }, null);
 
