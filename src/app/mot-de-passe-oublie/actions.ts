@@ -28,7 +28,11 @@ export async function motDePasseOublieAction(
   });
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: error.message.includes("rate limit")
+        ? "Trop de demandes pour le moment. Réessayez dans quelques minutes."
+        : "Impossible d'envoyer l'e-mail pour le moment. Réessayez plus tard.",
+    };
   }
 
   return { envoye: true };
