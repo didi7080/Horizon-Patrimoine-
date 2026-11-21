@@ -20,6 +20,9 @@ export function ConnexionForm() {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label htmlFor="motDePasse">Mot de passe</Label>
+          <Link href="/mot-de-passe-oublie" className="text-xs font-medium text-brand hover:underline">
+            Mot de passe oublié ?
+          </Link>
         </div>
         <Input id="motDePasse" name="motDePasse" type="password" autoComplete="current-password" required />
       </div>
