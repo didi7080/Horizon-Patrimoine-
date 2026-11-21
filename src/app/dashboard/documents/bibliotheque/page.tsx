@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -31,6 +31,17 @@ export default async function BibliothequePage() {
           <span className="inline-flex items-center rounded border border-border px-1 text-xs">signet</span>).
         </p>
       </div>
+
+      <Card className="flex items-center gap-3 p-4">
+        <Sparkles className="size-5 shrink-0 text-brand" />
+        <p className="text-sm text-foreground">
+          Pas envie de tout saisir à la main ?{" "}
+          <Link href="/dashboard/assistant" className="font-medium text-brand hover:underline">
+            Demandez à l’assistant IA
+          </Link>{" "}
+          de proposer les prestations courantes de votre métier, avec leurs prix habituels.
+        </p>
+      </Card>
 
       <div className="space-y-2">
         {lignes && lignes.length > 0 ? (

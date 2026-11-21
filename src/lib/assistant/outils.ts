@@ -324,6 +324,37 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "lister_bibliotheque",
+    description:
+      "Liste les lignes déjà enregistrées dans la bibliothèque de prix de l'entreprise (prestations courantes avec désignation, unité, prix et TVA habituels), réutilisables dans un devis ou une facture. Utilise ceci avant ajouter_lignes_bibliotheque pour éviter de proposer des doublons.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "ajouter_lignes_bibliotheque",
+    description:
+      "Ajoute une ou plusieurs lignes à la bibliothèque de prix de l'entreprise, pour que l'artisan puisse ensuite les réutiliser en un clic dans un devis ou une facture au lieu de tout retaper. Utilise ceci quand l'artisan te demande de l'aide pour remplir ou compléter sa bibliothèque de prix — par exemple en te demandant de proposer les prestations courantes de son métier, ou en te donnant lui-même une liste à ajouter.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lignes: {
+          type: "array",
+          description: "Lignes à ajouter à la bibliothèque.",
+          items: {
+            type: "object",
+            properties: {
+              designation: { type: "string" },
+              unite: { type: "string", description: "Ex. heure, forfait, u, m². Par défaut 'u'." },
+              prix_unitaire_euros: { type: "number", description: "Prix unitaire HT en euros (pas en centimes)." },
+              taux_tva: { type: "number", description: "0, 5.5, 10 ou 20. Par défaut 20." },
+            },
+            required: ["designation", "prix_unitaire_euros"],
+          },
+        },
+      },
+      required: ["lignes"],
+    },
+  },
+  {
     name: "lister_modules_calcul",
     description:
       "Liste les modules de calcul personnalisés déjà créés par l'entreprise (outils de calcul, Premium), avec leurs champs et formules. Utilise ceci avant calculer_etude si tu ne connais pas déjà les identifiants exacts des champs d'un module.",
@@ -797,6 +828,61 @@ async function outilEnregistrerDepense(
   return statut === "en_attente"
     ? { enregistre: true, en_attente_de_validation: true, lien: "/dashboard/depenses" }
     : { enregistre: true, lien: "/dashboard/depenses" };
+}
+
+async function outilListerBibliotheque(ctx: ContexteOutils) {
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+  const { data, error } = await admin
+    .from("lignes_bibliotheque")
+    .select("designation, unite, prix_unitaire_cents, taux_tva")
+    .eq("entreprise_id", ctx.entrepriseId)
+    .order("designation");
+  if (error) return { erreur: error.message };
+  return {
+    lignes: (data ?? []).map((l) => ({
+      designation: l.designation,
+      unite: l.unite,
+      prix_unitaire_euros: l.prix_unitaire_cents / 100,
+      taux_tva: l.taux_tva,
+    })),
+  };
+}
+
+type LigneBibliothequeEntree = {
+  designation: string;
+  unite?: string;
+  prix_unitaire_euros: number;
+  taux_tva?: number;
+};
+
+async function outilAjouterLignesBibliotheque(ctx: ContexteOutils, input: { lignes: LigneBibliothequeEntree[] }) {
+  if (!input.lignes || input.lignes.length === 0) return { erreur: "Au moins une ligne est requise." };
+  for (const ligne of input.lignes) {
+    if (!ligne.designation?.trim()) return { erreur: "Chaque ligne doit avoir une désignation." };
+    if (!Number.isFinite(ligne.prix_unitaire_euros) || ligne.prix_unitaire_euros < 0) {
+      return { erreur: `Prix unitaire invalide pour "${ligne.designation}".` };
+    }
+    if (ligne.taux_tva !== undefined && !TAUX_TVA_VALIDES.has(ligne.taux_tva)) {
+      return { erreur: `Taux de TVA invalide pour "${ligne.designation}" : utilise 0, 5.5, 10 ou 20.` };
+    }
+  }
+
+  const admin = createAdminClient();
+  if (!admin) return { erreur: "Base de données non configurée." };
+
+  const { error } = await admin.from("lignes_bibliotheque").insert(
+    input.lignes.map((l) => ({
+      entreprise_id: ctx.entrepriseId,
+      designation: l.designation.trim(),
+      unite: l.unite?.trim() || "u",
+      prix_unitaire_cents: Math.round(l.prix_unitaire_euros * 100),
+      taux_tva: l.taux_tva ?? 20,
+    })),
+  );
+  if (error) return { erreur: error.message };
+
+  return { ajoutees: input.lignes.length, lien: "/dashboard/documents/bibliotheque" };
 }
 
 const ID_VALIDE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
@@ -1477,6 +1563,10 @@ export async function executerOutil(ctx: ContexteOutils, nom: string, input: unk
       return outilEnregistrerDepense(ctx, entree as Parameters<typeof outilEnregistrerDepense>[1]);
     case "lister_depenses":
       return outilListerDepenses(ctx, entree as Parameters<typeof outilListerDepenses>[1]);
+    case "lister_bibliotheque":
+      return outilListerBibliotheque(ctx);
+    case "ajouter_lignes_bibliotheque":
+      return outilAjouterLignesBibliotheque(ctx, entree as Parameters<typeof outilAjouterLignesBibliotheque>[1]);
     case "lister_modules_calcul":
       return outilListerModulesCalcul(ctx);
     case "creer_module_calcul":
