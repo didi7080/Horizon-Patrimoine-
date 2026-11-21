@@ -17,18 +17,13 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
 
-  let debugMsg = "aucun_token_ni_code";
   if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
     if (!error) return NextResponse.redirect(new URL(next, request.url));
-    debugMsg = `verifyOtp:${error.message}`;
   } else if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(new URL(next, request.url));
-    debugMsg = `exchangeCode:${error.message}`;
   }
 
-  const urlErreur = new URL("/mot-de-passe-oublie?erreur=lien_invalide", request.url);
-  urlErreur.searchParams.set("debug", debugMsg);
-  return NextResponse.redirect(urlErreur);
+  return NextResponse.redirect(new URL("/mot-de-passe-oublie?erreur=lien_invalide", request.url));
 }
