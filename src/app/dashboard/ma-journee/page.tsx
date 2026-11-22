@@ -147,13 +147,29 @@ export default async function MaJourneePage() {
                 </div>
 
                 {rdv.statut === "confirme" && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {!rdv.debut_reel ? (
-                      <form action={async () => { "use server"; await demarrerIntervention(rdv.id); }}>
-                        <BoutonHorsConnexion size="sm" type="submit">
-                          <Clock className="size-3.5" /> Démarrer l’intervention
-                        </BoutonHorsConnexion>
-                      </form>
+                      <>
+                        <form action={async () => { "use server"; await demarrerIntervention(rdv.id); }}>
+                          <BoutonHorsConnexion size="sm" type="submit">
+                            <Clock className="size-3.5" /> Démarrer l’intervention
+                          </BoutonHorsConnexion>
+                        </form>
+                        {passe && (
+                          <>
+                            <form action={async () => { "use server"; await changerStatutRdv(rdv.id, "honore"); }}>
+                              <BoutonHorsConnexion size="sm" variant="outline" type="submit">
+                                Honoré
+                              </BoutonHorsConnexion>
+                            </form>
+                            <form action={async () => { "use server"; await changerStatutRdv(rdv.id, "absent"); }}>
+                              <BoutonHorsConnexion size="sm" variant="outline" type="submit">
+                                Client absent
+                              </BoutonHorsConnexion>
+                            </form>
+                          </>
+                        )}
+                      </>
                     ) : !rdv.fin_reel ? (
                       <>
                         <Badge variant="info">En cours depuis {formatHeure(rdv.debut_reel)}</Badge>
@@ -163,31 +179,18 @@ export default async function MaJourneePage() {
                           </BoutonHorsConnexion>
                         </form>
                       </>
-                    ) : (
-                      <Badge variant="success">
-                        Durée réelle :{" "}
-                        {formatDuree(Math.round((new Date(rdv.fin_reel).getTime() - new Date(rdv.debut_reel).getTime()) / 60000))}
-                      </Badge>
-                    )}
+                    ) : null}
                   </div>
+                )}
+
+                {rdv.debut_reel && rdv.fin_reel && (
+                  <Badge variant="success">
+                    Durée réelle :{" "}
+                    {formatDuree(Math.round((new Date(rdv.fin_reel).getTime() - new Date(rdv.debut_reel).getTime()) / 60000))}
+                  </Badge>
                 )}
 
                 <PhotosIntervention rdvId={rdv.id} nombrePhotos={rdv.photos_intervention.length} modifiable />
-
-                {rdv.statut === "confirme" && passe && (
-                  <div className="flex gap-2 border-t border-border pt-3">
-                    <form action={async () => { "use server"; await changerStatutRdv(rdv.id, "honore"); }}>
-                      <BoutonHorsConnexion size="sm" type="submit">
-                        Honoré
-                      </BoutonHorsConnexion>
-                    </form>
-                    <form action={async () => { "use server"; await changerStatutRdv(rdv.id, "absent"); }}>
-                      <BoutonHorsConnexion size="sm" variant="outline" type="submit">
-                        Client absent
-                      </BoutonHorsConnexion>
-                    </form>
-                  </div>
-                )}
               </Card>
             );
           })}

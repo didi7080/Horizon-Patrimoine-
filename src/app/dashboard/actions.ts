@@ -72,8 +72,16 @@ export async function demarrerIntervention(rdvId: string): Promise<Resultat> {
 export async function terminerIntervention(rdvId: string): Promise<Resultat> {
   try {
     const supabase = await createClient();
-    const { error } = await supabase.from("rendez_vous").update({ fin_reel: new Date().toISOString() }).eq("id", rdvId);
+    // Terminer le chronomètre vaut confirmation que l'intervention a bien eu lieu : pas besoin
+    // d'un second geste "Honoré" séparé juste après.
+    const { error } = await supabase
+      .from("rendez_vous")
+      .update({ fin_reel: new Date().toISOString(), statut: "honore" })
+      .eq("id", rdvId);
     if (error) throw new Error(error.message);
+    await synchroniserRdvEtParticipantsGoogle(rdvId);
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/rendez-vous");
     revalidatePath("/dashboard/ma-journee");
     return { ok: true };
   } catch (err) {
