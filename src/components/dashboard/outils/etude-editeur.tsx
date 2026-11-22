@@ -210,7 +210,7 @@ export function EtudeEditeur({
         </Card>
       ) : (
         <Card className="p-6 text-sm text-muted">
-          Cette étude n’a pas de module de calcul associé. Vous pouvez tout de même utiliser le catalogue
+          Cette étude n’a pas de modèle de calcul associé. Vous pouvez tout de même utiliser le catalogue
           matériel et la synthèse ci-dessous.
         </Card>
       )}

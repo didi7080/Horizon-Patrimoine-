@@ -88,7 +88,7 @@ export function ModuleEditor({
   function enregistrer() {
     setErreur(null);
     if (!nom.trim()) {
-      setErreur("Le nom du module est requis.");
+      setErreur("Le nom du modèle est requis.");
       return;
     }
     for (const champ of champs) {
@@ -114,7 +114,7 @@ export function ModuleEditor({
         setErreur(resultat.erreur);
         return;
       }
-      toast.success("Module enregistré");
+      toast.success("Modèle enregistré");
       if (!moduleId) router.replace(`/dashboard/outils/modules/${resultat.id}`);
     });
   }
@@ -122,7 +122,7 @@ export function ModuleEditor({
   return (
     <div className="space-y-6">
       <Card className="space-y-3 p-4">
-        <Label htmlFor="nom-module">Nom du module</Label>
+        <Label htmlFor="nom-module">Nom du modèle</Label>
         <Input
           id="nom-module"
           value={nom}
@@ -295,7 +295,7 @@ export function ModuleEditor({
 
       <Button type="button" onClick={enregistrer} disabled={pending} className={cn(pending && "opacity-80")}>
         {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-        Enregistrer le module
+        Enregistrer le modèle
       </Button>
     </div>
   );

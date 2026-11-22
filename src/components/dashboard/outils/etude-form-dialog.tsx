@@ -65,7 +65,7 @@ export function EtudeFormDialog({
             <Input id="etude-titre" name="titre" placeholder="Ex. Devis M. Dupont — Chauffage" required />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="etude-module">Module de calcul</Label>
+            <Label htmlFor="etude-module">Modèle de calcul</Label>
             <select id="etude-module" name="moduleId" className={classeSelect} defaultValue={moduleIdDefaut ?? ""}>
               <option value="">Aucun pour le moment</option>
               {modules.map((m) => (

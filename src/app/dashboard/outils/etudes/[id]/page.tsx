@@ -66,7 +66,7 @@ export default async function EtudeDetailPage({ params }: PageProps<"/dashboard/
 
       {!module_ && (
         <Card className="p-4 text-sm text-muted">
-          Aucun module de calcul n’a été choisi pour cette étude.{" "}
+          Aucun modèle de calcul n’a été choisi pour cette étude.{" "}
           <Link href="/dashboard/outils" className="font-medium text-brand hover:underline">
             Créez-en un
           </Link>{" "}

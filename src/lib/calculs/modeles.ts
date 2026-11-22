@@ -343,7 +343,7 @@ export const MODELES_PAR_METIER: Record<string, ModuleTemplate[]> = {
 };
 
 export const MODELE_GENERIQUE: ModuleTemplate = {
-  nom: "Mon premier module de calcul",
+  nom: "Mon premier modèle de calcul",
   champs: [
     { id: "exemple_a", label: "Exemple de champ A", type: "nombre", unite: "u" },
     { id: "exemple_b", label: "Exemple de champ B", type: "nombre", unite: "u" },

@@ -43,8 +43,8 @@ const FORMULES = [
     option: true,
     misEnAvant: false,
     inclus: [
-      "Les outils de calcul, en plus de votre formule Solo ou Équipe",
-      "Modules de calcul personnalisables (vos propres formules)",
+      "Les études & calculs, en plus de votre formule Solo ou Équipe",
+      "Modèles de calcul personnalisables (vos propres formules)",
       "Assistant IA pour vos devis et questions du quotidien",
     ],
   },
@@ -80,7 +80,7 @@ const COMPARATIF: { categorie: string; lignes: { label: string; solo: Disponibil
   {
     categorie: "Avec l'option Premium (+30€)",
     lignes: [
-      { label: "Outils de calcul personnalisés par métier", solo: "premium", equipe: "premium" },
+      { label: "Études & calculs personnalisés par métier", solo: "premium", equipe: "premium" },
       { label: "Assistant IA (devis par message, questions admin/technique)", solo: "premium", equipe: "premium" },
     ],
   },
@@ -109,7 +109,7 @@ const QUESTIONS = [
   },
   {
     q: "Qu’est-ce que la formule Premium apporte en plus ?",
-    r: "Premium ajoute les Outils de calcul à votre formule Solo ou Équipe pour 30€/mois de plus : vous créez vos propres modules de calcul adaptés à votre métier (vos champs, vos formules), les utilisez pour des études chantier chiffrées avec votre catalogue matériel, puis générez une présentation client imprimable.",
+    r: "Premium ajoute les Études & calculs à votre formule Solo ou Équipe pour 30€/mois de plus : vous créez vos propres modèles de calcul adaptés à votre métier (vos champs, vos formules), les utilisez pour des études chantier chiffrées avec votre catalogue matériel, puis générez une présentation client imprimable.",
   },
   {
     q: "Quelle est la différence entre mensuel et annuel ?",
@@ -132,7 +132,7 @@ export default function TarifsPage() {
           </h1>
           <p className="mt-3 text-muted">
             Sans surprise, sans engagement. Solo et Équipe s’adaptent automatiquement à votre
-            effectif ; Premium ajoute les outils de calcul pour tous. 14 jours d’essai offerts.
+            effectif ; Premium ajoute les études & calculs pour tous. 14 jours d’essai offerts.
           </p>
         </section>
 

@@ -357,17 +357,17 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
   {
     name: "lister_modules_calcul",
     description:
-      "Liste les modules de calcul personnalisés déjà créés par l'entreprise (outils de calcul, Premium), avec leurs champs et formules. Utilise ceci avant calculer_etude si tu ne connais pas déjà les identifiants exacts des champs d'un module.",
+      "Liste les modèles de calcul personnalisés déjà créés par l'entreprise (études & calculs, Premium), avec leurs champs et formules. Utilise ceci avant calculer_etude si tu ne connais pas déjà les identifiants exacts des champs d'un modèle.",
     input_schema: { type: "object", properties: {} },
   },
   {
     name: "creer_module_calcul",
     description:
-      "Crée un module de calcul personnalisé (champs à remplir + formules) pour chiffrer des études chantier, à partir d'une description libre de l'artisan (ex. « crée-moi un module pour calculer la quantité de peinture : surface des murs moins les ouvertures, divisée par le rendement du pot »). Choisis toi-même des identifiants de champs clairs en français sans accent ni espace (ex. surface_murs, nb_fenetres). Chaque formule ne peut utiliser QUE : les identifiants des champs de type nombre, les identifiants d'autres formules placées AVANT elle dans la liste (une formule ne peut pas utiliser le résultat d'une formule qui vient après), les opérateurs + - * / ^, des parenthèses, et les fonctions min/max/round/abs/sqrt/pow/floor/ceil — rien d'autre. Le module est vérifié automatiquement avant d'être enregistré : si une formule est invalide (identifiant inconnu, mauvais ordre...), la création échoue et l'erreur exacte est renvoyée pour que tu corriges et réessaies toi-même sans redemander à l'utilisateur.",
+      "Crée un modèle de calcul personnalisé (champs à remplir + formules) pour chiffrer des études chantier, à partir d'une description libre de l'artisan (ex. « crée-moi un modèle pour calculer la quantité de peinture : surface des murs moins les ouvertures, divisée par le rendement du pot »). Choisis toi-même des identifiants de champs clairs en français sans accent ni espace (ex. surface_murs, nb_fenetres). Chaque formule ne peut utiliser QUE : les identifiants des champs de type nombre, les identifiants d'autres formules placées AVANT elle dans la liste (une formule ne peut pas utiliser le résultat d'une formule qui vient après), les opérateurs + - * / ^, des parenthèses, et les fonctions min/max/round/abs/sqrt/pow/floor/ceil — rien d'autre. Le modèle est vérifié automatiquement avant d'être enregistré : si une formule est invalide (identifiant inconnu, mauvais ordre...), la création échoue et l'erreur exacte est renvoyée pour que tu corriges et réessaies toi-même sans redemander à l'utilisateur.",
     input_schema: {
       type: "object",
       properties: {
-        nom: { type: "string", description: "Nom du module, ex. « Peinture — calcul de quantité »." },
+        nom: { type: "string", description: "Nom du modèle, ex. « Peinture — calcul de quantité »." },
         champs: {
           type: "array",
           description: "Les informations à saisir pour faire le calcul.",
@@ -407,14 +407,14 @@ export const OUTILS_DEFINITIONS: Anthropic.Tool[] = [
   {
     name: "calculer_etude",
     description:
-      "Calcule immédiatement les résultats d'un module de calcul existant à partir des valeurs fournies par l'artisan (ex. « calcule-moi ça : surface 20m², 2 fenêtres de 1m² »). Renvoie chaque résultat de formule avec sa valeur réelle, calculée par l'application (jamais par toi-même de tête). Si un nom de client ou un titre est fourni, le calcul est aussi enregistré comme une étude consultable et imprimable dans l'application ; sinon c'est juste une estimation rapide, non enregistrée.",
+      "Calcule immédiatement les résultats d'un modèle de calcul existant à partir des valeurs fournies par l'artisan (ex. « calcule-moi ça : surface 20m², 2 fenêtres de 1m² »). Renvoie chaque résultat de formule avec sa valeur réelle, calculée par l'application (jamais par toi-même de tête). Si un nom de client ou un titre est fourni, le calcul est aussi enregistré comme une étude consultable et imprimable dans l'application ; sinon c'est juste une estimation rapide, non enregistrée.",
     input_schema: {
       type: "object",
       properties: {
-        module_nom: { type: "string", description: "Nom exact (ou très proche) du module de calcul à utiliser." },
+        module_nom: { type: "string", description: "Nom exact (ou très proche) du modèle de calcul à utiliser." },
         valeurs: {
           type: "object",
-          description: "Valeurs des champs du module, par identifiant. Ex. { \"surface_murs\": 20, \"nb_fenetres\": 2 }.",
+          description: "Valeurs des champs du modèle, par identifiant. Ex. { \"surface_murs\": 20, \"nb_fenetres\": 2 }.",
           additionalProperties: true,
         },
         client_nom: { type: "string", description: "Optionnel : si fourni, le calcul est enregistré comme étude pour ce client." },
@@ -981,7 +981,7 @@ async function outilListerModulesCalcul(ctx: ContexteOutils) {
 }
 
 async function outilCreerModuleCalcul(ctx: ContexteOutils, input: { nom: string; champs: ChampEntree[]; formules: FormuleEntree[] }) {
-  if (!input.nom?.trim()) return { erreur: "Le nom du module est requis." };
+  if (!input.nom?.trim()) return { erreur: "Le nom du modèle est requis." };
   if (!input.champs || input.champs.length === 0) return { erreur: "Au moins un champ est requis." };
   if (!input.formules || input.formules.length === 0) return { erreur: "Au moins une formule est requise." };
 
@@ -1013,7 +1013,7 @@ async function outilCalculerEtude(
   ctx: ContexteOutils,
   input: { module_nom: string; valeurs: Record<string, string | number | boolean>; client_nom?: string; titre?: string },
 ) {
-  if (!input.module_nom?.trim()) return { erreur: "Le nom du module est requis." };
+  if (!input.module_nom?.trim()) return { erreur: "Le nom du modèle est requis." };
   const admin = createAdminClient();
   if (!admin) return { erreur: "Base de données non configurée." };
 
@@ -1024,10 +1024,10 @@ async function outilCalculerEtude(
     .ilike("nom", `%${input.module_nom.trim()}%`);
   if (error) return { erreur: error.message };
   if (!modules || modules.length === 0) {
-    return { erreur: "Aucun module de calcul ne correspond à ce nom. Utilise lister_modules_calcul pour voir les modules disponibles." };
+    return { erreur: "Aucun modèle de calcul ne correspond à ce nom. Utilise lister_modules_calcul pour voir les modèles disponibles." };
   }
   if (modules.length > 1) {
-    return { erreur: "Plusieurs modules correspondent, précise lequel.", modules_disponibles: modules.map((m) => m.nom) };
+    return { erreur: "Plusieurs modèles correspondent, précise lequel.", modules_disponibles: modules.map((m) => m.nom) };
   }
   const module_ = modules[0];
   const champs = module_.champs as Champ[];

@@ -39,7 +39,7 @@ export default async function ModuleCalculPage({ params }: PageProps<"/dashboard
           <ArrowLeft className="size-3.5" /> Retour aux études & calculs
         </Link>
         <h1 className="mt-2 text-2xl font-semibold text-foreground">
-          {nouveau ? "Nouveau module de calcul" : "Modifier le module"}
+          {nouveau ? "Nouveau modèle de calcul" : "Modifier le modèle"}
         </h1>
         <p className="mt-1 text-muted">
           Définissez vos propres champs et formules. Vous seul décidez des calculs utilisés par votre entreprise.

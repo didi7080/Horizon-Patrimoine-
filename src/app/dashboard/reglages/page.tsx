@@ -95,7 +95,7 @@ export default async function ReglagesPage() {
               {!accesOutilsCalcul(planActuel) && (
                 <Button asChild size="sm" variant="outline">
                   <Link href="/dashboard/outils-premium">
-                    <Calculator className="size-3.5" /> Passer à Premium (outils de calcul)
+                    <Calculator className="size-3.5" /> Passer à Premium (études & calculs)
                   </Link>
                 </Button>
               )}

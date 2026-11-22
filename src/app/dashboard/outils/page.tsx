@@ -71,7 +71,7 @@ export default async function OutilsPage() {
           </div>
           <Button asChild size="sm">
             <Link href="/dashboard/outils/modules/nouveau">
-              <Plus className="size-3.5" /> Créer un module personnalisé
+              <Plus className="size-3.5" /> Créer un modèle personnalisé
             </Link>
           </Button>
         </div>
@@ -102,7 +102,7 @@ export default async function OutilsPage() {
                       </Link>
                     </Button>
                     <BoutonSupprimer
-                      confirmation={`Supprimer le module "${m.nom}" ? Les études existantes qui l'utilisent conserveront leurs données mais ne pourront plus s'y référer.`}
+                      confirmation={`Supprimer le modèle "${m.nom}" ? Les études existantes qui l'utilisent conserveront leurs données mais ne pourront plus s'y référer.`}
                       action={supprimerModule.bind(null, m.id)}
                     />
                   </div>
@@ -112,7 +112,7 @@ export default async function OutilsPage() {
           </div>
         ) : (
           <Card className="p-10 text-center text-sm text-muted">
-            Aucun module pour le moment. Ajoutez un modèle ci-dessous ou créez le vôtre.
+            Aucun modèle pour le moment. Ajoutez-en un ci-dessous ou créez le vôtre.
           </Card>
         )}
       </section>

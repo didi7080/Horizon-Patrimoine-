@@ -18,7 +18,7 @@ export function CreerDepuisModeleBouton({ nomModele }: { nomModele: string }) {
         toast.error(resultat.erreur);
         return;
       }
-      toast.success("Module ajouté — vous pouvez le personnaliser.");
+      toast.success("Modèle ajouté — vous pouvez le personnaliser.");
       router.refresh();
     });
   }

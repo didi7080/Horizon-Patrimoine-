@@ -9,7 +9,7 @@ import { AbonnementBouton } from "@/components/dashboard/abonnement-bouton";
 export const revalidate = 0;
 
 const AVANTAGES = [
-  "Un module de calcul par métier, adapté à votre activité",
+  "Un modèle de calcul par métier, adapté à votre activité",
   "Vos propres champs et formules — vous gardez la main sur vos calculs",
   "Des études chantier par client, avec résultats calculés en direct",
   "Un catalogue matériel réutilisable pour chiffrer vos devis",
@@ -31,7 +31,7 @@ export default async function OutilsPremiumPage() {
         <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-brand-light text-brand">
           <Calculator className="size-6" />
         </div>
-        <h1 className="mt-4 text-2xl font-semibold text-foreground">Outils de calcul & assistant IA</h1>
+        <h1 className="mt-4 text-2xl font-semibold text-foreground">Études, calculs & assistant IA</h1>
         <p className="mt-1 text-muted">
           Réservés à la formule Premium
           {entreprise.metier ? ` — disponibles pour votre métier (${entreprise.metier})` : ""}.
