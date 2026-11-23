@@ -37,6 +37,18 @@ export default async function DocumentPage({ params }: PageProps<"/dashboard/doc
   if (!document) notFound();
   const chantiersEquipe = (chantiersEntreprise ?? []).map((c) => ({ id: c.id, titre: `${c.titre} — ${c.clients?.nom ?? ""}` }));
 
+  let factureExistanteId: string | null = null;
+  if (document.type === "devis") {
+    const { data: factureExistante } = await admin
+      .from("documents")
+      .select("id")
+      .eq("devis_origine_id", document.id)
+      .eq("entreprise_id", entreprise.id)
+      .eq("type", "facture")
+      .maybeSingle();
+    factureExistanteId = factureExistante?.id ?? null;
+  }
+
   return (
     <div className="max-w-3xl space-y-6">
       <Link href="/dashboard/documents" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-foreground">
@@ -73,6 +85,7 @@ export default async function DocumentPage({ params }: PageProps<"/dashboard/doc
         datePrestationInitiale={document.date_prestation}
         notesInitiales={document.notes}
         devisOrigineId={document.devis_origine_id}
+        factureExistanteId={factureExistanteId}
         bibliotheque={bibliotheque ?? []}
         materielCatalogue={materielCatalogue ?? []}
       />

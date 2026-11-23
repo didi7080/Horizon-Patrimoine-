@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 
 const EN_ATTENTE = new Set(["brouillon", "envoye"]);
@@ -12,9 +13,9 @@ export function RepondreDevis({ token, statutInitial }: { token: string; statutI
   const supabase = useMemo(() => createClient(), []);
   const [statut, setStatut] = useState(statutInitial);
   const [enCours, setEnCours] = useState(false);
+  const [dialogRefus, setDialogRefus] = useState(false);
 
   async function repondre(accepter: boolean) {
-    if (!accepter && !window.confirm("Confirmer le refus de ce devis ?")) return;
     setEnCours(true);
     const { error } = await supabase.rpc("repondre_devis_public", { p_token: token, p_accepter: accepter });
     setEnCours(false);
@@ -22,6 +23,7 @@ export function RepondreDevis({ token, statutInitial }: { token: string; statutI
       toast.error("Impossible d'enregistrer votre réponse", { description: error.message });
       return;
     }
+    setDialogRefus(false);
     setStatut(accepter ? "accepte" : "refuse");
     toast.success(accepter ? "Devis accepté" : "Devis refusé");
   }
@@ -50,7 +52,7 @@ export function RepondreDevis({ token, statutInitial }: { token: string; statutI
 
   return (
     <div className="flex flex-col items-center gap-3 border-t border-border pt-6 sm:flex-row sm:justify-end">
-      <Button type="button" variant="outline" onClick={() => repondre(false)} disabled={enCours}>
+      <Button type="button" variant="outline" onClick={() => setDialogRefus(true)} disabled={enCours}>
         {enCours ? <Loader2 className="size-4 animate-spin" /> : <XCircle className="size-4" />}
         Je refuse ce devis
       </Button>
@@ -58,6 +60,23 @@ export function RepondreDevis({ token, statutInitial }: { token: string; statutI
         {enCours ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
         J’accepte ce devis
       </Button>
+
+      <Dialog open={dialogRefus} onOpenChange={setDialogRefus}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmer le refus de ce devis ?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted">L’artisan en sera informé.</p>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Retour</Button>
+            </DialogClose>
+            <Button variant="danger" onClick={() => repondre(false)} disabled={enCours}>
+              {enCours && <Loader2 className="size-4 animate-spin" />} Confirmer le refus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

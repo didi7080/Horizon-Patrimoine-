@@ -81,6 +81,7 @@ export function DocumentEditeur({
   datePrestationInitiale,
   notesInitiales,
   devisOrigineId,
+  factureExistanteId,
   bibliotheque,
   materielCatalogue,
 }: {
@@ -98,6 +99,7 @@ export function DocumentEditeur({
   datePrestationInitiale: string | null;
   notesInitiales: string | null;
   devisOrigineId: string | null;
+  factureExistanteId: string | null;
   bibliotheque: Tables<"lignes_bibliotheque">[];
   materielCatalogue: Pick<Tables<"materiel_catalogue">, "id" | "designation" | "unite" | "prix_achat_cents" | "coefficient">[];
 }) {
@@ -348,10 +350,16 @@ export function DocumentEditeur({
                   Envoyer au client
                 </Button>
               )}
-              <Button type="button" size="sm" onClick={convertir} disabled={pendingConversion}>
-                {pendingConversion && <Loader2 className="size-3.5 animate-spin" />}
-                Convertir en facture
-              </Button>
+              {factureExistanteId ? (
+                <Button asChild size="sm">
+                  <Link href={`/dashboard/documents/${factureExistanteId}`}>Voir la facture</Link>
+                </Button>
+              ) : (
+                <Button type="button" size="sm" onClick={convertir} disabled={pendingConversion}>
+                  {pendingConversion && <Loader2 className="size-3.5 animate-spin" />}
+                  Convertir en facture
+                </Button>
+              )}
             </>
           )}
           {estFactureEnRetard && (

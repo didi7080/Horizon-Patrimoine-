@@ -242,6 +242,16 @@ export async function convertirDevisEnFacture(devisId: string): Promise<Resultat
     if (erreurDevis) throw new Error(erreurDevis.message);
     if (!devis) throw new Error("Devis introuvable.");
 
+    const { data: factureExistante, error: erreurExistante } = await supabase
+      .from("documents")
+      .select("id")
+      .eq("devis_origine_id", devis.id)
+      .eq("entreprise_id", entreprise.id)
+      .eq("type", "facture")
+      .maybeSingle();
+    if (erreurExistante) throw new Error(erreurExistante.message);
+    if (factureExistante) return { ok: true, id: factureExistante.id };
+
     const numero = await prochainNumero(supabase, entreprise.id, "facture");
     const { data: facture, error } = await supabase
       .from("documents")
