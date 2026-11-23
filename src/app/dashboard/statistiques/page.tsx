@@ -96,7 +96,12 @@ export default async function StatistiquesPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatTile icon={Euro} label="Chiffre d'affaires du mois" valeur={formatPrix(caMois)} />
+        <StatTile
+          icon={Euro}
+          label="Chiffre d'affaires du mois"
+          valeur={formatPrix(caMois)}
+          detail="basé sur les RDV honorés"
+        />
         <StatTile icon={CalendarCheck2} label="Rendez-vous du mois" valeur={String(totalRdvMois)} />
         <StatTile
           icon={TrendingUp}

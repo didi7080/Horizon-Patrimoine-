@@ -32,7 +32,7 @@ const FORMULES = [
     inclus: [
       "Tout ce qui est inclus dans Solo",
       "Agenda multi-salariés illimité",
-      "Invitez vos collaborateurs avec leur propre accès",
+      "Invitez vos membres d'équipe avec leur propre accès",
     ],
   },
   {
@@ -74,7 +74,7 @@ const COMPARATIF: { categorie: string; lignes: { label: string; solo: Disponibil
   {
     categorie: "Équipe",
     lignes: [
-      { label: "Invitation de collaborateurs avec accès dédié au tableau de bord", solo: false, equipe: true },
+      { label: "Invitation de membres avec accès dédié au tableau de bord", solo: false, equipe: true },
     ],
   },
   {
@@ -105,7 +105,7 @@ const QUESTIONS = [
   },
   {
     q: "Comment choisir entre Solo et Équipe ?",
-    r: "La formule s’ajuste selon le nombre de salariés : Solo jusqu’à 1, Équipe à partir de 2. Le nombre de rendez-vous n’est jamais plafonné. La différence concrète : seule la formule Équipe permet d’inviter des collaborateurs avec leur propre accès au tableau de bord.",
+    r: "La formule s’ajuste selon le nombre de salariés : Solo jusqu’à 1, Équipe à partir de 2. Le nombre de rendez-vous n’est jamais plafonné. La différence concrète : seule la formule Équipe permet d’inviter des membres avec leur propre accès au tableau de bord.",
   },
   {
     q: "Qu’est-ce que la formule Premium apporte en plus ?",

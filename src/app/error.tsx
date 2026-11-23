@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -12,6 +13,9 @@ export default function ErrorBoundary({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const pathname = usePathname();
+  const dansDashboard = pathname?.startsWith("/dashboard") ?? false;
+
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -28,7 +32,7 @@ export default function ErrorBoundary({
       <div className="mt-6 flex gap-3">
         <Button onClick={reset}>Réessayer</Button>
         <Button asChild variant="outline">
-          <Link href="/">Accueil</Link>
+          <Link href={dansDashboard ? "/dashboard" : "/"}>{dansDashboard ? "Tableau de bord" : "Accueil"}</Link>
         </Button>
       </div>
     </div>
