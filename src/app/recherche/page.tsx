@@ -23,7 +23,11 @@ async function Resultats({
     .order("nom");
 
   if (metier) query = query.eq("metier", metier);
-  if (ville) query = query.or(`ville.ilike.%${ville}%,code_postal.ilike.${ville}%`);
+  // Les caractères `,` et `()` sont significatifs dans la grammaire de filtre
+  // PostgREST (.or()) : on les retire d'une recherche ville/code postal, où
+  // ils n'ont jamais de sens légitime, pour empêcher d'injecter une clause.
+  const villeSure = ville?.replace(/[,()]/g, "");
+  if (villeSure) query = query.or(`ville.ilike.%${villeSure}%,code_postal.ilike.${villeSure}%`);
 
   const { data: entreprises, error } = await query;
 
