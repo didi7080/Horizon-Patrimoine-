@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { adresseIp, limiteAtteinte } from "@/lib/rate-limit";
 
 export type EtatFormulaire = { error?: string } | null;
 
@@ -14,6 +15,11 @@ export async function connexionAction(
 
   if (!email || !motDePasse) {
     return { error: "Merci de renseigner votre e-mail et votre mot de passe." };
+  }
+
+  const ip = await adresseIp();
+  if (await limiteAtteinte(`connexion:${ip}`)) {
+    return { error: "Trop de tentatives depuis votre connexion. Réessayez dans quelques minutes." };
   }
 
   const supabase = await createClient();
