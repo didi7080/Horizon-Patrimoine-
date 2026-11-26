@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { synchroniserRdvEtParticipantsGoogle, synchroniserParticipantGoogle } from "@/lib/google-calendar/sync";
 import { envoyerNotificationPush } from "@/lib/push/client";
+import { fichierSur, TYPES_IMAGE } from "@/lib/upload-securise";
 
 // --- Rendez-vous ---------------------------------------------------------
 
@@ -178,11 +179,12 @@ export async function ajouterPhotoIntervention(
     const { data: rdv } = await admin.from("rendez_vous").select("id").eq("id", rdvId).eq("entreprise_id", entreprise.id).maybeSingle();
     if (!rdv) throw new Error("Rendez-vous introuvable.");
 
-    const extension = fichier.name.split(".").pop()?.toLowerCase() || "jpg";
-    const chemin = `${entreprise.id}/${rdvId}/${crypto.randomUUID()}.${extension}`;
+    const photo = fichierSur(fichier.name, TYPES_IMAGE);
+    if (!photo) throw new Error("Format de fichier non autorisé (jpg, png, webp ou heic uniquement).");
+    const chemin = `${entreprise.id}/${rdvId}/${crypto.randomUUID()}.${photo.extension}`;
     const { error: erreurUpload } = await admin.storage
       .from(BUCKET_PHOTOS)
-      .upload(chemin, fichier, { contentType: fichier.type || undefined });
+      .upload(chemin, fichier, { contentType: photo.contentType });
     if (erreurUpload) throw new Error("Impossible d'envoyer la photo : " + erreurUpload.message);
 
     const { error } = await admin.from("photos_intervention").insert({

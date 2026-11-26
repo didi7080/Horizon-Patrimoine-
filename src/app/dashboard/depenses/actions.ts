@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getEntrepriseContext } from "@/lib/dashboard/context";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fichierSur, TYPES_JUSTIFICATIF } from "@/lib/upload-securise";
 
 const BUCKET_JUSTIFICATIFS = "depenses-justificatifs";
 
@@ -30,11 +31,12 @@ export async function creerDepense(formData: FormData): Promise<Resultat> {
     const fichier = formData.get("justificatif");
     if (fichier instanceof File && fichier.size > 0) {
       if (fichier.size > 8 * 1024 * 1024) throw new Error("La photo est trop volumineuse (8 Mo maximum).");
-      const extension = fichier.name.split(".").pop()?.toLowerCase() || "jpg";
-      const chemin = `${entreprise.id}/${crypto.randomUUID()}.${extension}`;
+      const justificatif = fichierSur(fichier.name, TYPES_JUSTIFICATIF);
+      if (!justificatif) throw new Error("Format de fichier non autorisé (jpg, png, webp ou pdf uniquement).");
+      const chemin = `${entreprise.id}/${crypto.randomUUID()}.${justificatif.extension}`;
       const { error: erreurUpload } = await client.storage
         .from(BUCKET_JUSTIFICATIFS)
-        .upload(chemin, fichier, { contentType: fichier.type || undefined });
+        .upload(chemin, fichier, { contentType: justificatif.contentType });
       if (erreurUpload) throw new Error("Impossible d'envoyer la photo : " + erreurUpload.message);
       justificatifPath = chemin;
     }
