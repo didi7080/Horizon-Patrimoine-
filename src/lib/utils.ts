@@ -64,6 +64,11 @@ export function initiales(nom: string): string {
     .toUpperCase();
 }
 
+/** Sérialise des données pour un <script type="application/ld+json">, en neutralisant toute séquence "</script>" qui permettrait d'en sortir (JSON.stringify seul ne l'échappe pas). */
+export function jsonLdSecurise(donnees: unknown): string {
+  return JSON.stringify(donnees).replace(/</g, "\\u003c");
+}
+
 export function slugify(input: string): string {
   return input
     .toLowerCase()

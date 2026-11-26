@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/marketing/site-footer";
 import { EntrepriseCard } from "@/components/marketing/entreprise-card";
 import { createClient } from "@/lib/supabase/server";
 import { metierParSlug } from "@/lib/metiers-seo";
-import { slugify } from "@/lib/utils";
+import { jsonLdSecurise, slugify } from "@/lib/utils";
 
 export const revalidate = 0;
 
@@ -70,7 +70,7 @@ export default async function MetierPage({ params }: PageProps<"/artisans/[metie
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdSecurise(jsonLd) }} />
       <main className="flex-1 bg-surface">
         <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
           <p className="text-sm text-muted">
